@@ -86,7 +86,17 @@ export function generatePattern(options: GenerateOptions): Pattern {
 
   rows.set('clap', generateClap(preset, options, snare));
 
-  const lowPerc = generateTrack('lowPerc', preset, options, { avoid: kick, avoidance: 0.35 });
+  /*
+   * The low tom keeps clear of the kick and of the snare.
+   *
+   * The kick for register — two things at the bottom of the spectrum on one sixteenth is
+   * mud — and the snare because the review grids produced bars where the low percussion
+   * played the snare's figure exactly, note for note. Doubling a part is not a second part.
+   */
+  const lowPerc = generateTrack('lowPerc', preset, options, {
+    avoid: new Set([...kick, ...snare]),
+    avoidance: 0.4,
+  });
   rows.set('lowPerc', lowPerc);
   const highPerc = generateHighPerc(preset, options, lowPerc, snare);
   rows.set('highPerc', highPerc);
@@ -578,10 +588,18 @@ function generateClap(preset: Preset, options: GenerateOptions, snare: StepSet):
       steps.add(step);
     }
   } else {
+    /*
+     * A shadow of the snare, and never underneath it.
+     *
+     * The offset can land the clap on another of the snare's own steps — a snare on four and
+     * six shifted by two puts a clap on six, where the snare already is. That is not an
+     * answering figure, it is a thickened snare, and the review grids were full of them.
+     */
     const shift = rng.chance(0.6) ? 1 : 2;
     for (const step of [...snare].sort((a, b) => a - b)) {
       if (steps.size >= count) break;
-      steps.add((step + shift) % STEP_COUNT);
+      const answer = (step + shift) % STEP_COUNT;
+      if (!snare.has(answer)) steps.add(answer);
     }
   }
 

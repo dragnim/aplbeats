@@ -108,6 +108,16 @@ function emphasise(overrides: Readonly<Record<number, number>>): number[] {
  */
 const BACKBEAT_ONLY = emphasise({ 0: 0.05, 8: 0.14 });
 
+/*
+ * A snare does not play two sixteenths in a row.
+ *
+ * Not a rule of music — a ghost note tucked against the backbeat is a real device — but at
+ * these tempos and this resolution the review grids showed it reading as sloppiness rather
+ * than as intent: a backbeat on four with another on the sixteenth after it sounds like a
+ * mis-hit. Glitch keeps the freedom, because there it is the point.
+ */
+const NO_SNARE_DOUBLES = 1;
+
 /** The auxiliary percussion trio, which most presets treat alike. */
 function auxiliary(
   low: TrackProfile,
@@ -149,6 +159,7 @@ const straight: Preset = {
       anchorPull: 0.4,
       syncopationScale: 0.3,
       displace: 0,
+      maxRun: NO_SNARE_DOUBLES,
       emphasis: BACKBEAT_ONLY,
     },
     closedHat: { count: [4, 13], periodBias: 0.34, syncopationScale: 0.6, anchorPull: 0.15 },
@@ -185,7 +196,14 @@ const fourFloor: Preset = {
       maxRun: 2,
       emphasis: emphasise({ 1: 0.12, 3: 0.2, 5: 0.12, 7: 0.2, 9: 0.12, 11: 0.2, 13: 0.12, 15: 0.35 }),
     },
-    snare: { count: [1, 3], required: [12], anchorPull: 0.3, syncopationScale: 0.4, emphasis: BACKBEAT_ONLY },
+    snare: {
+      count: [1, 3],
+      required: [12],
+      anchorPull: 0.3,
+      syncopationScale: 0.4,
+      maxRun: NO_SNARE_DOUBLES,
+      emphasis: BACKBEAT_ONLY,
+    },
     // Off the beat, which is where the lift in this music comes from.
     closedHat: {
       count: [4, 13],
@@ -220,7 +238,7 @@ const broken: Preset = {
      * being broken and starts being lost.
      */
     kick: {
-      count: [3, 7],
+      count: [3, 6],
       required: [0],
       anchorPull: 0.15,
       syncopationScale: 0.95,
@@ -235,6 +253,7 @@ const broken: Preset = {
       displace: 0.45,
       anchorPull: 0.3,
       syncopationScale: 0.75,
+      maxRun: NO_SNARE_DOUBLES,
       emphasis: emphasise({ 0: 0.06, 8: 0.3, 10: 1.4, 14: 1.3, 7: 1.2 }),
     },
     closedHat: { count: [3, 12], periodBias: -0.05, syncopationScale: 0.6 },
@@ -279,6 +298,7 @@ const syncopated: Preset = {
       displace: 0.6,
       anchorPull: 0.2,
       syncopationScale: 0.9,
+      maxRun: NO_SNARE_DOUBLES,
       emphasis: emphasise({ 0: 0.06, 8: 0.3, 11: 1.4, 15: 1.3 }),
     },
     closedHat: { count: [3, 12], periodBias: -0.08, syncopationScale: 0.75 },
@@ -355,7 +375,7 @@ const euclidean: Preset = {
      * rhythm.
      */
     kick: { count: [2, 5], euclid: { rotation: 0 }, required: [0], maxRun: 2 },
-    snare: { count: [2, 4], euclid: { rotation: 4 }, emphasis: BACKBEAT_ONLY },
+    snare: { count: [2, 4], euclid: { rotation: 4 }, maxRun: NO_SNARE_DOUBLES, emphasis: BACKBEAT_ONLY },
     closedHat: { count: [4, 11], euclid: { rotation: 0 } },
     openHat: { count: [0, 3], euclid: { rotation: 2 } },
     clap: { count: [0, 3], euclid: { rotation: 12 } },
