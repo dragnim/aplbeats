@@ -67,7 +67,7 @@ export type Kit = Readonly<Record<TrackId, Voice>>;
  */
 const kick: Voice = ({ context, destination, noise }, time, level) => {
   const { node: gain, endTime } = envelope(context, time, {
-    peak: level * 1.0,
+    peak: level * 0.66,
     attack: 0.004,
     decay: 0.44,
   });
@@ -82,7 +82,7 @@ const kick: Voice = ({ context, destination, noise }, time, level) => {
   // The beater itself: a few milliseconds of top end, which is what makes the
   // kick locate in time rather than merely arrive.
   const { node: clickGain, endTime: clickEnd } = envelope(context, time, {
-    peak: level * 0.42,
+    peak: level * 0.3,
     attack: 0.0005,
     decay: 0.022,
   });
@@ -101,7 +101,7 @@ const kick: Voice = ({ context, destination, noise }, time, level) => {
  */
 const snare: Voice = ({ context, destination, noise }, time, level) => {
   const { node: bodyGain, endTime: bodyEnd } = envelope(context, time, {
-    peak: level * 0.5,
+    peak: level * 0.42,
     attack: 0.001,
     decay: 0.095,
   });
@@ -116,7 +116,7 @@ const snare: Voice = ({ context, destination, noise }, time, level) => {
   }
 
   const { node: rattleGain, endTime: rattleEnd } = envelope(context, time, {
-    peak: level * 0.72,
+    peak: level * 0.62,
     attack: 0.0008,
     decay: 0.185,
   });
@@ -151,7 +151,7 @@ function hat(
   brightness: number,
 ): void {
   const { node: gain, endTime } = envelope(context, time, {
-    peak: level * 0.5,
+    peak: level * 1.3,
     attack: 0.0008,
     decay,
   });
@@ -194,7 +194,7 @@ const closedHat: Voice = (voiceContext, time, level) => {
  * audible where a choked one's never get the chance.
  */
 const openHat: Voice = (voiceContext, time, level) => {
-  hat(voiceContext, time, level * 0.94, 0.42, 0.92);
+  hat(voiceContext, time, level * 0.78, 0.42, 0.92);
 };
 
 /**
@@ -212,7 +212,7 @@ const clap: Voice = ({ context, destination, noise }, time, level) => {
   const endTime = time + BURST_GAP * BURSTS + tailDecay;
 
   const gain = context.createGain();
-  const peak = level * 0.85;
+  const peak = level * 1.4;
   gain.gain.setValueAtTime(0.0001, time);
 
   for (let burst = 0; burst < BURSTS; burst += 1) {
@@ -244,7 +244,7 @@ const clap: Voice = ({ context, destination, noise }, time, level) => {
  */
 const lowPerc: Voice = ({ context, destination, noise }, time, level) => {
   const { node: gain, endTime } = envelope(context, time, {
-    peak: level * 0.78,
+    peak: level * 0.48,
     attack: 0.002,
     decay: 0.3,
   });
@@ -256,7 +256,7 @@ const lowPerc: Voice = ({ context, destination, noise }, time, level) => {
   startAndStop(body, time, endTime);
 
   const { node: skinGain, endTime: skinEnd } = envelope(context, time, {
-    peak: level * 0.2,
+    peak: level * 0.14,
     attack: 0.0005,
     decay: 0.016,
   });
@@ -273,7 +273,7 @@ const lowPerc: Voice = ({ context, destination, noise }, time, level) => {
  */
 const highPerc: Voice = ({ context, destination, noise }, time, level) => {
   const { node: gain, endTime } = envelope(context, time, {
-    peak: level * 0.62,
+    peak: level * 0.58,
     attack: 0.0015,
     decay: 0.16,
   });
@@ -303,7 +303,7 @@ const highPerc: Voice = ({ context, destination, noise }, time, level) => {
  */
 const rim: Voice = ({ context, destination, noise }, time, level) => {
   const { node: gain, endTime } = envelope(context, time, {
-    peak: level * 0.85,
+    peak: level * 0.72,
     attack: 0.0005,
     decay: 0.032,
   });

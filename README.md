@@ -90,19 +90,21 @@ npm run dev
 
 ## Development commands
 
-| Command                | What it does                                                |
-| ---------------------- | ----------------------------------------------------------- |
-| `npm run dev`          | Vite dev server                                             |
-| `npm run build`        | Typecheck, then build to `dist/`                            |
-| `npm run preview`      | Serve `dist/` at the published base path                    |
-| `npm run typecheck`    | `tsc --noEmit`                                              |
-| `npm run lint`         | ESLint, type-aware                                          |
-| `npm run format`       | Prettier, writing                                           |
-| `npm run format:check` | Prettier, checking — this is what CI runs                   |
-| `npm test`             | Unit and component tests, once                              |
-| `npm run test:watch`   | The same, watching                                          |
-| `npm run test:e2e`     | Playwright, across three browser projects                   |
-| `npm run screenshot`   | Capture the interface to `docs/`, against a running preview |
+| Command                     | What it does                                                                     |
+| --------------------------- | -------------------------------------------------------------------------------- |
+| `npm run dev`               | Vite dev server                                                                  |
+| `npm run build`             | Typecheck, then build to `dist/`                                                 |
+| `npm run preview`           | Serve `dist/` at the published base path                                         |
+| `npm run typecheck`         | `tsc --noEmit`                                                                   |
+| `npm run lint`              | ESLint, type-aware                                                               |
+| `npm run format`            | Prettier, writing                                                                |
+| `npm run format:check`      | Prettier, checking — this is what CI runs                                        |
+| `npm test`                  | Unit and component tests, once                                                   |
+| `npm run test:watch`        | The same, watching                                                               |
+| `npm run test:e2e`          | Playwright, across three browser projects                                        |
+| `npm run screenshot`        | Capture the interface to `docs/`, against a running preview                      |
+| `npm run measure:kit`       | Render every voice offline and report its level and length (needs `npm run dev`) |
+| `npm run verify:deployment` | Load the published site and check it works                                       |
 
 ## How it is put together
 
@@ -197,10 +199,30 @@ named after behaves, and the way the classic machines got there:
 - **Percussion and rim** — pitched bodies with short noise transients, tuned to sit
   clear of the kick.
 
-Every number in there was arrived at by listening, and sound design remains
-**provisional**. `Kit` in `src/audio/kit.ts` is the seam: a sample-backed kit satisfying
-the same signature can replace this one without the sequencer, the scheduler or the
-interface knowing anything changed.
+Sound design remains **provisional**. `Kit` in `src/audio/kit.ts` is the seam: a
+sample-backed kit satisfying the same signature can replace this one without the
+sequencer, the scheduler or the interface knowing anything changed.
+
+Whether a drum sounds good is a judgement no program can make, but whether it makes a
+sound at all, how loud it is next to the others and whether the eight together clip is
+arithmetic — and `npm run measure:kit` does that arithmetic, rendering the real voices
+through an `OfflineAudioContext` and reporting each one's peak, RMS and length. It is
+how the balance below was arrived at, and it caught a kick sitting at −0.1 dBFS with
+hats nineteen decibels beneath it, which in a groove with twelve hats meant no hats.
+
+```
+Voice            peak      dBFS     RMS      length
+kick             0.831     -1.6   0.0792   271 ms
+snare            0.472     -6.5   0.0161    89 ms
+closedHat        0.259    -11.7   0.0046    22 ms
+openHat          0.255    -11.9   0.0089   192 ms
+clap             0.351     -9.1   0.0122   123 ms
+lowPerc          0.368     -8.7   0.0229   167 ms
+highPerc         0.281    -11.0   0.0125    83 ms
+rim              0.253    -11.9   0.0059    17 ms
+
+Whole kit on one step, every fader up: -1.1 dBFS, 0 clipped samples
+```
 
 ## Accessibility
 
