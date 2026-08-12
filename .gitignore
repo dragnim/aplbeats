@@ -1,0 +1,30 @@
+node_modules/
+dist/
+coverage/
+.vite/
+
+# Test output
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
+# Environment — .env.example is committed if one ever exists, real env files are not
+.env
+.env.*
+!.env.example
+
+# Editors and OS
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Scratch
+*.log
+npm-debug.log*

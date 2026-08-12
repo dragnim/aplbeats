@@ -1,0 +1,20 @@
+# Store and check out text as LF on every platform. Prettier is configured with
+# endOfLine: "lf", so a CRLF working copy on Windows would otherwise fail
+# `npm run format:check` on a fresh clone.
+* text=auto eol=lf
+
+# Binary assets must never be line-ending converted.
+*.woff2 binary
+*.woff  binary
+*.ttf   binary
+*.otf   binary
+*.png   binary
+*.jpg   binary
+*.ico   binary
+*.wav   binary
+*.flac  binary
+*.ogg   binary
+*.mp3   binary
+
+# Keep generated lockfiles out of diffs and language statistics.
+package-lock.json linguist-generated=true -diff
