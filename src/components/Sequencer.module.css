@@ -1,12 +1,19 @@
 /*
  * The grid.
  *
- * Sixteen steps never come off the screen. On a phone there is no width at which
- * sixteen targets big enough to hit and a column of legible track names both fit,
- * so the grid scrolls sideways with its track names pinned — which is what a
- * hardware sequencer does when you turn it round, and is honest about the bar being
- * longer than the window. Snap points on the beats make moving between them one
- * flick rather than a careful drag.
+ * Sixteen steps never come off the screen, at any width. That is the one rule this
+ * layout is built around: a sequencer whose pattern you cannot see is not a
+ * sequencer.
+ *
+ * From roughly 36rem upwards each track's name, fader and mute sit in a column
+ * beside its steps. Below that they move *above* the steps instead and the grid
+ * reaches the edges of the screen, because on a phone there is no width at which a
+ * column of legible names and sixteen reachable targets both fit.
+ *
+ * An earlier version kept them side by side and let the grid scroll sideways with
+ * the names pinned. It gave comfortable pads and showed eight steps of sixteen,
+ * which was the wrong trade. The scroller and its snap points remain for the narrow
+ * band between the two layouts, where the grid can still overflow slightly.
  */
 .scroller {
   overflow-x: auto;
