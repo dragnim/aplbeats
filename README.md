@@ -8,13 +8,16 @@ loaded — press Play, then press Randomise.
 Live site: <https://dragnim.github.io/aplbeats/>
 
 Underneath the grid is an 8 × 16 matrix of Booleans, which is not an implementation detail
-but the whole idea. A rhythm is a rectangular array, array languages are good at
-rectangular arrays, and a later release will hand that same matrix to real
-[Dyalog APL](https://www.dyalog.com/) and take a transformed one back.
+but the whole idea. A rhythm is a rectangular array, array languages are good at rectangular
+arrays — and pressing **Apply with APL** sends that matrix to real
+[Dyalog APL](https://www.dyalog.com/) and plays back the matrix that comes home.
 
-> **APL Beats does not execute any APL yet.** The generator described below is TypeScript.
-> The product direction is APL-powered; the current implementation is not, and this
-> document will say so until it changes. See [Where APL comes in](#where-apl-comes-in).
+> **What runs where, precisely.** Generation, timing and sound are local TypeScript and Web
+> Audio. The four transformations are executed by Dyalog APL, remotely, via
+> [TryAPL](https://tryapl.org/). There is no local fallback for them: if APL is unavailable
+> the transform does not happen and the beat is left alone, because an interface that says
+> "Apply with APL" and quietly computed the answer itself would be lying. See
+> [Transform with APL](#transform-with-apl).
 
 ![The APL Beats sequencer and generator, playing](docs/screenshot-playing.png)
 
@@ -23,6 +26,7 @@ rectangular arrays, and a later release will hand that same matrix to real
 ## Contents
 
 - [What it does](#what-it-does)
+- [Transform with APL](#transform-with-apl)
 - [The generator](#the-generator)
 - [The four macros](#the-four-macros)
 - [Presets](#presets)
@@ -36,10 +40,11 @@ rectangular arrays, and a later release will hand that same matrix to real
 - [Sounds and licensing](#sounds-and-licensing)
 - [Review tooling](#review-tooling)
 - [Accessibility](#accessibility)
+- [Privacy and what leaves the browser](#privacy-and-what-leaves-the-browser)
 - [Respecting the device](#respecting-the-device)
 - [Testing](#testing)
 - [Deployment](#deployment)
-- [Where APL comes in](#where-apl-comes-in)
+- [Where APL goes next](#where-apl-goes-next)
 - [Licence](#licence)
 
 ---
@@ -48,6 +53,8 @@ rectangular arrays, and a later release will hand that same matrix to real
 
 - **Eight tracks, sixteen steps.** Kick, Snare, Closed Hat, Open Hat, Clap, Low Perc, High
   Perc and Rim, across one bar of four-four in sixteenth notes.
+- **Four transformations, executed in APL.** Rotate, Reverse, Periodic and Euclidean, on one
+  track or on the whole matrix — with the expression that ran on show if you want to see it.
 - **Randomise.** A new take on the groove you have, as far away as Variation allows.
 - **New Seed.** A completely new groove, ignoring Variation.
 - **Four macros** — Density, Complexity, Syncopation, Variation — each with a distinct
@@ -62,11 +69,184 @@ rectangular arrays, and a later release will hand that same matrix to real
 - **Editing by click, tap, drag or keyboard**, unchanged from Stage 1.
 - **Your session comes back** when you do — pattern, seed, preset, macros, locks, tempo,
   swing and mixer. It never starts playing on its own.
+- **Undo covers transforms too**, so an operation you did not like costs one button.
 
 On a phone the whole bar stays on screen: each track's name, fader, lock and mute move
 above its steps rather than beside them.
 
 <img src="docs/screenshot-mobile.png" alt="APL Beats on a phone, with all sixteen steps of every track visible" width="330" />
+
+## Transform with APL
+
+This is the stage where APL stops being a plan.
+
+Choose a track — or all of them — choose an operation, set its number, and press **Apply with
+APL**. The pattern is written down as an APL matrix literal, sent to
+[TryAPL](https://tryapl.org/) as one expression, evaluated by Dyalog APL, and the eight lines
+of ones and zeros that come back become your bar. Nothing about that sentence is a metaphor.
+
+```
+your 8 × 16 matrix
+  → an APL literal:  8 16⍴1 0 0 0 0 0 1 0 …
+  → one expression:  ⎕IO←0 ⋄ m←8 16⍴… ⋄ m[0;]←¯1⌽m[0;] ⋄ m
+  → POST to tryapl.org, evaluated by Dyalog APL
+  → eight lines of sixteen digits
+  → validated, then played
+```
+
+### The four operations
+
+`⎕IO←0` is sent with every request, so the APL indices and the grid indices are the same
+number. There is no off-by-one anywhere between the sequencer and the interpreter.
+
+| Operation     | The APL       | What it does musically                                                                     |
+| ------------- | ------------- | ------------------------------------------------------------------------------------------ |
+| **Rotate**    | `¯1⌽m[0;]`    | Moves a rhythm through time. Negative is later. On the whole matrix, every track together. |
+| **Reverse**   | `⌽m`          | The last sixteenth becomes the first. `⌽` with nothing on its left.                        |
+| **Periodic**  | `0=4\|⍳16`    | A steady pulse every few steps. Four gives you the beats; three gives a cross-rhythm.      |
+| **Euclidean** | `5>16\|5×⍳16` | Spreads k hits as evenly across sixteen steps as the arithmetic allows.                    |
+
+Rotate and Reverse **transform** a row, so they can be applied to all eight at once. Periodic
+and Euclidean **replace** a row, so they cannot: eight identical rows is not a rhythm, it is a
+mistake with eight voices. The Target menu offers what the operation accepts and nothing else.
+
+**Euclidean is `k>16|k×⍳16`, and that was checked rather than trusted.** It is one line where
+Bjorklund's algorithm is a recursion, which is exactly the sort of claim that deserves
+suspicion. Stage 2 already contains a verified Bjorklund implementation, so the two were
+compared exhaustively — in TypeScript, at no cost to TryAPL, by
+[`scripts/check-euclidean.ts`](scripts/check-euclidean.ts). Eleven of the seventeen pulse
+counts are identical to Bjorklund and the other six are the same rhythm at a fixed rotation,
+with the gap structure — never more than two distinct gap lengths, differing by one — holding
+throughout. The offset is constant per pulse count, so the Shift control behaves identically in
+either formulation.
+
+### There was a fifth, and it was removed
+
+`(s×⍳8)⌽m` gives `⌽` a **vector** left argument, so all eight rows rotate by their own amount
+in one glyph, with no loop and no index. It was built as "Stagger" and taken out again after
+the musical review, because it was the best APL in the project and the worst music:
+
+1. under `⎕IO←0` the first row's rotation is `s×0`, so the kick never moved at all — which is
+   not what "shift each track a little further than the one above" promises;
+2. the backbeat was lost at seven of its eight settings;
+3. `¯1` and `3` smeared by the same degree, so the control reshuffled rather than intensified,
+   and every press had the same character.
+
+The evidence is still reproducible — `npm run review:transforms -- --stagger` computes it —
+because a claim that something was rejected is worth nothing without the grid that rejected it.
+Make beats first.
+
+### Peek at the APL
+
+Underneath the button is a disclosure showing three things: the **core expression**, with two
+lines explaining its glyphs; **your pattern as an array**, one row or all eight; and the **full
+request**, the four statements exactly as they are joined with `⋄` and sent.
+
+What it shows is what runs. Not a simplified version, not a pretty-printed one — the same
+string the client posts. That is the entire value of the feature, so the tests assert it: the
+expression read out of Peek must equal the expression that went over the wire.
+
+Opening Peek makes **no request**. The APL is built from a template in the browser, so it is
+free to look at, and it updates as you change the controls.
+
+<img src="docs/screenshot-peek.png" alt="APL Beats with Peek open, showing the core expression, the pattern as an 8 by 16 array, and the full request" width="820" />
+
+The glyphs are set in APL387, bundled at 23 KB. It is public domain under The Unlicence, so it
+can be shipped rather than fetched from someone else's CDN — see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+### Why the timing is not in APL
+
+Because a network is not a clock. Sample-accurate scheduling needs decisions in the low
+milliseconds and a round trip to TryAPL takes tens to hundreds of them on a good day, with no
+guarantee on a bad one. A drum machine whose tempo depended on somebody else's HTTP latency
+would not be a drum machine.
+
+So the division is: **APL decides what the pattern is; Web Audio decides when it is heard.**
+That is not a compromise imposed by the wire — it is the same division a hardware sequencer
+makes between its pattern memory and its clock.
+
+### The request discipline
+
+TryAPL is a free service run by other people, and this application is a guest on it. So the
+rules are enforced in code rather than promised in prose, in one file
+([`src/apl/useTransform.ts`](src/apl/useTransform.ts)) small enough to read in a sitting:
+
+- **One deliberate press, at most one request.** `apply` is the only function that can cause
+  one, and it is called from one button.
+- **Never** per beat, per step, per cell, per animation frame, from the scheduler, from
+  playback, on hover, while a control is moving, or continuously while editing.
+- **The parameters are spinners, not sliders.** A slider invites dragging and dragging invites a
+  request per value. That is not a styling choice, it is the interaction shape the promise
+  requires — and a test drags the numbers through their whole range and asserts zero requests.
+- **A second press while one is in flight is dropped**, not queued. A held-down key cannot
+  become a request storm.
+- **Nothing retries.** Not the client, not the service layer, not the hook. A failure is a
+  failure, reported once.
+- **Identical questions are answered from memory.** Thirty-two answers, keyed on the operation,
+  the target, the parameters and the whole pattern — so Apply, Undo, Apply costs one request
+  rather than two, and the interface says "Applied, from cache." when it did.
+- **`npm test`, `npm run test:e2e`, CI and the Pages deployment make zero live requests.** The
+  end-to-end suite mocks the endpoint and drives the real product flow through it.
+
+Live APL is verified deliberately, by hand, by one command:
+
+```bash
+npm run verify:apl-live               # four requests, one per operation
+npm run verify:apl-live -- --dry-run  # prints the expressions, sends nothing
+```
+
+It builds each expression with the production source builder, sends it with the production
+client, reads it with the production parser, and compares the result against the TypeScript
+reference — then prints the request count on its own line, whether or not anybody asked. It
+refuses to run under CI unless forced.
+
+### What comes back is not trusted
+
+An APL error arrives as **HTTP 200**. `LENGTH ERROR` and a caret look exactly like a successful
+reply as far as the status code is concerned, so the status code is not what decides. Every
+reply passes through:
+
+1. a bounded read — counted in **bytes off the stream**, not characters after decoding, because
+   APL glyphs are two or three bytes each and a reply well past the limit can measure
+   comfortably inside it if you count `String.length`;
+2. JSON parsing, with a stated failure rather than a thrown exception;
+3. shape validation of the wire array, assuming nothing;
+4. a scan for eleven named APL errors;
+5. strict matrix parsing — **exactly** eight lines of **exactly** sixteen tokens, each token
+   exactly `"0"` or `"1"`.
+
+Anything that fails leaves the pattern untouched and puts one sentence on screen. Every one of
+those sentences ends by saying the beat was not changed, because that is the only thing you
+actually need to know; the raw detail goes to the console for whoever wants it.
+
+A reply is also dropped if it **no longer applies**. Between asking and answering you may have
+edited a cell, pressed Randomise, or undone something, and a matrix computed from a bar that no
+longer exists must not overwrite the bar that does. Compared by value rather than by a revision
+counter, so a bar that was edited and then undone still accepts its answer.
+
+### There is no APL editor
+
+You cannot type APL into APL Beats, and this stage deliberately does not let you. The numbers
+from the controls are clamped to ranges declared in
+[`src/apl/operations.ts`](src/apl/operations.ts) and only then formatted into a template. No
+string from the interface is ever spliced into executable source — which is what makes "no
+arbitrary APL" a property of the code rather than a claim about the UI. A test builds every
+operation at every target with every parameter driven to `±1e9` and `NaN`, and asserts the
+result never contains a quote, a comment, `⍎`, `⍕`, `#`, or a system command.
+
+An editor is a later stage's problem, and a much larger one.
+
+### A transform is one Undo
+
+A successful transform banks exactly one history entry, so an operation you did not like costs
+one button. A transform that changed nothing — reversing an already-symmetrical row, rotating
+by a full bar — banks none, because an Undo that appears to do nothing is worse than no Undo.
+
+Locks are deliberately **not** consulted. A lock means "the generator may not alter this row",
+and a transform is not the generator: it is you, naming a row and asking for it to change. The
+one case worth knowing about is an operation on the whole matrix, which touches every row
+including a locked one — that is what "All tracks" means, and it is the visitor's choice.
 
 ## The generator
 
@@ -179,19 +359,25 @@ you made rather than part of it, and putting them in the history would mean that
 after nudging a fader threw away the groove you had been building.
 
 One action is one entry. A drag across eight cells is one Undo; a slider dragged through
-fifty values is one Undo, banked when the gesture began and committed when it ended. There
-is no Redo in this stage.
+fifty values is one Undo, banked when the gesture began and committed when it ended; an APL
+transform is one Undo. There is no Redo yet.
 
 ## What is not here yet
 
 Named because a README that lists ambitions alongside features cannot be trusted about
 either. None of the following exists:
 
-- **APL.** No editor, no execution, no TryAPL, no network request of any kind.
+- **An APL editor.** You cannot type your own expressions. The four operations are built
+  from templates with clamped numbers, and nothing from the interface reaches executable
+  source as text.
+- **APL generation.** The generator is still local TypeScript; only the transformations run
+  in APL.
+- **Offline transforms.** There is no local fallback, on purpose. No APL, no transform.
 - Sharing, WAV export, MIDI, accounts.
 - More than one bar; variable track lengths; song arrangement.
 - Per-step velocity or probability. A step fires or it does not.
 - Effects, sample uploads, a light theme.
+- Redo.
 
 ## Local setup
 
@@ -219,6 +405,8 @@ npm run dev
 | `npm test`                  | Unit and component tests, once                                                   |
 | `npm run test:e2e`          | Playwright, across three browser projects                                        |
 | `npm run review:patterns`   | Inspect many generated bars — see [Review tooling](#review-tooling)              |
+| `npm run review:transforms` | Read what each transformation does to a beat, before and after                   |
+| `npm run verify:apl-live`   | **Four real TryAPL requests.** Manual, never in CI                               |
 | `npm run screenshot`        | Capture the interface to `docs/`, against a running preview                      |
 | `npm run measure:kit`       | Render every voice offline and report its level and length (needs `npm run dev`) |
 | `npm run measure:generated` | Render generated bars through the real master chain and check for clipping       |
@@ -232,6 +420,15 @@ else.
 
 ```
 src/
+  apl/         everything that touches Dyalog APL, and nothing that does not
+    config.ts      the endpoint and the limits; refuses a non-HTTPS endpoint
+    wire.ts        the TryAPL Exec format, and the eleven APL error names
+    matrix.ts      a pattern → an APL literal, and eight strict lines → a pattern
+    operations.ts  the four operations: their APL, their ranges, their explanations
+    client.ts      the only network request in the application
+    transform.ts   the cache, and the staleness rule
+    useTransform.ts  when a request may happen. The whole promise lives here
+    reference.ts   what the APL means, in TypeScript — imported by tests only
   generation/  the generator — pure, deterministic, and knows nothing of React
     prng.ts        a 32-bit PRNG; streams derived per track by hashing
     weights.ts     the metrical model and what the macros do to it
@@ -251,7 +448,7 @@ src/
 Four rules shape it.
 
 **The pattern is a matrix and nothing else** — `readonly boolean[][]`, with pure functions
-over it. `toBits` and `fromBits` are the numeric form APL will exchange.
+over it. That is what makes `8 16⍴…` a serialisation rather than a translation.
 
 **Generation is pure and outside React.** Nothing in `generation/` imports React, touches a
 clock, or draws randomness it was not given. The reducer that drives it is pure too:
@@ -263,6 +460,11 @@ every later draw and rewrite the whole kit — which would make locks impossible
 meaningless.
 
 **The audio clock and the render loop never touch.** See below.
+
+**The APL boundary is one directory and one hook.** Nothing outside `src/apl/` can cause a
+request, and inside it only `apply` can. A test forbids any module under `src/` from importing
+`reference.ts`, so a silent fallback to the TypeScript implementations is structurally
+impossible rather than merely unintended — which is the whole credibility of this stage.
 
 ## Audio timing
 
@@ -324,7 +526,30 @@ they are for is making bars comparable so that a person can look at forty of the
 what is wrong. A generator tuned to optimise a number would produce bars that scored well,
 which is not the same thing as bars worth listening to.
 
-It earned its place within minutes of existing, and has since found: every seed under a
+`npm run review:transforms` does the same job for the transformations, which needed a
+different kind of looking: not many bars at once, but one bar before and after.
+
+```
+npm run review:transforms                  every operation, on the opening groove
+npm run review:transforms -- --generated    and on generated bars from each preset
+npm run review:transforms -- --stagger      the operation that was built and rejected
+npm run review:transforms -- --locks        what a whole-matrix operation touches
+```
+
+Beside each grid it prints whether the kick is still on one, how many of the four beats are
+anchored by a kick or a snare, whether the snare still has a backbeat, and what share of events
+sits off the sixteenth grid. Those are the things that tell you a beat still has a spine, and
+they are what removed Stagger — see
+[There was a fifth](#there-was-a-fifth-and-it-was-removed). They are also how two smaller
+findings were recorded honestly rather than glossed: **Periodic at a period that does not divide
+sixteen** leaves a short gap at the bar line, because `0=3|⍳16` fires on 0, 3, 6, 9, 12 and 15
+and then starts again — which is what makes it a cross-rhythm rather than a metronome, but it is
+a stumble and the summary says "every few steps" rather than pretending otherwise. And
+**Periodic or Euclidean on a hat row can land on top of the other hat**, which the Stage 2
+generator deliberately avoids; a transform does not avoid it, because you named that row and the
+result must be what APL returned rather than what would have been tidier.
+
+The pattern review earned its place within minutes of existing, and has since found: every seed under a
 preset producing exactly the same number of events on every track (Euclidean was pinned at
 twenty-two triggers for every seed alive); `periodBias` implemented with the opposite sign to
 its own documentation; required steps inflating every count and destroying the repetition
@@ -359,7 +584,48 @@ The Stage 2 controls follow the same rules:
 - **Every slider has a programmatic label and value**, and the numeric readouts beside them
   are `aria-hidden` because the slider already reports its value.
 
+Stage 3 adds a second live region, and both are now **named** — "Playback" and "APL
+transform". Two are legitimate: playback and transformation are different concerns and either
+can change without the other. Two anonymous ones are not, because a reader arriving at one
+has no way to know which is speaking. The transform region reports at most twice per press —
+running, then applied or failed — so it reports rather than chatters, and it is `role="status"`
+rather than an alert because a failed transform is not an emergency: the beat is untouched and
+you can try again.
+
+The transform panel is a labelled region, its selects and number inputs have real labels, and
+Peek is a proper disclosure with `aria-expanded` and `aria-controls`. The APL inside it is in
+`<pre><code>`, so it is selectable and copyable.
+
 Not yet audited with an actual screen reader, which remains the honest gap.
+
+## Privacy and what leaves the browser
+
+One host is contacted, by one action, carrying one thing.
+
+**What is sent**, when and only when you press Apply with APL:
+
+```json
+["", 0, "", "⎕IO←0 ⋄ m←8 16⍴1 0 0 0 … ⋄ m[0;]←¯1⌽m[0;] ⋄ m"]
+```
+
+That is the whole payload. A hundred and twenty-eight ones and zeros, four small integers, and
+some APL. About three hundred bytes.
+
+**What is not sent, ever:** your tempo, swing, mute states or fader levels; your seed, preset or
+macro settings; anything in local storage; any identifier, cookie or account — there is no
+account; any telemetry, timing or analytics; any browser detail beyond what HTTP inherently
+carries. `credentials: 'omit'` is set explicitly, so no cookie travels even if one existed.
+
+The reason the list is short is not restraint. There is nothing to send because there is nothing
+to know: the request is a rhythm and a rotation.
+
+**Your session stays on your machine.** Pattern, seed, preset, macros, locks, tempo, swing and
+mixer are kept in `localStorage` and go nowhere. Nothing about a transform is stored — the cache
+of APL answers is in memory and dies with the tab.
+
+**Nothing else is fetched at any time.** No CDN, no font service, no analytics, no images from
+elsewhere. The `Content-Security-Policy` in `index.html` is the enforcement rather than the
+description, and it names exactly one external origin.
 
 ## Respecting the device
 
@@ -368,16 +634,23 @@ Not yet audited with an actual screen reader, which remains the honest gap.
 - **Leaving the tab pauses the transport.**
 - **Generation happens once per deliberate action**, never while a control is moving. The
   session write is debounced.
-- **Nothing is fetched at runtime.** The Content-Security-Policy says `connect-src 'self'`,
-  which is a true statement about the application rather than a restriction being worked
-  around.
+- **One host is reachable, and only when you ask.** The Content-Security-Policy says
+  `connect-src 'self' https://tryapl.org` — widened by exactly one origin from Stage 2's
+  `'self'`, and by nothing else. No CDN, no analytics, no fonts, no images. Idle, playing or
+  editing, the application makes no request at all; pressing Apply makes one.
 
 ## Testing
 
 ```bash
-npm test          # 207 unit and component tests, in jsdom
-npm run test:e2e  # 66 end-to-end runs across three browser projects
+npm test          # 349 unit and component tests, in jsdom
+npm run test:e2e  # 132 end-to-end runs across three browser projects
 ```
+
+**Not one of them makes a live TryAPL request.** The unit tests inject a fake client; the
+end-to-end suite intercepts the endpoint in the browser and answers as the real service does,
+including its CORS preflight. The mock computes its reply from the matrix it was actually
+sent, using the reference implementations, because a fake returning a fixed answer would pass
+every test while proving almost nothing.
 
 The generator is tested as **properties, not snapshots**. It is expected to be tuned again —
 that is what the review tooling is for — and a test pinning twenty-four bars cell by cell
@@ -392,12 +665,24 @@ so that touching Variation silently replaced the curated opening; a drag whose f
 cell already held the painted value banking no history and swallowing the rest of the drag;
 and Variation's track-spread saturating by the middle of its range.
 
+Stage 3 added a fifth, and the end-to-end suite found it on WebKit alone.
+`controller.abort(reason)` is supposed to make `fetch` reject **with that reason**; Chromium
+does, and WebKit rejects with a bare `AbortError` however it was aborted. Reading the reason
+off the exception therefore made a timeout indistinguishable from a superseded request — and a
+superseded request is deliberately silent, so a visitor on Safari whose transform timed out was
+shown nothing at all. The client now keeps its own note of why it aborted, which is both simpler
+and true everywhere.
+
 Three browser projects, because Playwright's WebKit is built without Web Audio —
 `AudioContext` is not on the window at all. So the phone layout is checked on the engine
 phones run, touch is checked on an engine that can make a sound, and the audio tests ask the
 page whether Web Audio exists and skip themselves rather than pretending.
 
-What no test covers is whether it grooves. That is judged by ear.
+What no test covers is whether it grooves. That is judged by ear — and, for the
+transformations, with `npm run review:transforms`, which prints each operation's before and
+after with the few numbers that say whether a rhythm still has a spine: whether the kick is
+still on one, how many beats are anchored, whether the snare still has a backbeat, and what
+share of events sits off the grid. It is what removed Stagger.
 
 ## Deployment
 
@@ -405,26 +690,30 @@ One workflow. `verify` and `e2e` must both pass before the Pages artifact is bui
 deploy step abandons itself if `main` has moved on. The published base path comes from
 `actions/configure-pages`, so renaming the repository needs no code change.
 
-## Where APL comes in
+## Where APL goes next
 
-Not yet — but the shape is already decided, and it is the reason for several of the choices
-above.
+APL now transforms. It does not yet generate, and it never will time.
 
 ```
-APL generates or transforms a complete pattern matrix
-  → the browser receives the matrix
-  → Web Audio plays it locally
+now:     TypeScript generates  →  APL transforms  →  Web Audio plays
+later:   APL generates         →  APL transforms  →  Web Audio plays
+never:   APL times anything
 ```
 
-APL will run **once per deliberate action** and never once per beat, once per step, once per
-animation frame, or continuously while a control is dragged. Requests will be sparse, cached
-and preferably batched. Two things in this stage are already built for that: the generator is
-a pure function from settings to a matrix, so replacing its innards changes nothing above it;
-and the macros commit on gesture end rather than on input, which is the same discipline a
-remote call will require.
+The generator is already a pure function from settings to a matrix, so replacing its innards
+changes nothing above it — and `euclidean.ts` is kept small and alone precisely so that
+Bjorklund's recursion sits beside the one line of APL that does the same thing.
 
-`euclidean.ts` is kept small and alone for the same reason — Bjorklund's recursion beside the
-one line of APL that does the same thing is a large part of the point of the project.
+What a later stage has to solve before generation can move is not the APL. It is the request
+budget. A generator that ran remotely would want a request per Randomise, which is a request
+per press of the most-pressed button in the application — and that is exactly the shape this
+stage promised not to build. The likely answer is batching: ask APL for several candidate bars
+at once and spend them locally. That is a design problem, not a translation problem, and it is
+not this stage's.
+
+An APL editor is a larger question again, because everything in
+[There is no APL editor](#there-is-no-apl-editor) stops applying the moment arbitrary source is
+allowed.
 
 ## Licence
 

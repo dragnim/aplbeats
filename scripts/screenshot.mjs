@@ -26,12 +26,24 @@ mkdirSync(outputDirectory, { recursive: true });
 const browser = await chromium.launch();
 
 /** Load the page, optionally press Play, let it settle, and shoot. */
-async function capture(name, { play = false, contextOptions = {}, viewport } = {}) {
+async function capture(name, { play = false, contextOptions = {}, viewport, peek = false } = {}) {
   const context = await browser.newContext({ ...contextOptions });
   const page = await context.newPage();
   if (viewport) await page.setViewportSize(viewport);
 
   await page.goto(url, { waitUntil: 'networkidle' });
+
+  if (peek) {
+    /*
+     * Opened, not applied.
+     *
+     * Peek shows the expression that *would* be sent, built from a template in the browser,
+     * so this makes no request — which matters here as much as anywhere: taking a screenshot
+     * must not become a reason to call TryAPL.
+     */
+    await page.getByRole('button', { name: 'Peek at the APL' }).click();
+    await page.getByText('Core APL').waitFor();
+  }
 
   if (play) {
     await page.getByRole('button', { name: 'Play', exact: true }).click();
@@ -48,6 +60,7 @@ async function capture(name, { play = false, contextOptions = {}, viewport } = {
 await capture('screenshot-stopped', { viewport: { width: 1280, height: 860 } });
 await capture('screenshot-playing', { play: true, viewport: { width: 1280, height: 860 } });
 await capture('screenshot-narrow', { viewport: { width: 720, height: 900 } });
+await capture('screenshot-peek', { peek: true, viewport: { width: 1280, height: 1180 } });
 await capture('screenshot-mobile', { play: true, contextOptions: devices['Pixel 7'] });
 await capture('screenshot-reduced-motion', {
   play: true,

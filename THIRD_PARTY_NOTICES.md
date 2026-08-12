@@ -37,6 +37,30 @@ MIT-licensed, as is everything else in the build.
 
 ## Typography
 
-No web font is downloaded. The interface asks for whatever grotesque the device already
-has, through the `system-ui` stack in
-[`src/styles/tokens.css`](src/styles/tokens.css).
+The interface asks for whatever grotesque the device already has, through the `system-ui`
+stack in [`src/styles/tokens.css`](src/styles/tokens.css). One font is bundled, and only
+for the APL.
+
+**APL387**, Dyalog's redrawn successor to Adrian Smith's APL385 Unicode.
+
+- Source: <https://github.com/Dyalog/APL387>
+- Licence: **public domain**, released under [The Unlicence](https://unlicense.org/), which
+  places no condition on redistribution.
+- Bundled as: [`src/assets/fonts/APL387-subset.woff2`](src/assets/fonts/APL387-subset.woff2),
+  23 KB.
+
+The upstream repository does not commit a built TTF — it is produced by their CI and
+published to their Pages site. [`scripts/subset-font.py`](scripts/subset-font.py) fetches it
+from there and subsets it to the Unicode blocks APL glyphs live in, which it lists; the
+resulting WOFF2 is committed, so contributors never need to run it. Re-run it only to pick
+up an upstream revision.
+
+A web font was avoided for Stages 1 and 2 and is here now for one reason: `⍴`, `⌽`, `⍳` and
+`¯` render at inconsistent widths, or not at all, in the monospace fonts most systems
+supply, and Peek exists to show APL as APL is written. A licence that permits
+redistribution without condition made bundling the honest option — the alternatives were
+fetching from someone else's CDN at runtime, which this application does not do, or hoping
+the visitor already had the font, which most do not.
+
+Loaded with `font-display: swap` and falling back to the platform monospace, so the
+interface is legible before it arrives and remains legible if it never does.
