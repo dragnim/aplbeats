@@ -71,6 +71,30 @@ export function toggleCell(pattern: Pattern, track: number, step: number): Patte
   return setCell(pattern, track, step, !cellAt(pattern, track, step));
 }
 
+/**
+ * Whether two patterns hold the same events.
+ *
+ * By value, not by reference. Generation always returns a fresh matrix, so a regeneration
+ * that happens to land on the bar already playing is indistinguishable from a change
+ * unless somebody looks — and a needless new reference is a needless re-render and a
+ * needless history entry.
+ */
+export function patternsEqual(a: Pattern, b: Pattern): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+
+  for (let track = 0; track < a.length; track += 1) {
+    const rowA = a[track];
+    const rowB = b[track];
+    if (rowA === undefined || rowB === undefined || rowA.length !== rowB.length) return false;
+    for (let step = 0; step < rowA.length; step += 1) {
+      if (rowA[step] !== rowB[step]) return false;
+    }
+  }
+
+  return true;
+}
+
 /** How many cells fire in total. Used by tests and, later, by the density control. */
 export function countTriggers(pattern: Pattern): number {
   return pattern.reduce((total, row) => total + row.filter(Boolean).length, 0);

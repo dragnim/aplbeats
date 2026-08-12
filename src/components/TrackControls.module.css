@@ -5,10 +5,10 @@
  */
 .controls {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   grid-template-rows: auto auto;
   align-content: center;
-  gap: var(--space-1) var(--space-2);
+  gap: var(--space-1) var(--space-1);
   min-width: 0;
   transition: opacity var(--motion-base) var(--ease);
 }
@@ -39,7 +39,7 @@
 }
 
 .mute {
-  grid-area: 1 / 2 / span 2 / span 1;
+  grid-area: 1 / 3 / span 2 / span 1;
   display: grid;
   place-items: center;
   width: 1.75rem;
@@ -71,6 +71,59 @@
   font-size: var(--text-xs);
   font-weight: 700;
   line-height: 1;
+}
+
+/*
+ * Lock, beside mute.
+ *
+ * Two small square buttons rather than one, because they are different promises: mute is
+ * about what you hear now, lock is about what the generator may do next. Sharing a shape
+ * makes them read as a pair of switches for this track without either shouting.
+ */
+.lock {
+  grid-area: 1 / 2 / span 2 / span 1;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  min-height: 1.75rem;
+  align-self: center;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text-dim);
+  transition:
+    color var(--motion-fast) var(--ease),
+    border-color var(--motion-fast) var(--ease),
+    background-color var(--motion-fast) var(--ease);
+}
+
+.lock:hover {
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+
+.lock[aria-pressed='true'] {
+  border-color: var(--accent-deep);
+  color: var(--accent-bright);
+  background: var(--accent-wash);
+}
+
+.lockIcon {
+  display: grid;
+  place-items: center;
+}
+
+/*
+ * A locked track, at a glance.
+ *
+ * The padlock closing is the primary signal and carries `aria-pressed`; this is the
+ * peripheral one, so that eight rows can be scanned without reading eight buttons. A line
+ * down the edge rather than a tint over the row, because a tint would compete with the
+ * mute dimming and the two states have to be distinguishable together.
+ */
+.locked {
+  box-shadow: inset 2px 0 0 var(--accent-deep);
+  padding-left: var(--space-1);
 }
 
 /*
@@ -146,10 +199,10 @@
  */
 @media (max-width: 36rem) {
   .controls {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     grid-template-rows: auto;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-2);
     padding-left: var(--space-1);
   }
 
@@ -160,11 +213,15 @@
 
   .volume {
     grid-area: 1 / 2;
-    max-width: 11rem;
+    max-width: 10rem;
+  }
+
+  .lock {
+    grid-area: 1 / 3;
   }
 
   .mute {
-    grid-area: 1 / 3;
+    grid-area: 1 / 4;
   }
 }
 
@@ -185,7 +242,8 @@
     height: 1.125rem;
   }
 
-  .mute {
+  .mute,
+  .lock {
     width: 2rem;
     min-height: 2rem;
   }

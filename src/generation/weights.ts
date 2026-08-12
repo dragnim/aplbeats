@@ -167,10 +167,11 @@ export function placementWeights({
 }: PlacementOptions): number[] {
   /*
    * Capped below one. At the very top of the control the metrical profile still
-   * contributes a fifth of the weight, which is what keeps a maximally syncopated bar
-   * sounding like it is fighting a pulse rather than like it never had one.
+   * contributes a tenth of the weight, which — together with the anchors and the required
+   * steps that survive — is what keeps a maximally syncopated bar sounding like it is
+   * fighting a pulse rather than like it never had one.
    */
-  const blend = 0.82 * macro(syncopation);
+  const blend = 0.9 * macro(syncopation);
   const availability = sixteenthAvailability(complexity);
 
   const weights: number[] = [];
@@ -180,9 +181,19 @@ export function placementWeights({
 
     let weight = metrical * (1 - blend) + syncopated * blend;
 
-    // The beats keep some pull whatever else is asked for, so a track with an anchor
-    // habit still finds them.
-    if (anchorPull > 0 && isBeat(step)) weight += anchorPull * metrical;
+    /*
+     * The beats keep some pull, but less of it as Syncopation rises.
+     *
+     * Added at full strength this was a bug with the sign of a feature: at the top of the
+     * control the anchor bonus swamped the blend, so the *more* Syncopation was asked for
+     * the more events landed on the downbeat. Measured over forty seeds, Syncopation 100
+     * put a smaller share of events off the beat than Syncopation 0 did.
+     *
+     * Fading it keeps what the anchor is for — a track that likes the beats still finds
+     * them when nothing else is asked — without letting it argue with the one control whose
+     * whole job is to move events away from them.
+     */
+    if (anchorPull > 0 && isBeat(step)) weight += anchorPull * metrical * (1 - blend * 0.85);
 
     // Shut the sixteenth grid down at low complexity.
     if (positionClass(step) === 'sixteenth') weight *= availability;

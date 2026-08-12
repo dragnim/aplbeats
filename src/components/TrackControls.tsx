@@ -14,7 +14,10 @@ import styles from './TrackControls.module.css';
 export interface TrackControlsProps {
   readonly track: TrackDefinition;
   readonly mix: TrackMix;
+  /** Whether the generator is forbidden from touching this row. */
+  readonly locked: boolean;
   readonly onToggleMute: () => void;
+  readonly onToggleLock: () => void;
   readonly onVolumeChange: (volume: number) => void;
   /** Play the track on its own, so the fader can be set by ear while stopped. */
   readonly onAudition: () => void;
@@ -23,14 +26,16 @@ export interface TrackControlsProps {
 export function TrackControls({
   track,
   mix,
+  locked,
   onToggleMute,
+  onToggleLock,
   onVolumeChange,
   onAudition,
 }: TrackControlsProps): React.JSX.Element {
   const percent = Math.round(mix.volume * 100);
 
   return (
-    <div className={cx(styles.controls, mix.muted && styles.muted)}>
+    <div className={cx(styles.controls, mix.muted && styles.muted, locked && styles.locked)}>
       {/*
         The name is a button, and pressing it plays the sound. Learning what "Low
         Perc" is by tapping it is faster than any label could manage, and it is how
@@ -65,6 +70,40 @@ export function TrackControls({
         */}
         <span aria-hidden="true" className={styles.muteMark}>
           {mix.muted ? '–' : 'M'}
+        </span>
+      </button>
+
+      {/*
+        Lock: the generator may not alter this row.
+
+        Not "the user may not edit it" — a locked track is still fully editable by hand,
+        which is the whole point. You keep a kick you like and explore a different preset
+        around it.
+
+        A padlock rather than a colour change, and `aria-pressed` for anything listening.
+      */}
+      <button
+        type="button"
+        className={styles.lock}
+        onClick={onToggleLock}
+        aria-pressed={locked}
+        aria-label={`Lock ${track.name} against the generator`}
+        title={locked ? `${track.name} is locked against the generator` : `Lock ${track.name}`}
+      >
+        <span aria-hidden="true" className={styles.lockIcon}>
+          <svg viewBox="0 0 16 16" width="12" height="12" focusable="false">
+            <rect x="3.5" y="7" width="9" height="6.5" rx="1.4" fill="currentColor" />
+            {locked ? (
+              <path d="M5.5 7V5.2a2.5 2.5 0 0 1 5 0V7" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            ) : (
+              <path
+                d="M5.5 7V5.2a2.5 2.5 0 0 1 4.6-1.3"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+            )}
+          </svg>
         </span>
       </button>
 

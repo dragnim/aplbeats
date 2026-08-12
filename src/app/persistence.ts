@@ -1,0 +1,182 @@
+/*
+ * Remembering a session.
+ *
+ * Coming back to APL Beats and finding the groove you left is worth a good deal, and it
+ * costs one small object in `localStorage`. Nothing here is required for the application
+ * to work: every read is treated as untrusted, every failure is silent, and a browser
+ * with storage disabled or full simply starts fresh.
+ *
+ * Two versions are recorded and both are checked. The schema version guards the shape of
+ * this file; the generator version guards the *meaning* of a seed. Tuning the generator
+ * changes what a seed produces, so a stored seed from an older generator would restore a
+ * groove nobody had ever heard and blame it on the seed. Rather than silently regenerate
+ * something else, a mismatched session is discarded — the pattern is stored outright, so
+ * nothing has to be regenerated to restore it anyway.
+ */
+
+import { GENERATOR_VERSION } from '@/generation/version';
+import { isPresetId, type PresetId } from '@/generation/presets';
+import { clampSeed } from '@/generation/prng';
+import { createMixer, clampVolume, type Mixer } from '@/pattern/mixer';
+import { fromBits, toBits, TRACK_COUNT, type Pattern } from '@/pattern/pattern';
+import { clampBpm, clampSwing } from '@/transport/timing';
+import { clampMacro, noLocks, type CreativeState } from './studio';
+
+const STORAGE_KEY = 'aplbeats.session.v1';
+const SCHEMA_VERSION = 1;
+
+export interface Session {
+  readonly creative: CreativeState;
+  readonly bpm: number;
+  readonly swing: number;
+  readonly mixer: Mixer;
+}
+
+/**
+ * Read a stored session, or nothing.
+ *
+ * Every field is validated and clamped rather than trusted. `localStorage` is editable by
+ * anyone with the developer tools open, and a `NaN` tempo reaching the scheduler is a beat
+ * that never arrives.
+ */
+export function loadSession(): Session | null {
+  const raw = readRaw();
+  if (raw === null) return null;
+
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return null;
+    if (parsed.schema !== SCHEMA_VERSION) return null;
+    if (parsed.generator !== GENERATOR_VERSION) return null;
+
+    const creative = readCreative(parsed.creative);
+    if (creative === null) return null;
+
+    return {
+      creative,
+      bpm: clampBpm(asNumber(parsed.bpm, 112)),
+      swing: clampSwing(asNumber(parsed.swing, 0.18)),
+      mixer: readMixer(parsed.mixer),
+    };
+  } catch {
+    // Malformed JSON, a quota error on read, a locked-down browser. Start fresh.
+    return null;
+  }
+}
+
+/** Write a session. Failure is ignored: this is a convenience, not a feature. */
+export function saveSession(session: Session): void {
+  try {
+    const payload = {
+      schema: SCHEMA_VERSION,
+      generator: GENERATOR_VERSION,
+      creative: {
+        bits: toBits(session.creative.pattern),
+        seed: session.creative.seed,
+        preset: session.creative.preset,
+        density: session.creative.density,
+        complexity: session.creative.complexity,
+        syncopation: session.creative.syncopation,
+        variation: session.creative.variation,
+        locks: [...session.creative.locks],
+      },
+      bpm: session.bpm,
+      swing: session.swing,
+      mixer: session.mixer.map((mix) => ({ muted: mix.muted, volume: mix.volume })),
+    };
+
+    globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // Private browsing, a full quota, storage disabled by policy. Nothing to be done and
+    // nothing worth telling anyone about.
+  }
+}
+
+/** Forget the stored session. */
+export function clearSession(): void {
+  try {
+    globalThis.localStorage?.removeItem(STORAGE_KEY);
+  } catch {
+    // See above.
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+
+function readRaw(): string | null {
+  try {
+    return globalThis.localStorage?.getItem(STORAGE_KEY) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function asNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function readCreative(value: unknown): CreativeState | null {
+  if (!isRecord(value)) return null;
+
+  const pattern = readPattern(value.bits);
+  if (pattern === null) return null;
+
+  const preset: PresetId = isPresetId(value.preset) ? value.preset : 'straight';
+
+  return {
+    pattern,
+    seed: clampSeed(asNumber(value.seed, 1)),
+    preset,
+    density: clampMacro(asNumber(value.density, 62)),
+    complexity: clampMacro(asNumber(value.complexity, 45)),
+    syncopation: clampMacro(asNumber(value.syncopation, 30)),
+    variation: clampMacro(asNumber(value.variation, 45)),
+    locks: readLocks(value.locks),
+  };
+}
+
+/**
+ * A pattern from stored ones and zeros.
+ *
+ * `fromBits` already pads and trims to the standard shape and reads anything non-zero as
+ * a trigger, so the only thing to establish here is that this was an array of arrays at
+ * all. Anything else is somebody else's edit of our storage.
+ */
+function readPattern(value: unknown): Pattern | null {
+  if (!Array.isArray(value)) return null;
+
+  const rows: number[][] = [];
+  for (const row of value) {
+    if (!Array.isArray(row)) return null;
+    rows.push(row.map((cell) => (typeof cell === 'number' && cell !== 0 ? 1 : 0)));
+  }
+
+  return fromBits(rows);
+}
+
+function readLocks(value: unknown): boolean[] {
+  const locks = noLocks();
+  if (!Array.isArray(value)) return locks;
+  for (let track = 0; track < TRACK_COUNT; track += 1) {
+    locks[track] = value[track] === true;
+  }
+  return locks;
+}
+
+function readMixer(value: unknown): Mixer {
+  const defaults = createMixer();
+  if (!Array.isArray(value)) return defaults;
+
+  return defaults.map((fallback, index) => {
+    const stored: unknown = value[index];
+    if (!isRecord(stored)) return fallback;
+    return {
+      muted: stored.muted === true,
+      volume: clampVolume(asNumber(stored.volume, fallback.volume)),
+    };
+  });
+}

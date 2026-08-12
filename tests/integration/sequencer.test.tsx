@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Sequencer, type SequencerProps } from '@/components/Sequencer';
 import { createInitialGroove } from '@/pattern/initialGroove';
+import { noLocks } from '@/app/studio';
 import { createMixer } from '@/pattern/mixer';
 import { cellAt, createPattern, setCell } from '@/pattern/pattern';
 
@@ -19,6 +20,7 @@ import { cellAt, createPattern, setCell } from '@/pattern/pattern';
 function setup(overrides: Partial<SequencerProps> = {}) {
   const onSetCell = vi.fn();
   const onToggleMute = vi.fn();
+  const onToggleLock = vi.fn();
   const onVolumeChange = vi.fn();
   const onAuditionTrack = vi.fn();
   const onEditGesture = vi.fn();
@@ -28,8 +30,10 @@ function setup(overrides: Partial<SequencerProps> = {}) {
     mixer: createMixer(),
     playheadStep: 0,
     isPlaying: false,
+    locks: noLocks(),
     onSetCell,
     onToggleMute,
+    onToggleLock,
     onVolumeChange,
     onAuditionTrack,
     onEditGesture,
@@ -37,7 +41,7 @@ function setup(overrides: Partial<SequencerProps> = {}) {
   };
 
   render(<Sequencer {...props} />);
-  return { props, onSetCell, onToggleMute, onVolumeChange, onAuditionTrack, onEditGesture };
+  return { props, onSetCell, onToggleMute, onToggleLock, onVolumeChange, onAuditionTrack, onEditGesture };
 }
 
 describe('rendering the pattern', () => {

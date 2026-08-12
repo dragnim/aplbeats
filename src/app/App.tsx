@@ -1,45 +1,66 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { GeneratorPanel } from '@/components/GeneratorPanel';
 import { Logo } from '@/components/Logo';
 import { Sequencer } from '@/components/Sequencer';
 import { TransportBar } from '@/components/TransportBar';
-import { createInitialGroove, INITIAL_BPM, INITIAL_SWING } from '@/pattern/initialGroove';
+import { INITIAL_BPM, INITIAL_SWING } from '@/pattern/initialGroove';
 import { createMixer, effectiveLevel, setVolume, toggleMute, trackIdFor, type Mixer } from '@/pattern/mixer';
-import { setCell, type Pattern } from '@/pattern/pattern';
 import { TRACKS } from '@/pattern/tracks';
 import { clampBpm, clampSwing } from '@/transport/timing';
 import { useTransport } from '@/transport/useTransport';
+import { loadSession, saveSession } from './persistence';
+import { INITIAL_CREATIVE_STATE } from './openingState';
 import { usePageVisibility } from './usePageVisibility';
+import { useStudio } from './useStudio';
 import styles from './App.module.css';
 
 /*
  * The application.
  *
- * All of the state that survives a render lives here — the pattern, the mixer, the
- * tempo — and it is all plain data. The transport reads it through getters, so it
- * never holds a copy that could go stale and never needs restarting when a cell
- * changes.
+ * Three pieces of state, and the split between them is the design. The *creative* state —
+ * pattern, seed, preset, macros, locks — lives in `useStudio` behind an undo history,
+ * because it is what a visitor makes and would be sorry to lose. Tempo, swing and the
+ * mixer live here as plain state: they are how you listen to what you made, not part of
+ * it, and putting them in the history would mean an Undo after nudging a fader threw away
+ * the groove you had been building.
  *
- * There is no store and no reducer, on purpose. Four pieces of state and a handful
- * of pure functions over them is the whole model at Stage 1, and the shape it needs
- * for Stage 2 — a stack of these patterns for undo, a seeded generator writing a
- * whole new one — is one it already has.
+ * The order on the page is transport, sequencer, generator: how you listen, what you
+ * hear, how you make it. Play first because on a phone the grid is most of a screen tall,
+ * and having to scroll past all eight tracks to reach Play is a poor first minute. The
+ * document order and the visual order are the same on every width — no CSS reordering —
+ * so what a keyboard walks through is what the eye sees.
+ *
+ * The transport reads the pattern through a getter, so a generated bar takes effect at
+ * once without anything restarting. Which is worth being explicit about: a new pattern
+ * replaces the old one **immediately**, not on the next bar line. The matrix is
+ * immutable, so the swap is atomic — a step already handed to Web Audio played from a
+ * complete bar and the next one plays from a complete bar. Bar-quantising it would mean
+ * the grid showing one pattern while another played for up to two seconds, and would put
+ * a deadline inside the scheduler that Stage 1 deliberately keeps clear.
  */
 export function App(): React.JSX.Element {
-  const [pattern, setPattern] = useState<Pattern>(createInitialGroove);
-  const [mixer, setMixer] = useState<Mixer>(createMixer);
-  const [bpm, setBpm] = useState(INITIAL_BPM);
-  const [swing, setSwing] = useState(INITIAL_SWING);
+  /*
+   * A stored session, read once.
+   *
+   * `useMemo` rather than an effect, so the first paint is already the restored groove
+   * rather than the default one replaced a frame later.
+   */
+  const restored = useMemo(() => loadSession(), []);
+
+  const studio = useStudio(restored?.creative ?? INITIAL_CREATIVE_STATE);
+  const [mixer, setMixer] = useState<Mixer>(() => restored?.mixer ?? createMixer());
+  const [bpm, setBpm] = useState(() => restored?.bpm ?? INITIAL_BPM);
+  const [swing, setSwing] = useState(() => restored?.swing ?? INITIAL_SWING);
 
   const isVisible = usePageVisibility();
+  const { pattern, locks } = studio.state;
 
   /*
    * The transport's window onto the current state.
    *
-   * Refs rather than the values themselves, because the scheduler asks what the
-   * pattern is at the instant it hands a step to Web Audio — which is a hundred
-   * milliseconds before that step sounds, and quite possibly between two React
-   * renders. Reading through a ref is what makes an edit audible on the next pass
-   * of the bar with nothing restarted and no scheduling missed.
+   * Refs rather than the values themselves, because the scheduler asks what the pattern
+   * is at the instant it hands a step to Web Audio — a hundred milliseconds before that
+   * step sounds, and quite possibly between two React renders.
    */
   const patternRef = useRef(pattern);
   const mixerRef = useRef(mixer);
@@ -49,45 +70,50 @@ export function App(): React.JSX.Element {
     mixerRef.current = mixer;
   }, [pattern, mixer]);
 
-  /*
-   * Stable getters, so the transport is built once and never rebuilt.
-   *
-   * `useCallback` with no dependencies is the point: if these identities changed
-   * with the pattern, every edit would look to `useTransport` like a new transport
-   * was wanted, and every edit would stop the music.
-   */
   const getPattern = useCallback(() => patternRef.current, []);
   const getMixer = useCallback(() => mixerRef.current, []);
 
   const transport = useTransport({ getPattern, getMixer, bpm, swing, isVisible });
 
   /*
+   * Save, a moment after things settle.
+   *
+   * Debounced because every cell of a drag and every value of a slider would otherwise be
+   * a serialise and a write. Half a second is well below the time it takes to reach for a
+   * tab and long enough that a gesture is one write.
+   */
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      saveSession({ creative: studio.state, bpm, swing, mixer });
+    }, 500);
+    return () => {
+      clearTimeout(handle);
+    };
+  }, [studio.state, bpm, swing, mixer]);
+
+  /*
    * Switching a step on plays it.
    *
-   * The immediate feedback matters more than it sounds like it should: it is what
-   * turns the grid from a form into an instrument, and it means the pattern can be
-   * built up by ear while the transport is stopped. Switching one *off* plays
-   * nothing, because silence is not a sound to preview.
+   * What turns the grid from a form into an instrument, and what lets a pattern be built
+   * by ear while the transport is stopped. Switching one *off* plays nothing, because
+   * silence is not a sound to preview.
    */
   const handleSetCell = useCallback(
     (track: number, step: number, value: boolean) => {
-      setPattern((current) => setCell(current, track, step, value));
+      studio.setCell(track, step, value);
 
       if (!value || transport.isPlaying) return;
       const trackId = trackIdFor(track);
       if (trackId === undefined) return;
       transport.audition(trackId, effectiveLevel(mixer, track));
     },
-    [mixer, transport],
+    [mixer, studio, transport],
   );
 
   const handleAuditionTrack = useCallback(
     (track: number) => {
       const trackId = trackIdFor(track);
       if (trackId === undefined) return;
-      // Auditioned at the fader's level so it is the same sound at the same weight
-      // it will have in the pattern — but never silent, or pressing the name of a
-      // muted track would seem broken.
       const level = effectiveLevel(mixer, track);
       transport.audition(trackId, level > 0 ? level : 0.6);
     },
@@ -101,6 +127,22 @@ export function App(): React.JSX.Element {
   const handleVolumeChange = useCallback((track: number, volume: number) => {
     setMixer((current) => setVolume(current, track, volume));
   }, []);
+
+  /*
+   * Editing needs the audio device open, and so does Randomise.
+   *
+   * Both are user gestures, and both are chances to unlock audio — so pressing Randomise
+   * first and Play second still hears the very first bar rather than a silent one.
+   */
+  const beginEdit = useCallback(() => {
+    transport.prepare();
+    studio.beginEdit();
+  }, [studio, transport]);
+
+  const handleRandomise = useCallback(() => {
+    transport.prepare();
+    studio.randomise();
+  }, [studio, transport]);
 
   return (
     <div className={styles.app}>
@@ -132,20 +174,35 @@ export function App(): React.JSX.Element {
         <Sequencer
           pattern={pattern}
           mixer={mixer}
+          locks={locks}
           playheadStep={transport.playheadStep}
           isPlaying={transport.isPlaying}
           onSetCell={handleSetCell}
           onToggleMute={handleToggleMute}
+          onToggleLock={studio.toggleLock}
           onVolumeChange={handleVolumeChange}
           onAuditionTrack={handleAuditionTrack}
-          onEditGesture={transport.prepare}
+          onEditGesture={beginEdit}
+        />
+
+        <h2 className="visuallyHidden">Generator</h2>
+        <GeneratorPanel
+          preset={studio.state.preset}
+          seed={studio.state.seed}
+          macros={studio.state}
+          canUndo={studio.canUndo}
+          onRandomise={handleRandomise}
+          onNewSeed={studio.newSeed}
+          onUndo={studio.undo}
+          onPresetChange={studio.setPreset}
+          onMacroChange={studio.setMacro}
+          onMacroCommit={studio.commitMacro}
         />
 
         {/*
-          Spoken, not shown. The Play button's name already changes, but a name
-          changes silently for someone who is not on it — and while the tab was
-          hidden the transport will have paused itself, which is a change nobody
-          asked for and everybody should be told about.
+          Spoken, not shown. The Play button's name changes, but a name changes silently
+          for someone who is not on it — and while the tab was hidden the transport will
+          have paused itself, which is a change nobody asked for.
         */}
         <p className="visuallyHidden" role="status">
           {transport.isPlaying ? 'Playing' : 'Paused'}
@@ -156,7 +213,7 @@ export function App(): React.JSX.Element {
         <p className={styles.note}>
           An early-stage experiment. Eight tracks, sixteen steps, and an{' '}
           <span className={styles.emphasis}>{TRACKS.length} × 16</span> Boolean matrix underneath — which is
-          where the APL comes in later.
+          where the APL comes in later. The generator here is TypeScript, not APL, for now.
         </p>
         <a
           className={styles.link}

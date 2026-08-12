@@ -56,6 +56,26 @@ export function applyVariation({
 
   if (amount <= 0) return currentPattern;
 
+  /*
+   * The very top of the control takes the candidate outright.
+   *
+   * Handled here rather than falling out of the arithmetic below, and that is what makes
+   * the arithmetic usable. Guaranteeing "Variation 100 means the new groove" from a
+   * per-track roll forces the roll into a narrow band — and a narrow band stops
+   * distinguishing *which* tracks move well before the middle of the control, which is
+   * exactly where that distinction does the most work. Pinning the end frees the rest.
+   */
+  if (amount >= 0.98) {
+    let whole = currentPattern;
+    for (let track = 0; track < TRACK_COUNT; track += 1) {
+      if (locked[track] === true) continue;
+      for (let step = 0; step < STEP_COUNT; step += 1) {
+        whole = setCell(whole, track, step, cellAt(candidatePattern, track, step));
+      }
+    }
+    return whole;
+  }
+
   let result = currentPattern;
   let changes = 0;
 
@@ -79,13 +99,14 @@ export function applyVariation({
     /*
      * Whether this track moves at all, and by how much.
      *
-     * The roll is what spreads the change unevenly. At low Variation most tracks come
-     * out at or below zero and are left completely alone; by the top of the range every
-     * track clears the threshold comfortably. The multiplier passes one before the macro
-     * does, so the last stretch of the control is where whole tracks begin to be
-     * replaced rather than edited.
+     * The roll is what spreads the change unevenly, and it is the reason low Variation
+     * feels musical: a bar where the hats developed and nothing else did sounds like a
+     * decision, where one cell moved on each of eight tracks sounds like a fault. At a
+     * tenth of the control about a fifth of the tracks clear the threshold; by three
+     * quarters, all of them do, and a growing share are replaced outright rather than
+     * edited.
      */
-    const intensity = amount * 1.55 - rng.next() * 0.62;
+    const intensity = amount * 1.3 - rng.next() * 0.85;
     if (intensity <= 0) {
       const best = chooseCells(differences, 1, rng.next())[0];
       if (best !== undefined) heldBack.push(best);

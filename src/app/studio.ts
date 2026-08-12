@@ -16,7 +16,7 @@ import { generatePattern } from '@/generation/generator';
 import { applyVariation } from '@/generation/mutate';
 import { isPresetId, type PresetId } from '@/generation/presets';
 import { clampSeed } from '@/generation/prng';
-import { setCell, TRACK_COUNT, type Pattern } from '@/pattern/pattern';
+import { patternsEqual, setCell, TRACK_COUNT, type Pattern } from '@/pattern/pattern';
 
 /**
  * How many steps back Undo reaches.
@@ -64,8 +64,13 @@ export type StudioAction =
   | { readonly type: 'setPreset'; readonly preset: PresetId }
   /** Move a macro without regenerating. `gesture` coalesces a drag into one history entry. */
   | { readonly type: 'setMacro'; readonly macro: MacroName; readonly value: number; readonly gesture: string }
-  /** The end of a macro gesture: regenerate at the settings now in force. */
-  | { readonly type: 'commitMacro' }
+  /**
+   * The end of a macro gesture: regenerate at the settings now in force.
+   *
+   * Carries which macro moved, because Variation is the one that must *not* regenerate —
+   * it describes what the next Randomise will do, not what this bar is.
+   */
+  | { readonly type: 'commitMacro'; readonly macro: MacroName }
   | { readonly type: 'toggleLock'; readonly track: number }
   | {
       readonly type: 'setCell';
@@ -186,18 +191,26 @@ export function studioReducer(state: StudioState, action: StudioAction): StudioS
       /*
        * The end of a macro gesture, and where the pattern actually changes.
        *
-       * Regenerating on every input event would be a torrent of new bars while the
-       * pointer moved — unreadable, and unlistenable while the transport is running. The
-       * number moves live; the groove moves once, when the gesture ends.
+       * Regenerating on every input event would be a torrent of new bars while the pointer
+       * moved — unreadable, and unlistenable while the transport is running. The number
+       * moves live; the groove moves once, when the gesture ends.
        *
        * No history entry: `setMacro` already saved the state before the drag began.
-       * Variation is left out of this, because it does not describe a groove — it
-       * describes what the *next* Randomise will do, so re-rendering the bar when it
-       * moves would be answering a question nobody asked.
        */
       const settled = { ...state, gesture: null };
+
+      /*
+       * Variation changes nothing here, and must not.
+       *
+       * It says how far the *next* Randomise will move, so re-rendering the bar when it
+       * moves would be answering a question nobody asked — and worse, it would silently
+       * replace the curated opening groove with a generated one the first time anybody
+       * touched the slider.
+       */
+      if (action.macro === 'variation') return settled;
+
       const pattern = regenerate(state.present);
-      if (pattern === state.present.pattern) return settled;
+      if (patternsEqual(pattern, state.present.pattern)) return settled;
       return { ...settled, present: { ...state.present, pattern } };
     }
 
@@ -209,11 +222,17 @@ export function studioReducer(state: StudioState, action: StudioAction): StudioS
 
     case 'setCell': {
       const pattern = setCell(state.present.pattern, action.track, action.step, action.value);
-      if (pattern === state.present.pattern) {
-        // Nothing changed, but the gesture is still open — a drag crossing an already
-        // painted cell must not start a second history entry when it reaches a new one.
-        return isNewGesture(state, action.gesture) ? { ...state, gesture: action.gesture } : state;
-      }
+
+      /*
+       * A crossing that changes nothing is not an edit.
+       *
+       * Left completely alone, gesture included. Marking the gesture as open here was a
+       * quiet bug: a drag whose *first* crossed cell already held the value being painted
+       * would open the gesture without banking any history, and then every later cell in
+       * that drag saw a gesture already open and banked none either — so the whole drag
+       * became impossible to undo.
+       */
+      if (pattern === state.present.pattern) return state;
 
       const base = isNewGesture(state, action.gesture) ? remember(state, action.gesture) : state;
       return { ...base, gesture: action.gesture, present: { ...base.present, pattern } };

@@ -151,7 +151,7 @@ const straight: Preset = {
       displace: 0,
       emphasis: BACKBEAT_ONLY,
     },
-    closedHat: { count: [4, 13], periodBias: 0.34, syncopationScale: 0.4, anchorPull: 0.15 },
+    closedHat: { count: [4, 13], periodBias: 0.34, syncopationScale: 0.6, anchorPull: 0.15 },
     openHat: { count: [0, 3], syncopationScale: 0.6, periodBias: 0.3 },
     clap: { count: [0, 3], syncopationScale: 0.3 },
     ...auxiliary(
@@ -190,7 +190,7 @@ const fourFloor: Preset = {
     closedHat: {
       count: [4, 13],
       periodBias: 0.36,
-      syncopationScale: 0.55,
+      syncopationScale: 0.7,
       emphasis: emphasise({ 2: 1.5, 6: 1.5, 10: 1.5, 14: 1.5 }),
     },
     openHat: { count: [1, 4], syncopationScale: 0.8 },
@@ -325,7 +325,7 @@ const sparse: Preset = {
       maxRun: 1,
       emphasis: BACKBEAT_ONLY,
     },
-    closedHat: { count: [2, 7], countCurve: 1.35, periodBias: 0.36, syncopationScale: 0.6 },
+    closedHat: { count: [2, 7], countCurve: 1.35, periodBias: 0.36, syncopationScale: 0.75 },
     openHat: { count: [0, 2], countCurve: 1.4, syncopationScale: 0.8 },
     clap: { count: [0, 2], countCurve: 1.5, syncopationScale: 0.7 },
     ...auxiliary(

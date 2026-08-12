@@ -38,8 +38,11 @@ export interface SequencerProps {
   /** Which column the playhead is on. */
   readonly playheadStep: number;
   readonly isPlaying: boolean;
+  /** Which tracks the generator may not touch, in row order. */
+  readonly locks: readonly boolean[];
   readonly onSetCell: (track: number, step: number, value: boolean) => void;
   readonly onToggleMute: (track: number) => void;
+  readonly onToggleLock: (track: number) => void;
   readonly onVolumeChange: (track: number, volume: number) => void;
   readonly onAuditionTrack: (track: number) => void;
   /**
@@ -80,8 +83,10 @@ export function Sequencer({
   mixer,
   playheadStep,
   isPlaying,
+  locks,
   onSetCell,
   onToggleMute,
+  onToggleLock,
   onVolumeChange,
   onAuditionTrack,
   onEditGesture,
@@ -269,8 +274,12 @@ export function Sequencer({
                 <TrackControls
                   track={track}
                   mix={mix}
+                  locked={locks[trackIndex] === true}
                   onToggleMute={() => {
                     onToggleMute(trackIndex);
+                  }}
+                  onToggleLock={() => {
+                    onToggleLock(trackIndex);
                   }}
                   onVolumeChange={(volume) => {
                     onVolumeChange(trackIndex, volume);

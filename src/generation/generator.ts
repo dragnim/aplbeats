@@ -666,7 +666,23 @@ function requiredSteps(
   const required = profile.required;
   if (required === undefined || required.length === 0 || budget <= 0) return steps;
 
-  const displaceChance = (profile.displace ?? 0) * smoothstep(0.25, 0.85, macro(options.complexity));
+  /*
+   * Driven by Syncopation as well as Complexity, whichever asks for more.
+   *
+   * Displacement is what syncopation *is* — an anchor arriving early and leaving its beat
+   * empty — so a control that moves everything else off the beat and left the backbeat
+   * pinned was only doing half its job. Complexity still drives it too, because a displaced
+   * anchor is also a more intricate figure.
+   *
+   * Presets that must not do this set `displace` to zero, which is how Straight stays
+   * straight however far the control is pushed.
+   */
+  const displaceChance =
+    (profile.displace ?? 0) *
+    Math.max(
+      smoothstep(0.25, 0.85, macro(options.complexity)),
+      smoothstep(0.45, 1, macro(options.syncopation)),
+    );
 
   for (const step of required) {
     if (steps.size >= budget) break;
