@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Kit } from '@/audio/kit';
 import type { Mixer } from '@/pattern/mixer';
 import type { Pattern } from '@/pattern/pattern';
 import type { TrackId } from '@/pattern/tracks';
@@ -41,6 +42,12 @@ export interface TransportApi {
   readonly audition: (trackId: TrackId, level: number) => void;
   /** Open the audio device from a gesture, so a later audition can be heard. */
   readonly prepare: () => void;
+  /**
+   * Swap the drum machine.
+   *
+   * Safe at any time, playing or stopped: it replaces eight voices and touches nothing else.
+   */
+  readonly setKit: (kit: Kit) => void;
 }
 
 export function useTransport(options: UseTransportOptions): TransportApi {
@@ -181,9 +188,18 @@ export function useTransport(options: UseTransportOptions): TransportApi {
     [getTransport],
   );
 
+  const setKit = useCallback(
+    (kit: Kit) => {
+      // Builds the transport if it does not exist yet, which is silent: no AudioContext is
+      // opened until the visitor presses Play.
+      getTransport().setKit(kit);
+    },
+    [getTransport],
+  );
+
   const prepare = useCallback(() => {
     void getTransport().prepare();
   }, [getTransport]);
 
-  return { state, isPlaying, playheadStep, play, pause, toggle, audition, prepare };
+  return { state, isPlaying, playheadStep, play, pause, toggle, audition, prepare, setKit };
 }

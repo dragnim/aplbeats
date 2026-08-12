@@ -46,7 +46,7 @@ interface Graph {
 }
 
 export class AudioEngine {
-  private readonly kit: Kit;
+  private kit: Kit;
   private readonly createContext: () => AudioContext;
   private graph: Graph | null = null;
 
@@ -68,6 +68,22 @@ export class AudioEngine {
   /** Whether the audio device is open and the clock is running. */
   get isRunning(): boolean {
     return this.graph?.context.state === 'running';
+  }
+
+  /**
+   * Swap the kit, in one assignment.
+   *
+   * Atomic on purpose, and it is the whole of Stage 4's "never half one machine and half
+   * another": the eight voices are replaced by one reference change, between scheduler ticks,
+   * so no step can ever be sounded from a mixture. Notes already handed to Web Audio play out
+   * on the kit that scheduled them, which is correct — they were promised at a time and with a
+   * sound, and rewriting the past is neither possible nor desirable.
+   *
+   * It cannot reach the pattern, the transport or the clock. Changing kit while playing is
+   * therefore not a special case that has to be handled; it is the ordinary case.
+   */
+  setKit(kit: Kit): void {
+    this.kit = kit;
   }
 
   /**

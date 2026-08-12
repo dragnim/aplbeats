@@ -12,6 +12,7 @@
  */
 
 import { AudioEngine } from '@/audio/AudioEngine';
+import type { Kit } from '@/audio/kit';
 import type { Mixer } from '@/pattern/mixer';
 import type { Pattern } from '@/pattern/pattern';
 import type { TrackId } from '@/pattern/tracks';
@@ -93,6 +94,17 @@ export class Transport {
     return () => {
       this.listeners.delete(listener);
     };
+  }
+
+  /**
+   * Change which kit sounds the pattern.
+   *
+   * Forwarded straight to the engine, which swaps it in one assignment. Deliberately not a
+   * special case for "while playing": the transport's state, its clock, its tempo and its
+   * position are all untouched, so there is nothing to restart and nothing to reset.
+   */
+  setKit(kit: Kit): void {
+    this.engine.setKit(kit);
   }
 
   setBpm(bpm: number): void {
