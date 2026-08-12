@@ -1,0 +1,200 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
+}
+
+/*
+ * The one thing to press.
+ *
+ * Solid accent, and the only solid accent outside the grid, so on a first visit
+ * there is exactly one obvious next move.
+ */
+.play {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 0 var(--space-4) 0 var(--space-3);
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  transition:
+    background-color var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease);
+}
+
+.play:hover {
+  background: var(--accent-bright);
+}
+
+/*
+ * Playing, and therefore no longer the thing to press.
+ *
+ * It steps back to an outline so the grid — which is now the thing moving — is
+ * where the eye goes.
+ */
+.playing {
+  background: var(--surface-raised);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.playing:hover {
+  background: var(--cell-hover);
+  color: var(--text);
+}
+
+.playIcon {
+  display: grid;
+  place-items: center;
+  width: 1rem;
+  height: 1rem;
+}
+
+.playLabel {
+  /* A fixed width, so the bar does not shuffle sideways when the word changes. */
+  min-width: 2.75rem;
+  text-align: left;
+}
+
+.dial {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.dialLabel {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.readout {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.15em;
+  min-width: 3.75rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.unit {
+  font-size: var(--text-xs);
+  color: var(--text-dim);
+}
+
+/* --- Sliders -------------------------------------------------------------- */
+
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 9rem;
+  min-width: 5rem;
+  height: 1.25rem;
+  margin: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line-strong);
+}
+
+.slider::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line-strong);
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0.9375rem;
+  height: 0.9375rem;
+  margin-top: -0.34rem;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+  transition: background-color var(--motion-fast) var(--ease);
+}
+
+.slider::-moz-range-thumb {
+  width: 0.9375rem;
+  height: 0.9375rem;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+}
+
+.slider:hover::-webkit-slider-thumb,
+.slider:focus-visible::-webkit-slider-thumb {
+  background: var(--accent);
+}
+
+.slider:hover::-moz-range-thumb,
+.slider:focus-visible::-moz-range-thumb {
+  background: var(--accent);
+}
+
+.slider:focus-visible {
+  border-radius: var(--radius-sm);
+}
+
+/*
+ * Narrow windows and fingers.
+ *
+ * The bar becomes two lines rather than shrinking its controls: a tempo slider too
+ * short to place a tempo on is worse than one on its own line.
+ */
+@media (pointer: coarse), (max-width: 52rem) {
+  .bar {
+    gap: var(--space-3) var(--space-4);
+  }
+
+  .play {
+    padding: 0 var(--space-5) 0 var(--space-4);
+  }
+
+  .slider {
+    width: 100%;
+    height: 1.75rem;
+  }
+
+  .slider::-webkit-slider-thumb {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-top: -0.53rem;
+  }
+
+  .slider::-moz-range-thumb {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .dial {
+    flex: 1 1 14rem;
+  }
+
+  .readout {
+    min-width: 3.25rem;
+    justify-content: flex-end;
+  }
+}

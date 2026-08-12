@@ -1,0 +1,20 @@
+.logo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4em;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  /* Tracking on uppercase leaves a gap after the last letter; this removes it. */
+  margin-right: -0.14em;
+}
+
+.apl {
+  color: var(--accent);
+}
+
+.beats {
+  color: var(--text);
+  font-weight: 400;
+}

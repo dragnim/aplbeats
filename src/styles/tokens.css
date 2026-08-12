@@ -1,0 +1,154 @@
+/*
+ * Design tokens for APL Beats.
+ *
+ * One theme, and it is dark. This is not a document to be read but an instrument
+ * to be watched while it moves, and a dark stage is what lets a lit step read as
+ * lit. A light theme would need the whole active-state language rebuilding, so
+ * rather than ship a poor one there is deliberately only this.
+ *
+ * Contrast. Every foreground/background pairing used for text is checked against
+ * WCAG 2.2 AA — 4.5:1 for body text, 3:1 for large text and for non-text
+ * indicators such as the playhead and an active step. The accent orange clears
+ * 6:1 as text on all three dark surfaces, which is why it can be used for text
+ * here where in APL Art it could not.
+ *
+ * Colour is never the only signal. An active step is a filled solid where a silent
+ * one is a recessed outline; the playhead carries a marker as well as a wash; a
+ * muted track dims and its button reports `aria-pressed`. Take all the colour out
+ * and the grid still reads.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /*
+   * Accent.
+   *
+   * The same orange APL Art uses, because these are two rooms in one house. Here
+   * it is the sound: a step that fires is orange, and nothing else in the
+   * interface is allowed to be.
+   */
+  --accent: #ff6a13;
+  --accent-bright: #ff8c45;
+  --accent-deep: #b8480c;
+  --accent-wash: rgb(255 106 19 / 14%);
+  --on-accent: #17140f; /* 6.2:1 on --accent */
+
+  /*
+   * The playhead, deliberately cool.
+   *
+   * Warm means sound and cool means position, so the two never have to be told
+   * apart by brightness alone. 10:1 against the stage as a non-text indicator.
+   */
+  --playhead: #7cc4ff;
+  --playhead-wash: rgb(124 196 255 / 9%);
+  --playhead-wash-strong: rgb(124 196 255 / 16%);
+
+  /* Surfaces, darkest first */
+  --stage: #0d0e11;
+  --surface: #15171c;
+  --surface-raised: #1c1f26;
+  --cell: #191c22;
+  --cell-beat: #22262f;
+  --cell-hover: #2a2f39;
+
+  /* Text */
+  --text: #eceef2; /* 15.4:1 on --surface */
+  --text-muted: #a2a9b8; /* 7.8:1 on --surface */
+  --text-dim: #767d8c; /* 4.6:1 on --surface */
+
+  /* Lines and states */
+  --line: #262a33;
+  --line-strong: #3a404d;
+  --focus: #7cc4ff;
+  --focus-ring: 0 0 0 2px var(--stage), 0 0 0 4px var(--focus);
+
+  /* Type */
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Consolas, monospace;
+
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+
+  /* Space */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  /* Shape */
+  --radius-sm: 3px;
+  --radius-md: 7px;
+  --radius-lg: 12px;
+
+  /*
+   * Depth, and not much of it.
+   *
+   * Two shadows: one to lift the transport off the stage, one to make an active
+   * step look struck rather than painted. A drum machine with shadows everywhere
+   * reads as clutter, and clutter is what this interface is trying not to be.
+   */
+  --shadow-panel: 0 1px 0 rgb(255 255 255 / 4%) inset, 0 12px 32px rgb(0 0 0 / 45%);
+  --shadow-step: 0 1px 3px rgb(0 0 0 / 40%);
+
+  /*
+   * Motion — short, restrained, and switched off entirely below.
+   *
+   * `--pulse` is the only movement in the interface: the small swell an active step
+   * makes as the playhead crosses it. Everything else is a colour change.
+   */
+  --motion-fast: 90ms;
+  --motion-base: 160ms;
+  --ease: cubic-bezier(0.2, 0, 0.2, 1);
+  --pulse-scale: 1.11;
+
+  /* The grid */
+  --cell-min: 2.125rem;
+  --cell-gap: 0.1875rem;
+  --track-label: 12.5rem;
+
+  --tap-target: 44px;
+  --control-height: 2rem;
+
+  --layout-max: 76rem;
+}
+
+/*
+ * Reduced motion.
+ *
+ * Transitions go to zero and the step no longer swells. What replaces it is not
+ * nothing: the playhead's wash is stronger and its column gains a visible outline,
+ * so "where are we in the bar" is answered by a static difference instead of by
+ * movement. See `Sequencer.module.css`.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+    --pulse-scale: 1;
+  }
+}
+
+/*
+ * A finger, or a window narrow enough to be held in one hand.
+ *
+ * Both, because neither alone is the question: a touchscreen laptop reports a
+ * coarse pointer at desk width, and a narrow desktop window is where this layout
+ * has to fold. Steps get smaller rather than the grid getting shorter — sixteen
+ * steps is the instrument, and hiding four of them would be hiding the bar.
+ */
+@media (pointer: coarse), (max-width: 52rem) {
+  :root {
+    --cell-min: 1.875rem;
+    --cell-gap: 0.125rem;
+    --track-label: 8.25rem;
+    --control-height: var(--tap-target);
+  }
+}

@@ -1,0 +1,100 @@
+/*
+ * The stage.
+ *
+ * A header that says what this is, a transport, and the grid. Nothing else is
+ * permanent chrome, because there is nothing else that has earned a permanent place
+ * — and because the sequencer should be so plainly the subject of the page that no
+ * arrangement of it needs explaining.
+ */
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--space-5);
+  min-height: 100dvh;
+  max-width: var(--layout-max);
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-5) var(--space-4);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-5);
+}
+
+.title {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.tagline {
+  font-size: var(--text-sm);
+  color: var(--text-dim);
+}
+
+/*
+ * The second half of the promise fades back.
+ *
+ * "Make beats first" is what a visitor is here for; "discover array programming
+ * second" is a promise about later, and it should read like one.
+ */
+.taglineSecond {
+  color: color-mix(in srgb, var(--text-dim) 68%, var(--stage));
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  align-content: start;
+  min-width: 0;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+  font-size: var(--text-sm);
+  color: var(--text-dim);
+}
+
+.note {
+  max-width: 46rem;
+}
+
+.emphasis {
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.link {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  white-space: nowrap;
+  transition: border-color var(--motion-fast) var(--ease);
+}
+
+.link:hover {
+  border-bottom-color: currentcolor;
+}
+
+.link:focus-visible {
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 52rem) {
+  .app {
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-3) var(--space-3);
+  }
+
+  .main {
+    gap: var(--space-4);
+  }
+}

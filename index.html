@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>APL Beats — a generative rhythm machine</title>
+    <meta
+      name="description"
+      content="A browser drum machine with eight tracks and sixteen steps. Press Play, edit the grid, and hear the pattern change. Powered by APL."
+    />
+
+    <meta property="og:title" content="APL Beats — a generative rhythm machine" />
+    <meta
+      property="og:description"
+      content="A browser drum machine with eight tracks and sixteen steps. Press Play, edit the grid, and hear the pattern change."
+    />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:title" content="APL Beats — a generative rhythm machine" />
+    <meta
+      name="twitter:description"
+      content="A browser drum machine with eight tracks and sixteen steps. Press Play, edit the grid, and hear the pattern change."
+    />
+
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0d0e11" />
+
+    <!--
+      Nothing is fetched at runtime. Every sound is synthesised in the browser and
+      every asset is served from this origin, so `connect-src 'self'` is not a
+      restriction being worked around — it is a true statement about the
+      application, and it should keep failing loudly if that ever stops being true.
+
+      When APL execution arrives it will need one more origin here, and it will need
+      it added deliberately.
+
+      `frame-ancestors` is deliberately absent: browsers ignore it in a meta element
+      and log a console error for it. Blocking framing needs a real response header,
+      which GitHub Pages cannot set.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>APL Beats needs JavaScript to synthesise its sounds and run the sequencer.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

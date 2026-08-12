@@ -1,0 +1,113 @@
+import { cx } from '@/app/cx';
+import { MAX_BPM, MIN_BPM } from '@/transport/timing';
+import type { TransportState } from '@/transport/Transport';
+import styles from './TransportBar.module.css';
+
+/*
+ * Play, tempo, swing. Nothing else.
+ *
+ * The transport is the second most important object on the page and is allowed to
+ * look like it, but three controls is the whole of it — a first visit should present
+ * one obvious thing to press and two obvious things to move, not a mixing desk.
+ */
+
+export interface TransportBarProps {
+  readonly state: TransportState;
+  readonly bpm: number;
+  readonly swing: number;
+  readonly onToggle: () => void;
+  readonly onBpmChange: (bpm: number) => void;
+  readonly onSwingChange: (swing: number) => void;
+}
+
+export function TransportBar({
+  state,
+  bpm,
+  swing,
+  onToggle,
+  onBpmChange,
+  onSwingChange,
+}: TransportBarProps): React.JSX.Element {
+  const isPlaying = state === 'playing';
+  const swingPercent = Math.round(swing * 100);
+
+  return (
+    <div className={styles.bar}>
+      <button
+        type="button"
+        className={cx(styles.play, isPlaying && styles.playing)}
+        onClick={onToggle}
+        /*
+         * The name changes rather than a pressed state being set. "Pause" is what
+         * the button will do, which is what a button's name should say; a Play
+         * button reporting itself as pressed says what has happened instead.
+         */
+        aria-label={isPlaying ? 'Pause' : 'Play'}
+      >
+        <span className={styles.playIcon} aria-hidden="true">
+          {isPlaying ? (
+            <svg viewBox="0 0 16 16" width="16" height="16" focusable="false">
+              <rect x="3.5" y="2.5" width="3.5" height="11" rx="1" fill="currentColor" />
+              <rect x="9" y="2.5" width="3.5" height="11" rx="1" fill="currentColor" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 16 16" width="16" height="16" focusable="false">
+              <path d="M4 2.6a1 1 0 0 1 1.52-.86l7.2 4.4a1 1 0 0 1 0 1.72l-7.2 4.4A1 1 0 0 1 4 11.4Z" fill="currentColor" />
+            </svg>
+          )}
+        </span>
+        <span className={styles.playLabel}>{isPlaying ? 'Pause' : 'Play'}</span>
+      </button>
+
+      <div className={styles.dial}>
+        <label className={styles.dialLabel} htmlFor="transport-bpm">
+          Tempo
+        </label>
+        <input
+          id="transport-bpm"
+          type="range"
+          className={styles.slider}
+          min={MIN_BPM}
+          max={MAX_BPM}
+          step={1}
+          value={bpm}
+          onChange={(event) => {
+            onBpmChange(Number(event.currentTarget.value));
+          }}
+          aria-valuetext={`${String(bpm)} beats per minute`}
+        />
+        {/*
+          `aria-hidden`, because the slider already reports its value. Present for
+          the eye, which cannot read a slider's value off its thumb.
+        */}
+        <output className={styles.readout} htmlFor="transport-bpm" aria-hidden="true">
+          {bpm}
+          <span className={styles.unit}>BPM</span>
+        </output>
+      </div>
+
+      <div className={styles.dial}>
+        <label className={styles.dialLabel} htmlFor="transport-swing">
+          Swing
+        </label>
+        <input
+          id="transport-swing"
+          type="range"
+          className={styles.slider}
+          min={0}
+          max={100}
+          step={1}
+          value={swingPercent}
+          onChange={(event) => {
+            onSwingChange(Number(event.currentTarget.value) / 100);
+          }}
+          aria-valuetext={swingPercent === 0 ? 'Straight' : `${String(swingPercent)} per cent`}
+        />
+        <output className={styles.readout} htmlFor="transport-swing" aria-hidden="true">
+          {swingPercent}
+          <span className={styles.unit}>%</span>
+        </output>
+      </div>
+    </div>
+  );
+}
