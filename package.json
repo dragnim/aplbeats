@@ -27,7 +27,9 @@
     "screenshot": "node scripts/screenshot.mjs",
     "measure:kit": "node scripts/measure-kit.mjs",
     "verify:deployment": "node scripts/verify-deployment.mjs",
+    "verify:apl-live": "tsx scripts/verify-apl-live.ts",
     "review:patterns": "tsx scripts/review-patterns.ts",
+    "review:transforms": "tsx scripts/review-transforms.ts",
     "measure:generated": "node scripts/measure-generated.mjs"
   },
   "dependencies": {
