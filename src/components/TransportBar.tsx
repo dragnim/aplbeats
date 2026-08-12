@@ -1,5 +1,5 @@
 import { cx } from '@/app/cx';
-import { MAX_BPM, MIN_BPM } from '@/transport/timing';
+import { BPM_STEP, MAX_BPM, MIN_BPM } from '@/transport/timing';
 import type { TransportState } from '@/transport/Transport';
 import styles from './TransportBar.module.css';
 
@@ -72,7 +72,10 @@ export function TransportBar({
           className={styles.slider}
           min={MIN_BPM}
           max={MAX_BPM}
-          step={1}
+          // From the timing module, not typed in here. The tempo range and its
+          // granularity are facts about the transport, and the slider should be the
+          // thing that follows them rather than a second place they are decided.
+          step={BPM_STEP}
           value={bpm}
           onChange={(event) => {
             onBpmChange(Number(event.currentTarget.value));
