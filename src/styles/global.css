@@ -1,5 +1,27 @@
 @import './tokens.css';
 
+/*
+ * APL387, released into the public domain under The Unlicence.
+ * Source: https://github.com/Dyalog/APL387
+ *
+ * Bundled rather than fetched, and bundled rather than hoped for. A system
+ * monospace usually has *some* glyph for ⌽ and ⍳ by way of per-glyph fallback, but
+ * it comes from whichever installed font happens to have it — so the metrics do
+ * not match the text around them and the expression looks assembled from spare
+ * parts. A 23 KB subset, served from this origin, renders the same everywhere.
+ *
+ * Subset to Latin, punctuation, arrows, mathematical operators and Miscellaneous
+ * Technical by `scripts/subset-font.py`. See THIRD_PARTY_NOTICES.md.
+ */
+@font-face {
+  font-family: 'APL387';
+  src: url('../assets/fonts/APL387-subset.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  /* The interface must not wait for a font before it can be read. */
+  font-display: swap;
+}
+
 *,
 *::before,
 *::after {

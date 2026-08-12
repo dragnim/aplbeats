@@ -73,6 +73,12 @@
   /* Type */
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Consolas, monospace;
+  /*
+   * APL. Bundled first, then any APL font the reader happens to have installed,
+   * then plain monospace — which will still find the glyphs by fallback, just not
+   * in matching metrics.
+   */
+  --font-apl: 'APL387', 'APL385 Unicode', 'BQN386 Unicode', var(--font-mono);
 
   --text-xs: 0.6875rem;
   --text-sm: 0.8125rem;
