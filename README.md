@@ -339,6 +339,13 @@ Everything from Stage 1 still holds — every step is a real button with an acce
 `aria-pressed`, one Tab stop for the whole grid, arrow keys and Home and End and Space,
 colour never the only signal, WCAG 2.2 AA contrast, and reduced motion honoured.
 
+There is now **no movement in the grid at all.** A step used to swell by eleven per cent as
+the playhead crossed it; it is lit instead, by a brighter face inside a warm ring. That began
+as a bug fix — the swell pushed the last column three pixels past the grid's right edge, and
+because a scroll container's scrollable overflow counts the _transformed_ border boxes of its
+descendants, a horizontal scrollbar flickered in and out once per bar at any width where the
+sixteen steps fitted exactly. Ink cannot do that, so the hit is ink.
+
 The Stage 2 controls follow the same rules:
 
 - **Randomise, New Seed and Undo are real buttons.** Undo is genuinely `disabled` when there

@@ -158,11 +158,15 @@
 }
 
 /*
- * The visible face, inset from the button's box.
+ * The visible face, filling the button's box.
  *
- * Two elements because the target and the mark should not be the same rectangle:
- * the face can swell without the hit area moving, and the gap between faces is real
- * space a finger can miss into without also missing the grid.
+ * Two elements because the target and the mark are different things: the button carries the
+ * hit area and the accessible name, the face carries every appearance change. The gap
+ * between faces is real space a finger can miss into without also missing the grid.
+ *
+ * The face never exceeds `inset: 0`. That is load-bearing rather than incidental — anything
+ * of this element's that reached outside the button would be counted into the scroller's
+ * scrollable overflow and could produce a scrollbar.
  */
 .face {
   position: absolute;
@@ -170,11 +174,16 @@
   border-radius: inherit;
   border: 1px solid var(--line);
   background: var(--cell);
+  /*
+   * Nothing here transitions geometry, and nothing here has any.
+   *
+   * `scale` used to be in this list. See the note on the struck state below for why it is
+   * not any more.
+   */
   transition:
     background-color var(--motion-fast) var(--ease),
     border-color var(--motion-fast) var(--ease),
-    box-shadow var(--motion-fast) var(--ease),
-    scale var(--motion-fast) var(--ease);
+    box-shadow var(--motion-fast) var(--ease);
 }
 
 /* Every fourth column is a beat, and reads a shade lighter so the bar can be counted. */
@@ -233,25 +242,35 @@
 /*
  * An active step being struck.
  *
- * The one piece of movement in the interface, and it is eleven per cent for ninety
- * milliseconds. Enough to see the beat land; not enough to be a light show.
+ * Light rather than size, and that is a bug fix rather than a preference. The face used to
+ * swell by eleven per cent for ninety milliseconds, which looked right and was wrong: a
+ * scroll container's scrollable overflow includes the *transformed* border boxes of its
+ * descendants, so the last column's swell pushed three pixels past the grid's right edge and
+ * a horizontal scrollbar flickered in and out once per bar at any width where the sixteen
+ * steps fitted exactly. It was only ever visible on step sixteen, and only while that step
+ * was active, which is why it survived a whole stage unnoticed.
+ *
+ * Everything below is ink — a background, a border, and shadows. Ink overflow does not
+ * enlarge a scroll container, so the grid's geometry is now identical whether it is playing
+ * or stopped. The face is lit from inside by a warm ring and sits in a bounded glow, which
+ * reads as struck without moving anything.
  */
 .active.playing .face {
   background: var(--accent-bright);
   border-color: #ffd0ae;
-  scale: var(--pulse-scale);
   box-shadow:
-    var(--shadow-step),
-    0 0 0 1px var(--accent-wash);
+    inset 0 0 0 2px var(--hit-highlight),
+    0 0 9px 1px var(--hit-glow),
+    var(--shadow-step);
 }
 
 /*
  * Reduced motion.
  *
- * `--pulse-scale` is already 1 and the transitions already zero, so nothing here is
- * about switching movement off. It is about replacing what the movement was for:
- * the current column gets a real outline, so "which step is this" is answered by a
- * static mark rather than by having watched something arrive.
+ * Nothing here is about switching movement off — since the hit stopped being a scale there
+ * is none in the grid to switch off, and the transitions are already zero. What this does is
+ * strengthen the playhead, so "which step is this" is answered by a real outline rather than
+ * by having watched something arrive.
  */
 @media (prefers-reduced-motion: reduce) {
   .playing .face {
@@ -259,10 +278,14 @@
     box-shadow: inset 0 0 0 2px var(--playhead);
   }
 
-  .active.playing .face {
-    background: var(--accent-bright);
-    box-shadow: inset 0 0 0 2px var(--stage);
-  }
+  /*
+   * The struck state needs no separate treatment here.
+   *
+   * It used to, because it was a movement and movement had to be replaced by something
+   * static. Now that it is light rather than size, the ordinary rule already works: with
+   * transitions at zero the face simply changes instantly instead of easing, which is
+   * exactly what reduced motion asks for.
+   */
 }
 
 /*

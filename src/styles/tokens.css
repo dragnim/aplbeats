@@ -107,13 +107,23 @@
   /*
    * Motion — short, restrained, and switched off entirely below.
    *
-   * `--pulse` is the only movement in the interface: the small swell an active step
-   * makes as the playhead crosses it. Everything else is a colour change.
+   * There is deliberately no scale token here any more. A step used to swell by eleven per
+   * cent as the playhead crossed it, and on the last column that swell pushed the face past
+   * the grid's right edge: CSS counts the *transformed* border boxes of descendants towards
+   * a scroll container's scrollable overflow, so at a width where the sixteen steps fitted
+   * exactly, a horizontal scrollbar flickered in and out once per bar. Measured at three
+   * pixels of overflow.
+   *
+   * The hit is now colour and light — a brighter face, a struck inner ring, a bounded glow —
+   * all of which are *ink* overflow and cannot change an element's geometry. See
+   * `Sequencer.module.css`.
    */
   --motion-fast: 90ms;
   --motion-base: 160ms;
   --ease: cubic-bezier(0.2, 0, 0.2, 1);
-  --pulse-scale: 1.11;
+  /* The warm highlight on a step at the moment it is struck. */
+  --hit-highlight: rgb(255 238 226 / 62%);
+  --hit-glow: rgb(255 138 69 / 38%);
 
   /* The grid */
   --cell-min: 2.125rem;
@@ -133,16 +143,16 @@
 /*
  * Reduced motion.
  *
- * Transitions go to zero and the step no longer swells. What replaces it is not
- * nothing: the playhead's wash is stronger and its column gains a visible outline,
- * so "where are we in the bar" is answered by a static difference instead of by
- * movement. See `Sequencer.module.css`.
+ * Transitions go to zero, so every state change is instant rather than eased. Nothing else
+ * needs switching off: since the hit effect stopped being a scale, there is no movement in
+ * the grid to remove. What reduced motion still changes is the playhead — its column gains a
+ * stronger wash and a real outline, so "where are we in the bar" is answered by a static
+ * difference rather than by having watched something arrive. See `Sequencer.module.css`.
  */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-fast: 0ms;
     --motion-base: 0ms;
-    --pulse-scale: 1;
   }
 }
 
