@@ -189,17 +189,26 @@ rules are enforced in code rather than promised in prose, in one file
 - **`npm test`, `npm run test:e2e`, CI and the Pages deployment make zero live requests.** The
   end-to-end suite mocks the endpoint and drives the real product flow through it.
 
-Live APL is verified deliberately, by hand, by one command:
+Live APL is verified deliberately, by hand, by two commands and no others:
 
 ```bash
 npm run verify:apl-live               # four requests, one per operation
 npm run verify:apl-live -- --dry-run  # prints the expressions, sends nothing
+npm run verify:deployment             # one request, from the published origin
+npm run verify:deployment -- --no-apl # everything except that request
 ```
 
-It builds each expression with the production source builder, sends it with the production
-client, reads it with the production parser, and compares the result against the TypeScript
-reference — then prints the request count on its own line, whether or not anybody asked. It
-refuses to run under CI unless forced.
+`verify:apl-live` builds each expression with the production source builder, sends it with the
+production client, reads it with the production parser, and compares the result against the
+TypeScript reference — then prints the request count on its own line, whether or not anybody
+asked. It refuses to run under CI unless forced.
+
+`verify:deployment` makes the one check nothing else can. Whether a browser will _allow_ the
+request from `https://dragnim.github.io` depends on TryAPL's CORS headers and on the
+Content-Security-Policy as actually served, and neither can be established from a mock or from
+localhost. So it loads the published site, opens Peek, reads the expression, presses Apply
+once, and asserts the grid became the reversal of what was sent. Neither command is ever run by
+CI.
 
 ### What comes back is not trusted
 
@@ -410,7 +419,7 @@ npm run dev
 | `npm run screenshot`        | Capture the interface to `docs/`, against a running preview                      |
 | `npm run measure:kit`       | Render every voice offline and report its level and length (needs `npm run dev`) |
 | `npm run measure:generated` | Render generated bars through the real master chain and check for clipping       |
-| `npm run verify:deployment` | Load the published site and check it works                                       |
+| `npm run verify:deployment` | Load the published site and check it works. **One real TryAPL request**          |
 
 ## How it is put together
 

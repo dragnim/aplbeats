@@ -6,15 +6,23 @@
  * Content-Security-Policy that blocks a script, a Pages deployment that half
  * succeeded: none of those fail a test run, and all of them fail a visitor.
  *
- *   npm run verify:deployment
+ *   npm run verify:deployment                 the full check, one live TryAPL request
+ *   npm run verify:deployment -- --no-apl     everything except that request
  *   npm run verify:deployment -- https://example.com/somewhere/
  *
  * Exits non-zero on anything wrong, so it can gate a release.
+ *
+ * **This makes one real request to TryAPL**, and it is the only check that can: whether the
+ * deployed origin is allowed to talk to tryapl.org is a fact about CORS and about the
+ * published Content-Security-Policy, and neither can be established from a mock or from
+ * localhost. It is one request, it is counted, and it is printed. Run by hand, never by CI.
  */
 
 import { chromium } from '@playwright/test';
 
-const url = process.argv[2] ?? 'https://dragnim.github.io/aplbeats/';
+const args = process.argv.slice(2);
+const url = args.find((argument) => !argument.startsWith('--')) ?? 'https://dragnim.github.io/aplbeats/';
+const checkApl = !args.includes('--no-apl');
 
 const problems = [];
 const note = (message) => {
@@ -57,7 +65,7 @@ console.log(`  steps active in the opening groove: ${String(active)}`);
 if (active !== 32) note(`expected the opening groove's 32 triggers, found ${String(active)}`);
 
 // Nothing autoplays.
-const status = await page.locator('[role="status"]').innerText();
+const status = await page.getByRole('status', { name: 'Playback' }).innerText();
 console.log(`  transport on arrival: ${status}`);
 if (status !== 'Paused') note(`expected a paused transport on arrival, found "${status}"`);
 
@@ -118,6 +126,66 @@ const presets = await page.getByRole('radio').count();
 console.log(`  presets offered: ${String(presets)}`);
 if (presets !== 8) note(`expected 8 presets, found ${String(presets)}`);
 
+/* ---- APL, for real, from the published origin ----------------------------- */
+
+/*
+ * The check nothing else can make.
+ *
+ * The end-to-end suite mocks the endpoint, so it proves the product flow and says nothing
+ * about whether the browser will *allow* the request from https://dragnim.github.io — which
+ * depends on TryAPL's CORS headers and on the Content-Security-Policy as actually served.
+ * Those are properties of the deployment, so they are checked against the deployment, once.
+ */
+let aplRequests = 0;
+
+if (checkApl) {
+  page.on('request', (request) => {
+    if (request.url().startsWith('https://tryapl.org')) aplRequests += 1;
+  });
+
+  const panel = page.getByRole('region', { name: 'Transform with APL' });
+  const aplStatus = page.getByRole('status', { name: 'APL transform' });
+
+  await panel.scrollIntoViewIfNeeded();
+  await panel.getByLabel('Operation').selectOption('reverse');
+  await panel.getByLabel('Target').selectOption('all');
+
+  // Peek first, and read the expression that is about to be sent. Costs nothing.
+  await page.getByRole('button', { name: 'Peek at the APL' }).click();
+  const core = (await panel.locator('pre code').first().innerText()).trim();
+  console.log(`  Peek shows: ${core}`);
+  if (core !== '⌽m') note(`expected Peek to show ⌽m, found "${core}"`);
+  if (aplRequests !== 0) note(`opening Peek sent ${String(aplRequests)} request(s); it must send none`);
+
+  const beforeApl = await gridOf();
+  await page.getByRole('button', { name: 'Apply with APL' }).click();
+
+  try {
+    await aplStatus
+      .filter({ hasText: /Applied|unavailable|too long|unexpected|could not/ })
+      .waitFor({ timeout: 30_000 });
+  } catch {
+    note('the transform never reported an outcome within 30s');
+  }
+
+  const said = (await aplStatus.innerText()).trim();
+  const afterApl = await gridOf();
+  console.log(`  live TryAPL requests: ${String(aplRequests)}`);
+  console.log(`  the transform said: ${said}`);
+
+  if (aplRequests !== 1) note(`expected exactly 1 request, counted ${String(aplRequests)}`);
+  if (said !== 'Applied.') note(`APL did not run from the published origin: "${said}"`);
+
+  // ⌽ on the whole matrix: every row reversed, and the grid says so.
+  const expected = [...beforeApl.matchAll(/.{16}/gu)].map((row) => [...row[0]].reverse().join('')).join('');
+  console.log(`  the grid is the reversed bar: ${String(afterApl === expected)}`);
+  if (afterApl !== expected) note('the pattern APL returned is not the reversal of what was sent');
+
+  // And Undo puts it back, on the published site as everywhere else.
+  await page.getByRole('button', { name: 'Undo' }).click();
+  if ((await gridOf()) !== beforeApl) note('Undo did not restore the pattern after a transform');
+}
+
 await browser.close();
 
 if (problems.length > 0) {
@@ -125,5 +193,9 @@ if (problems.length > 0) {
   for (const problem of problems) console.error(`  - ${problem}`);
   process.exitCode = 1;
 } else {
-  console.log('\nThe published site loads clean, opens on its groove and plays.');
+  console.log(
+    checkApl
+      ? `\nThe published site loads clean, opens on its groove, plays, and ran real APL in ${String(aplRequests)} request.`
+      : '\nThe published site loads clean, opens on its groove and plays. APL was not checked.',
+  );
 }
