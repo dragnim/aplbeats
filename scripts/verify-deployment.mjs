@@ -76,6 +76,48 @@ for (let sample = 0; sample < 20; sample += 1) {
 console.log(`  playhead visited ${String(columns.size)} columns in 1.4s`);
 if (columns.size < 4) note(`the playhead barely moved: ${String(columns.size)} columns`);
 
+/* ---- the generative controls are live ------------------------------------ */
+
+const gridOf = () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('button[data-track][data-step]')]
+      .map((cell) => (cell.getAttribute('aria-pressed') === 'true' ? '1' : '0'))
+      .join(''),
+  );
+
+const seedOf = () => page.locator('[class*="seedValue"]').innerText();
+
+await page.getByRole('button', { name: 'Pause' }).click();
+
+const beforeRandomise = await gridOf();
+const seedBefore = (await seedOf()).trim();
+await page.getByRole('button', { name: 'Randomise' }).click();
+
+const afterRandomise = await gridOf();
+const seedAfter = (await seedOf()).trim();
+console.log(`  Randomise changed the grid: ${String(afterRandomise !== beforeRandomise)}`);
+console.log(`  Randomise drew a new seed: ${seedBefore} -> ${seedAfter}`);
+if (afterRandomise === beforeRandomise) note('Randomise did not change the pattern');
+if (seedAfter === seedBefore) note('Randomise did not draw a new seed');
+
+await page.getByRole('button', { name: 'Undo' }).click();
+const undone = await gridOf();
+console.log(`  Undo restored it: ${String(undone === beforeRandomise)}`);
+if (undone !== beforeRandomise) note('Undo did not restore the pattern');
+
+// Ten presses, ten different bars: the product promise of the whole stage.
+const seen = new Set();
+for (let press = 0; press < 10; press += 1) {
+  await page.getByRole('button', { name: 'Randomise' }).click();
+  seen.add(await gridOf());
+}
+console.log(`  ten Randomise presses gave ${String(seen.size)} distinct bars`);
+if (seen.size < 9) note(`repeated Randomise produced only ${String(seen.size)} distinct bars`);
+
+const presets = await page.getByRole('radio').count();
+console.log(`  presets offered: ${String(presets)}`);
+if (presets !== 8) note(`expected 8 presets, found ${String(presets)}`);
+
 await browser.close();
 
 if (problems.length > 0) {
