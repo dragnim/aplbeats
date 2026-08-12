@@ -32,6 +32,7 @@ built yet. What is built is the instrument it will be built on top of.
 - [Accessibility](#accessibility)
 - [Respecting the device](#respecting-the-device)
 - [Testing](#testing)
+- [Commit identity](#commit-identity)
 - [Deployment](#deployment)
 - [Where APL comes in](#where-apl-comes-in)
 - [Licence](#licence)
@@ -303,6 +304,25 @@ whether Web Audio exists and skip themselves rather than pretending. That is a
 limitation of that build, not of Safari.
 
 What no test covers is whether it sounds good. That is judged by ear.
+
+## Commit identity
+
+Every commit here — author and committer both — must be:
+
+```
+dragnim <10869200+dragnim@users.noreply.github.com>
+```
+
+GitHub attributes commits by email address, so an address it does not associate with
+this account produces commits credited to somebody else or to nobody at all. That
+happened once already and the history had to be rewritten, which is why it is now
+enforced rather than merely intended:
+
+- **`.githooks/pre-commit`** refuses a commit under any other identity. `npm install`
+  wires it up by pointing `core.hooksPath` at `.githooks`, so a fresh clone is protected
+  as soon as its dependencies are.
+- **The `authorship` job in CI** checks every commit reachable from the tip, and the
+  Pages deployment depends on it. A hook can be skipped with `--no-verify`; this cannot.
 
 ## Deployment
 

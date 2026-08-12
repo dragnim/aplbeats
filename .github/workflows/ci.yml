@@ -22,6 +22,49 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  authorship:
+    name: Every commit is dragnim
+    runs-on: ubuntu-latest
+
+    # The backstop. The pre-commit hook in .githooks catches this at the moment of
+    # committing, but a hook lives in a clone's local configuration and can be skipped
+    # with --no-verify or simply never installed. This cannot be skipped, and it gates
+    # the deployment — so an incorrectly attributed commit stops the site being
+    # published rather than being noticed months later.
+    #
+    # It exists because it has already happened: the first nine commits here were made
+    # under an address GitHub associates with a different account, and the whole history
+    # had to be rewritten and force-pushed.
+
+    steps:
+      - name: Check out the full history
+        uses: actions/checkout@v7
+        with:
+          # Every commit, not the tip: a push can carry several, and a rewrite can carry
+          # all of them.
+          fetch-depth: 0
+
+      - name: Check the author and committer of every commit
+        run: |
+          set -euo pipefail
+          expected='dragnim <10869200+dragnim@users.noreply.github.com>'
+
+          wrong="$(git log --format='%H%x09author%x09%an <%ae>%n%H%x09committer%x09%cn <%ce>' \
+            | grep -v -P "\t\Q${expected}\E$" || true)"
+
+          if [ -n "$wrong" ]; then
+            echo "These commits are attributed to somebody other than ${expected}:"
+            echo
+            echo "$wrong"
+            echo
+            echo "GitHub attributes commits by email address. Fix the identity with:"
+            echo "  git config user.name \"dragnim\""
+            echo "  git config user.email \"10869200+dragnim@users.noreply.github.com\""
+            exit 1
+          fi
+
+          echo "All $(git rev-list --count HEAD) commits are ${expected}."
+
   verify:
     name: Typecheck, lint, format, tests and build
     runs-on: ubuntu-latest
@@ -90,9 +133,9 @@ jobs:
 
   package:
     name: Build the Pages artifact
-    # The gate. Both must have succeeded; a failed or cancelled job leaves this one
+    # The gate. All three must have succeeded; a failed or cancelled job leaves this one
     # unrun, and therefore leaves the deployment unrun too.
-    needs: [verify, e2e]
+    needs: [authorship, verify, e2e]
     # Never from a pull request, and only from the branch that is published. A fork's
     # pull request cannot reach this job at all.
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'

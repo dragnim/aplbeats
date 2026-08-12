@@ -1,0 +1,50 @@
+#!/bin/sh
+#
+# Refuse any commit that would be attributed to anyone but dragnim.
+#
+# This exists because it has already gone wrong once. The first nine commits of this
+# repository were made as "Mike Hughes <mike@dyalog.com>" — an identity set locally over
+# a global configuration that was already correct — and GitHub associates that address
+# with a different account. The whole history had to be rewritten and force-pushed.
+#
+# Configuration alone did not prevent that and cannot: it is one command away from being
+# overridden, and a fresh clone does not carry it at all. This does prevent it, at the
+# only moment that matters.
+#
+# Installed by `scripts/install-hooks.mjs`, which npm runs after `npm install`. The
+# backstop, for anyone who bypasses hooks entirely, is the `authorship` job in CI.
+
+set -eu
+
+EXPECTED_NAME="dragnim"
+EXPECTED_EMAIL="10869200+dragnim@users.noreply.github.com"
+
+# `git var` reports the identity this commit will actually use, after every level of
+# configuration and every environment variable has been resolved. Reading the config
+# directly would miss GIT_AUTHOR_NAME and friends.
+check() {
+  role="$1"
+  ident="$2"
+
+  name="${ident%% <*}"
+  rest="${ident#*<}"
+  email="${rest%%>*}"
+
+  if [ "$name" != "$EXPECTED_NAME" ] || [ "$email" != "$EXPECTED_EMAIL" ]; then
+    echo "APL Beats: refusing to commit under the wrong identity." >&2
+    echo >&2
+    echo "  $role is:       $name <$email>" >&2
+    echo "  $role must be:  $EXPECTED_NAME <$EXPECTED_EMAIL>" >&2
+    echo >&2
+    echo "Fix it with:" >&2
+    echo "  git config user.name \"$EXPECTED_NAME\"" >&2
+    echo "  git config user.email \"$EXPECTED_EMAIL\"" >&2
+    echo >&2
+    echo "GitHub attributes commits by email. An address it does not know for this" >&2
+    echo "account produces commits credited to somebody else, or to nobody." >&2
+    exit 1
+  fi
+}
+
+check "author" "$(git var GIT_AUTHOR_IDENT)"
+check "committer" "$(git var GIT_COMMITTER_IDENT)"
