@@ -46,6 +46,14 @@ export interface StudioApi {
    */
   readonly beginEdit: () => void;
   readonly setCell: (track: number, step: number, value: boolean) => void;
+  /**
+   * Install a pattern that came back from APL.
+   *
+   * One Undo entry, atomically. Takes a finished matrix rather than an operation because by
+   * the time this is called the transform has already happened and been validated — see
+   * `useTransform`.
+   */
+  readonly applyTransform: (pattern: Pattern) => void;
   readonly undo: () => void;
 }
 
@@ -111,6 +119,10 @@ export function useStudio(initial: CreativeState): StudioApi {
     });
   }, []);
 
+  const applyTransform = useCallback((pattern: Pattern) => {
+    dispatch({ type: 'applyTransform', pattern });
+  }, []);
+
   const undo = useCallback(() => {
     // A macro gesture left open would coalesce the next move into the entry Undo just
     // restored, which is a way of losing a change nobody asked to lose.
@@ -130,9 +142,22 @@ export function useStudio(initial: CreativeState): StudioApi {
       toggleLock,
       beginEdit,
       setCell,
+      applyTransform,
       undo,
     }),
-    [studio, randomise, newSeed, setPreset, setMacro, commitMacro, toggleLock, beginEdit, setCell, undo],
+    [
+      studio,
+      randomise,
+      newSeed,
+      setPreset,
+      setMacro,
+      commitMacro,
+      toggleLock,
+      beginEdit,
+      setCell,
+      applyTransform,
+      undo,
+    ],
   );
 }
 

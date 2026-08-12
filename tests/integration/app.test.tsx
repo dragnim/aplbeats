@@ -38,7 +38,7 @@ describe('opening APL Beats', () => {
     // Browsers would refuse anyway, but this is also simply what a visitor expects: a
     // page that starts making noise on load is a page that gets closed.
     render(<App />);
-    expect(screen.getByRole('status')).toHaveTextContent('Paused');
+    expect(screen.getByRole('status', { name: 'Playback' })).toHaveTextContent('Paused');
     expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument();
   });
@@ -86,7 +86,7 @@ describe('without an audio device', () => {
     await user.click(screen.getByRole('button', { name: 'Play' }));
 
     expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Paused');
+    expect(screen.getByRole('status', { name: 'Playback' })).toHaveTextContent('Paused');
     expect(complaints).toHaveBeenCalledOnce();
   });
 

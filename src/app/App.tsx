@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTransform } from '@/apl/useTransform';
 import { GeneratorPanel } from '@/components/GeneratorPanel';
+import { TransformPanel } from '@/components/TransformPanel';
 import { Logo } from '@/components/Logo';
 import { Sequencer } from '@/components/Sequencer';
 import { TransportBar } from '@/components/TransportBar';
@@ -74,6 +76,15 @@ export function App(): React.JSX.Element {
   const getMixer = useCallback(() => mixerRef.current, []);
 
   const transport = useTransport({ getPattern, getMixer, bpm, swing, isVisible });
+
+  /*
+   * APL transforms.
+   *
+   * The only part of the application that touches the network, and it is reached from one
+   * button. Nothing here runs on a timer, on playback, or as a control moves — see
+   * `useTransform` for the rules and why they are all in one file.
+   */
+  const transform = useTransform({ pattern, onApply: studio.applyTransform });
 
   /*
    * Save, a moment after things settle.
@@ -185,6 +196,8 @@ export function App(): React.JSX.Element {
           onEditGesture={beginEdit}
         />
 
+        <TransformPanel transform={transform} pattern={pattern} />
+
         <h2 className="visuallyHidden">Generator</h2>
         <GeneratorPanel
           preset={studio.state.preset}
@@ -200,20 +213,25 @@ export function App(): React.JSX.Element {
         />
 
         {/*
-          Spoken, not shown. The Play button's name changes, but a name changes silently
-          for someone who is not on it — and while the tab was hidden the transport will
-          have paused itself, which is a change nobody asked for.
+          Spoken, not shown. The Play button's name changes, but a name changes silently for
+          someone who is not on it — and while the tab was hidden the transport will have paused
+          itself, which is a change nobody asked for.
+
+          Named, because there are now two live regions on the page: this one and the APL panel's.
+          Two are legitimate — playback and transformation are different concerns and either can
+          change without the other — but an unnamed pair is two anonymous voices, and a reader
+          arriving at one has no way to know which is speaking.
         */}
-        <p className="visuallyHidden" role="status">
+        <p className="visuallyHidden" role="status" aria-label="Playback">
           {transport.isPlaying ? 'Playing' : 'Paused'}
         </p>
       </main>
 
       <footer className={styles.footer}>
         <p className={styles.note}>
-          An early-stage experiment. Eight tracks, sixteen steps, and an{' '}
-          <span className={styles.emphasis}>{TRACKS.length} × 16</span> Boolean matrix underneath — which is
-          where the APL comes in later. The generator here is TypeScript, not APL, for now.
+          Eight tracks, sixteen steps, and an <span className={styles.emphasis}>{TRACKS.length} × 16</span>{' '}
+          Boolean matrix underneath. The generator and the timing are local; the transformations are executed
+          by Dyalog APL, through TryAPL, one whole pattern at a time.
         </p>
         <a
           className={styles.link}

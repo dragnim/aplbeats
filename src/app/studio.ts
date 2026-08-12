@@ -72,6 +72,14 @@ export type StudioAction =
    */
   | { readonly type: 'commitMacro'; readonly macro: MacroName }
   | { readonly type: 'toggleLock'; readonly track: number }
+  /**
+   * A pattern that came back from APL.
+   *
+   * Carries the finished matrix rather than the operation that produced it, because by the
+   * time this is dispatched the transform has already happened somewhere else and been
+   * validated. The reducer's job is only to install it and remember what was there before.
+   */
+  | { readonly type: 'applyTransform'; readonly pattern: Pattern }
   | {
       readonly type: 'setCell';
       readonly track: number;
@@ -218,6 +226,30 @@ export function studioReducer(state: StudioState, action: StudioAction): StudioS
       const locks = state.present.locks.map((locked, index) => (index === action.track ? !locked : locked));
       const remembered = remember(state, null);
       return { ...remembered, present: { ...state.present, locks } };
+    }
+
+    case 'applyTransform': {
+      /*
+       * One transform, one Undo entry, and an atomic swap.
+       *
+       * Atomic for free: the pattern is an immutable matrix, so installing it is a single
+       * reference change. There is no moment at which half the bar is transformed, and a step
+       * already handed to Web Audio played from a complete matrix while the next one plays
+       * from a complete matrix.
+       *
+       * A transform that returns the bar unchanged — reversing a palindrome, rotating by a
+       * full cycle — banks no history, because an Undo that does nothing is worse than no
+       * Undo at all. It is still a success as far as the caller is concerned.
+       *
+       * Locks are deliberately not consulted. A lock means the *generator* may not touch a
+       * row; a transform is an explicit instruction from the visitor, like clicking a cell.
+       */
+      if (patternsEqual(action.pattern, state.present.pattern)) {
+        return { ...state, gesture: null };
+      }
+
+      const remembered = remember(state, null);
+      return { ...remembered, present: { ...state.present, pattern: action.pattern } };
     }
 
     case 'setCell': {

@@ -104,7 +104,7 @@ test('plays, moves the playhead, and pauses where it was', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Play' }).click();
   await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
-  await expect(page.getByRole('status')).toHaveText('Playing');
+  await expect(page.getByRole('status', { name: 'Playback' })).toHaveText('Playing');
 
   /*
    * The playhead advances.
@@ -123,7 +123,7 @@ test('plays, moves the playhead, and pauses where it was', async ({ page }) => {
   expect(columns.size).toBeGreaterThan(3);
 
   await page.getByRole('button', { name: 'Pause' }).click();
-  await expect(page.getByRole('status')).toHaveText('Paused');
+  await expect(page.getByRole('status', { name: 'Playback' })).toHaveText('Paused');
 
   // And having paused, it stays put.
   const restingPlace = await currentColumn(page);
@@ -273,7 +273,7 @@ test('leaving the tab pauses the transport', async ({ page }) => {
   await requireAudio(page);
 
   await page.getByRole('button', { name: 'Play' }).click();
-  await expect(page.getByRole('status')).toHaveText('Playing');
+  await expect(page.getByRole('status', { name: 'Playback' })).toHaveText('Playing');
 
   /*
    * A hidden document, forced.
@@ -288,7 +288,7 @@ test('leaving the tab pauses the transport', async ({ page }) => {
     document.dispatchEvent(new Event('visibilitychange'));
   });
 
-  await expect(page.getByRole('status')).toHaveText('Paused');
+  await expect(page.getByRole('status', { name: 'Playback' })).toHaveText('Paused');
   await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
   expect(problems).toEqual([]);
 });
@@ -353,7 +353,7 @@ test('a phone can start the transport by tapping', async ({ page }, testInfo) =>
 
   await page.getByRole('button', { name: 'Play', exact: true }).tap();
   await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
-  await expect(page.getByRole('status')).toHaveText('Playing');
+  await expect(page.getByRole('status', { name: 'Playback' })).toHaveText('Playing');
 });
 
 test('reduced motion switches the movement off', async ({ page }) => {

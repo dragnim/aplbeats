@@ -195,6 +195,13 @@ test('a slider dragged across its range is one Undo', async ({ page }, testInfo)
 
   const before = await gridOf(page);
   const density = page.getByRole('slider', { name: 'Density' });
+  /*
+   * Scrolled to first, because `boundingBox` reports viewport coordinates and does not scroll
+   * the way a locator action would. With the APL panel now sitting between the sequencer and
+   * the generator, the slider can start below the fold — and a `mouse.move` to a point outside
+   * the viewport does nothing at all, so the drag silently never happened.
+   */
+  await density.scrollIntoViewIfNeeded();
   const box = await density.boundingBox();
   if (box === null) throw new Error('The Density slider did not lay out.');
 
@@ -280,7 +287,7 @@ test('the session comes back', async ({ page }) => {
 
   // Restoring must never start playing. Coming back to a page that begins making noise is
   // worse than losing the session would have been.
-  await expect(page.getByRole('status')).toHaveText('Paused');
+  await expect(page.getByRole('status', { name: 'Playback' })).toHaveText('Paused');
   await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
 
   // And the restored session is a starting point, not a history: there is nothing to undo
@@ -298,7 +305,7 @@ test('generating while playing does not disturb the transport', async ({ page })
   test.skip(!audioAvailable, 'This browser build has no Web Audio.');
 
   await page.getByRole('button', { name: 'Play', exact: true }).click();
-  await expect(page.getByRole('status')).toHaveText('Playing');
+  await expect(page.getByRole('status', { name: 'Playback' })).toHaveText('Playing');
 
   // Several generative actions in quick succession, while the scheduler is running. The
   // pattern is swapped atomically; nothing here should stop, stall or complain.
@@ -308,7 +315,7 @@ test('generating while playing does not disturb the transport', async ({ page })
   await page.getByRole('radio', { name: 'Syncopated' }).click();
   await page.getByRole('button', { name: 'New Seed' }).click();
 
-  await expect(page.getByRole('status')).toHaveText('Playing');
+  await expect(page.getByRole('status', { name: 'Playback' })).toHaveText('Playing');
   await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
 
   // The playhead is still moving.

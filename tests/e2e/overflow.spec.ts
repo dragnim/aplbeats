@@ -117,7 +117,7 @@ test('playing a whole bar never makes the grid overflow', async ({ page }, testI
   expect(await fitsWithoutScrolling(page), 'the grid should fit at desk width').toBe(true);
 
   await page.getByRole('button', { name: 'Play', exact: true }).click();
-  await expect(page.getByRole('status')).toHaveText('Playing');
+  await expect(page.getByRole('status', { name: 'Playback' })).toHaveText('Playing');
 
   // Three bars at the opening tempo, sampled every frame.
   const watch = await watchOverflow(page, 2800);
