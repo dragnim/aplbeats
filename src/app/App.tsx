@@ -3,14 +3,7 @@ import { Logo } from '@/components/Logo';
 import { Sequencer } from '@/components/Sequencer';
 import { TransportBar } from '@/components/TransportBar';
 import { createInitialGroove, INITIAL_BPM, INITIAL_SWING } from '@/pattern/initialGroove';
-import {
-  createMixer,
-  effectiveLevel,
-  setVolume,
-  toggleMute,
-  trackIdFor,
-  type Mixer,
-} from '@/pattern/mixer';
+import { createMixer, effectiveLevel, setVolume, toggleMute, trackIdFor, type Mixer } from '@/pattern/mixer';
 import { setCell, type Pattern } from '@/pattern/pattern';
 import { TRACKS } from '@/pattern/tracks';
 import { clampBpm, clampSwing } from '@/transport/timing';
@@ -162,10 +155,8 @@ export function App(): React.JSX.Element {
       <footer className={styles.footer}>
         <p className={styles.note}>
           An early-stage experiment. Eight tracks, sixteen steps, and an{' '}
-          <span className={styles.emphasis}>
-            {TRACKS.length} × 16
-          </span>{' '}
-          Boolean matrix underneath — which is where the APL comes in later.
+          <span className={styles.emphasis}>{TRACKS.length} × 16</span> Boolean matrix underneath — which is
+          where the APL comes in later.
         </p>
         <a
           className={styles.link}

@@ -163,9 +163,22 @@ export function Sequencer({
       gesture.current = { pointerId: event.pointerId, value, visited: new Set([cellKey(track, step)]) };
       pressHandled.current = true;
 
-      // Capture, so a drag that leaves the button keeps reporting to it. Without it
-      // the gesture ends the moment the pointer crosses into the next cell.
-      event.currentTarget.setPointerCapture(event.pointerId);
+      /*
+       * Capture, so a drag that leaves the button keeps reporting to it. Without it
+       * the gesture ends the moment the pointer crosses into the next cell.
+       *
+       * Guarded, because capture is not always available or always allowed: it throws
+       * for a pointer that is no longer active — a mouse button released in the
+       * instant between the press and this line — and jsdom has no implementation of
+       * it at all. Neither is worth losing the toggle over. Painting simply stops at
+       * the cell pressed, which is what a press was anyway.
+       */
+      try {
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+      } catch {
+        // Not fatal: see above.
+      }
+
       onSetCell(track, step, value);
     },
     [onEditGesture, onSetCell, pattern],

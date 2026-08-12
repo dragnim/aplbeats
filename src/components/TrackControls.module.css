@@ -138,6 +138,36 @@
   border-radius: var(--radius-sm);
 }
 
+/*
+ * Above the steps rather than beside them, on a phone.
+ *
+ * One line: name, then the fader taking whatever is left, then the mute. See the note
+ * in `Sequencer.module.css` about why the row folds this way.
+ */
+@media (max-width: 36rem) {
+  .controls {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding-left: var(--space-1);
+  }
+
+  .name {
+    grid-area: 1 / 1;
+    padding-left: 0;
+  }
+
+  .volume {
+    grid-area: 1 / 2;
+    max-width: 11rem;
+  }
+
+  .mute {
+    grid-area: 1 / 3;
+  }
+}
+
 /* A finger needs something bigger to catch, at the cost of a little elegance. */
 @media (pointer: coarse) {
   .volume {

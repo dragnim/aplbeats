@@ -41,15 +41,22 @@ export const BPM_STEP = 1;
  */
 export const MAX_SWING_FRACTION = 0.5;
 
-/** `bpm` brought inside the usable range, with anything unusable read as the slowest tempo. */
+/**
+ * `bpm` brought inside the usable range.
+ *
+ * Only `NaN` is special-cased, and it becomes the slowest tempo. The infinities are
+ * left to `Math.min`/`Math.max`, which clamp them to the end they came from — the
+ * answer anyone would expect, and the one that keeps this a clamp rather than a
+ * clamp with a surprise in it.
+ */
 export function clampBpm(bpm: number): number {
-  if (!Number.isFinite(bpm)) return MIN_BPM;
+  if (Number.isNaN(bpm)) return MIN_BPM;
   return Math.min(MAX_BPM, Math.max(MIN_BPM, bpm));
 }
 
-/** `swing` brought inside 0 to 1, with anything unusable read as straight. */
+/** `swing` brought inside 0 to 1, with `NaN` read as straight. */
 export function clampSwing(swing: number): number {
-  if (!Number.isFinite(swing)) return 0;
+  if (Number.isNaN(swing)) return 0;
   return Math.min(1, Math.max(0, swing));
 }
 

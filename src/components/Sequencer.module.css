@@ -257,3 +257,79 @@
     box-shadow: inset 0 0 0 2px var(--stage);
   }
 }
+
+/*
+ * A phone held upright: the track's name goes above its steps.
+ *
+ * There is no width on a phone at which a column of legible track names and sixteen
+ * comfortable pads both fit side by side. The first attempt kept them side by side
+ * and let the grid scroll, which gave pleasant 29px pads and showed eight steps of
+ * sixteen — and a sequencer whose pattern you cannot see is the wrong trade. Seeing
+ * the bar *is* the instrument.
+ *
+ * So the name, fader and mute become a line above each row, the steps take the full
+ * width, and the whole bar is visible with nothing to scroll.
+ *
+ * The pads end up around 22px, which is under the 24px WCAG 2.2 minimum but
+ * conforms by the spacing exception: adjacent centres are more than 24px apart, so a
+ * 24px circle on each never overlaps its neighbour. `--cell-gap` is load-bearing
+ * here rather than decorative, which is why it is set explicitly.
+ */
+@media (max-width: 36rem) {
+  .scroller {
+    overflow-x: visible;
+    touch-action: auto;
+
+    /*
+     * Out to the edges of the screen, cancelling the page's own padding.
+     *
+     * Twelve pixels either side does not sound like much until it is measured against
+     * what it costs: sixteen pads across 390 device pixels leaves a pitch of 23px with
+     * the padding and 24px without, and 24 is exactly where WCAG's spacing exception
+     * sits. The two dozen pixels are the difference between conforming and not.
+     *
+     * It also simply looks better. A grid that reaches the edges of a phone reads as
+     * an instrument; one inset in a card reads as a form.
+     */
+    margin-inline: calc(-1 * var(--space-3));
+    padding-inline: 1px;
+  }
+
+  .grid {
+    min-width: 0;
+    gap: var(--space-2);
+  }
+
+  .header,
+  .track {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+
+  .headerSteps,
+  .steps {
+    grid-template-columns: repeat(16, minmax(0, 1fr));
+    gap: var(--cell-gap);
+  }
+
+  /*
+   * Nothing scrolls under it any more, so it need not be pinned or opaque — but it
+   * does need the page's padding back, because the steps below it no longer have any
+   * and a track name flush to the edge of the screen looks like a mistake.
+   */
+  .controlsCell {
+    position: static;
+    margin-right: 0;
+    padding-inline: var(--space-2);
+    background: none;
+  }
+
+  .corner {
+    display: none;
+  }
+
+  .cell {
+    min-height: 0;
+    border-radius: var(--radius-sm);
+  }
+}

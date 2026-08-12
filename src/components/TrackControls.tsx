@@ -35,13 +35,17 @@ export function TrackControls({
         The name is a button, and pressing it plays the sound. Learning what "Low
         Perc" is by tapping it is faster than any label could manage, and it is how
         the fader gets set to something musical while the transport is stopped.
+
+        "Preview", not "Play". Eight buttons called "Play Kick" beside one called
+        "Play" is eight chances to press the wrong thing, and for anyone listening to
+        a list of buttons rather than looking at them it is worse than that.
       */}
       <button
         type="button"
         className={styles.name}
         onClick={onAudition}
-        title={`Play ${track.name}`}
-        aria-label={`Play ${track.name}`}
+        title={`Preview ${track.name}`}
+        aria-label={`Preview ${track.name}`}
       >
         {track.name}
       </button>

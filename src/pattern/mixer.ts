@@ -24,9 +24,9 @@ export type Mixer = readonly TrackMix[];
 export const MIN_VOLUME = 0;
 export const MAX_VOLUME = 1;
 
-/** `volume` brought inside the fader's range, with anything unusable read as silence. */
+/** `volume` brought inside the fader's travel, with `NaN` read as silence. */
 export function clampVolume(volume: number): number {
-  if (!Number.isFinite(volume)) return MIN_VOLUME;
+  if (Number.isNaN(volume)) return MIN_VOLUME;
   return Math.min(MAX_VOLUME, Math.max(MIN_VOLUME, volume));
 }
 

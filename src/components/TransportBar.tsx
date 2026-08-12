@@ -52,7 +52,10 @@ export function TransportBar({
             </svg>
           ) : (
             <svg viewBox="0 0 16 16" width="16" height="16" focusable="false">
-              <path d="M4 2.6a1 1 0 0 1 1.52-.86l7.2 4.4a1 1 0 0 1 0 1.72l-7.2 4.4A1 1 0 0 1 4 11.4Z" fill="currentColor" />
+              <path
+                d="M4 2.6a1 1 0 0 1 1.52-.86l7.2 4.4a1 1 0 0 1 0 1.72l-7.2 4.4A1 1 0 0 1 4 11.4Z"
+                fill="currentColor"
+              />
             </svg>
           )}
         </span>

@@ -48,9 +48,16 @@
   --stage: #0d0e11;
   --surface: #15171c;
   --surface-raised: #1c1f26;
-  --cell: #191c22;
-  --cell-beat: #22262f;
-  --cell-hover: #2a2f39;
+  /*
+   * A silent step, and a silent step that falls on a beat.
+   *
+   * The gap between these two is what lets the bar be counted at a glance, and the
+   * first attempt at it was too subtle to see at all. It has to survive a phone
+   * screen at an angle, so it is a step of lightness rather than a hint of one.
+   */
+  --cell: #171a20;
+  --cell-beat: #262b36;
+  --cell-hover: #333944;
 
   /* Text */
   --text: #eceef2; /* 15.4:1 on --surface */
@@ -64,8 +71,7 @@
   --focus-ring: 0 0 0 2px var(--stage), 0 0 0 4px var(--focus);
 
   /* Type */
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Consolas, monospace;
 
   --text-xs: 0.6875rem;
@@ -117,7 +123,11 @@
   --tap-target: 44px;
   --control-height: 2rem;
 
-  --layout-max: 76rem;
+  /*
+   * Wide enough for a comfortable grid, narrow enough that the pads stay close to
+   * square on a large monitor rather than stretching into letterboxes.
+   */
+  --layout-max: 68rem;
 }
 
 /*

@@ -43,11 +43,18 @@
   color: color-mix(in srgb, var(--text-dim) 68%, var(--stage));
 }
 
+/*
+ * Centred in whatever height is left over.
+ *
+ * The transport and the grid are a fixed height, and on a tall window they were
+ * pinned to the top with a lake of empty stage beneath them. Centring puts the
+ * instrument where the eye already is.
+ */
 .main {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: var(--space-5);
-  align-content: start;
   min-width: 0;
 }
 
