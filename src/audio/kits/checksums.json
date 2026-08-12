@@ -1,0 +1,361 @@
+{
+  "upstream": "smpldsnds/drum-machines",
+  "commit": "a894cb8c72abe15b05e7b4fd4b8ee561c0f9e960",
+  "files": {
+    "tr-808/kick.m4a": {
+      "upstream": "TR-808/kick/bd5050.m4a",
+      "bytes": 23681,
+      "sha256": "48536d30de51ac6502cfaad927f06faaa8c7494f7d37ba760dc17f345a22799e"
+    },
+    "tr-808/snare.m4a": {
+      "upstream": "TR-808/snare/sd5050.m4a",
+      "bytes": 8545,
+      "sha256": "f494ac71f1efeaa17cdbc41bd7ed66c55059d0953823cbea1aa1e6827c714b9f"
+    },
+    "tr-808/closed-hat.m4a": {
+      "upstream": "TR-808/hihat-close/ch.m4a",
+      "bytes": 4961,
+      "sha256": "d8db1056802a59bec2711681ddb060b1caa6107df58ad18e1f0916c10921f9f5"
+    },
+    "tr-808/open-hat.m4a": {
+      "upstream": "TR-808/hihat-open/oh50.m4a",
+      "bytes": 8620,
+      "sha256": "66c6c4dadcde412b42518bb790e2645d5e96d4c5f411fb386945de64ad0c0ac6"
+    },
+    "tr-808/clap.m4a": {
+      "upstream": "TR-808/clap/cp.m4a",
+      "bytes": 32217,
+      "sha256": "a06da4283558f8b153219c18bdfc8c12d9a53fdb3ad9b432c3f1d8a984ac80ff"
+    },
+    "tr-808/low-perc.m4a": {
+      "upstream": "TR-808/conga-low/lc50.m4a",
+      "bytes": 8569,
+      "sha256": "31977a313d93b9101effe9e5f0f9a891fe3d6cfd93b90ab69fb3f9feda36e197"
+    },
+    "tr-808/high-perc.m4a": {
+      "upstream": "TR-808/conga-hi/hc50.m4a",
+      "bytes": 8617,
+      "sha256": "b1caecbb0b868bbbf68c86d741bb9d503a2fc8199ca5bdec30cfd03e6e4ad853"
+    },
+    "tr-808/rim.m4a": {
+      "upstream": "TR-808/rimshot/rs.m4a",
+      "bytes": 4967,
+      "sha256": "048b1d42082c1120bedd1a50c344c397338b8a934749bf5c1eedf9f2fb6eb317"
+    },
+    "tr-808/TR808.TXT": {
+      "upstream": "TR-808/TR808.TXT",
+      "bytes": 8217,
+      "sha256": "5440960123c16cc0edb2d73f39f30ee987086a0903cbca7cb817421e5870c1f9"
+    },
+    "lm-2/kick.m4a": {
+      "upstream": "LM-2/kick.m4a",
+      "bytes": 4338,
+      "sha256": "0ec7e739b85c1f205b59d71cc5f87324baed50551198c547604afd11452eeff7"
+    },
+    "lm-2/snare.m4a": {
+      "upstream": "LM-2/snare-m.m4a",
+      "bytes": 3364,
+      "sha256": "2ccc33ca5f3667792cc7bcfa1600ee565db89a23445de3f9ce6a05f77e4e9f6f"
+    },
+    "lm-2/closed-hat.m4a": {
+      "upstream": "LM-2/hhclosed.m4a",
+      "bytes": 2947,
+      "sha256": "dc54a455e396625f59886972d36f86d4f03c4aa996277c4e6c74c185816512e8"
+    },
+    "lm-2/open-hat.m4a": {
+      "upstream": "LM-2/hhopen.m4a",
+      "bytes": 11659,
+      "sha256": "142d0a3dab3519648252546ab2a8ddf963860ef91c1a2888734bf829a451a286"
+    },
+    "lm-2/clap.m4a": {
+      "upstream": "LM-2/clap.m4a",
+      "bytes": 4435,
+      "sha256": "1dd2587bb1c921c8d3e2ae7b2970e80974c794aca8ff6463e7858118952755bb"
+    },
+    "lm-2/low-perc.m4a": {
+      "upstream": "LM-2/conga-l.m4a",
+      "bytes": 7914,
+      "sha256": "20f5d4d0bfece74c6ba1c895f71a9895d56a20a81fe64522ca769cc353d1f5fb"
+    },
+    "lm-2/high-perc.m4a": {
+      "upstream": "LM-2/conga-h.m4a",
+      "bytes": 3967,
+      "sha256": "7d01b7a7cae4a835acac87e34be56951bf837bf2d46abe1abf4c64c2e485cd2b"
+    },
+    "lm-2/rim.m4a": {
+      "upstream": "LM-2/stick-m.m4a",
+      "bytes": 2934,
+      "sha256": "8dfe5ff0ceb056d56b56f2ef70abc51ce2676a7b8a91c58027ba7204ae04d412"
+    },
+    "cr-8000/kick.m4a": {
+      "upstream": "Roland-CR-8000/kick.m4a",
+      "bytes": 5250,
+      "sha256": "64090055021fa866bb6e12c540d350d6a0f179e7ba9bb4d39611612aa422db36"
+    },
+    "cr-8000/snare.m4a": {
+      "upstream": "Roland-CR-8000/snare.m4a",
+      "bytes": 3222,
+      "sha256": "473123bd5f51a2529d5cdba54415f8ed8434bd92a3d41aa114a6ef840bf93aa6"
+    },
+    "cr-8000/closed-hat.m4a": {
+      "upstream": "Roland-CR-8000/hihat-closed.m4a",
+      "bytes": 3612,
+      "sha256": "bbd6be53b34e3b9fc69b3c9cf14831a3a7b5d813aa53978d48ebbfbfa9517e11"
+    },
+    "cr-8000/open-hat.m4a": {
+      "upstream": "Roland-CR-8000/hihat-open.m4a",
+      "bytes": 7906,
+      "sha256": "ef5054c47d9c7b6a4b04ed6f0f77227350aa68d52c0511846506fd55ba725252"
+    },
+    "cr-8000/clap.m4a": {
+      "upstream": "Roland-CR-8000/clap.m4a",
+      "bytes": 7598,
+      "sha256": "325ca40cce18d86d466b432ccc85f7be6545ce1cfe0681992bb2859d7913ee21"
+    },
+    "cr-8000/low-perc.m4a": {
+      "upstream": "Roland-CR-8000/conga-low.m4a",
+      "bytes": 7601,
+      "sha256": "c7b6cadf98b4e26af2a68db20443d7f7ee0170c7345c39fd76e6c444037c6e10"
+    },
+    "cr-8000/high-perc.m4a": {
+      "upstream": "Roland-CR-8000/conga-high.m4a",
+      "bytes": 4888,
+      "sha256": "ccf63917633f5eeaa2c7b864f14f0d87d18190638f79827b74712ac2e551eddb"
+    },
+    "cr-8000/rim.m4a": {
+      "upstream": "Roland-CR-8000/rimshot.m4a",
+      "bytes": 2386,
+      "sha256": "4193cbfc77f641209b11a9b2da2c0ffde0b51269ebbe33da62a5f72b862e826a"
+    },
+    "drumtraks/kick.m4a": {
+      "upstream": "Sequential-Circuits-Drumtraks/DT_Kick.m4a",
+      "bytes": 4287,
+      "sha256": "6ffc4cc9f39a0323cb572076f5c0f6acc6969c455bb9869cc215d15c6c40293d"
+    },
+    "drumtraks/snare.m4a": {
+      "upstream": "Sequential-Circuits-Drumtraks/DT_Snare.m4a",
+      "bytes": 5239,
+      "sha256": "d4e3bc507224ebf4512563512ab8b418dcc4bdadf118e7fddcd5ea0acf96457f"
+    },
+    "drumtraks/closed-hat.m4a": {
+      "upstream": "Sequential-Circuits-Drumtraks/DT_Closedhat.m4a",
+      "bytes": 4942,
+      "sha256": "9e47c41a041950ab704ed64ccdedb7a90d14cc49e5b4c99c5df9dd07c8b5f10d"
+    },
+    "drumtraks/open-hat.m4a": {
+      "upstream": "Sequential-Circuits-Drumtraks/DT_Openhat.m4a",
+      "bytes": 6647,
+      "sha256": "5bb2b709c79586e666bf07b73ec2b5b266b59fdf27df3ddc2c06fe8157dc5530"
+    },
+    "drumtraks/clap.m4a": {
+      "upstream": "Sequential-Circuits-Drumtraks/DT_Clap.m4a",
+      "bytes": 6404,
+      "sha256": "75b8a4acacf567a13fc05886ea78236c83106ba2b109e4c78b94a7a05702c904"
+    },
+    "drumtraks/low-perc.m4a": {
+      "upstream": "Sequential-Circuits-Drumtraks/DT_Tom02.m4a",
+      "bytes": 19248,
+      "sha256": "c968e6b9ebdc39909d390c591ef0d133cf347872f3105d7579a35610573631d7"
+    },
+    "drumtraks/high-perc.m4a": {
+      "upstream": "Sequential-Circuits-Drumtraks/DT_Tom01.m4a",
+      "bytes": 13654,
+      "sha256": "dab0abc39538504ec018df6688a4edd9adfbfbdb71a7380a025c438214a6bf99"
+    },
+    "drumtraks/rim.m4a": {
+      "upstream": "Sequential-Circuits-Drumtraks/DT_Rimshot.m4a",
+      "bytes": 5255,
+      "sha256": "0a4d1feb10b32153223cb2aff9a4d788f6ab123763422bc6d7f46a16a5d0c56b"
+    },
+    "rz-1/kick.m4a": {
+      "upstream": "Casio-RZ1/kick.m4a",
+      "bytes": 3602,
+      "sha256": "ecf9dfdae0eadd4f472932a56f5674956d9afa4f907f2525e60895aa8007e6d1"
+    },
+    "rz-1/snare.m4a": {
+      "upstream": "Casio-RZ1/snare.m4a",
+      "bytes": 4705,
+      "sha256": "d8935bc9344c5cc0aaa1fb60f7236efaa9fdad4b391af3209141eb649a341979"
+    },
+    "rz-1/closed-hat.m4a": {
+      "upstream": "Casio-RZ1/hihat-closed.m4a",
+      "bytes": 2613,
+      "sha256": "19e0f1af82bbe765e09018fcdee316c035bf19042c91bbe0cb2a1c47cd67d04e"
+    },
+    "rz-1/open-hat.m4a": {
+      "upstream": "Casio-RZ1/hihat-open.m4a",
+      "bytes": 11562,
+      "sha256": "4353e8c9cef2587519047350647983a41d8a2346798de97b1fd87b021f0bb663"
+    },
+    "rz-1/clap.m4a": {
+      "upstream": "Casio-RZ1/clap.m4a",
+      "bytes": 4360,
+      "sha256": "4ca543c93d4e3f3e2f96c5148f30456fb6f216cd81384007e46b9f713122a6e0"
+    },
+    "rz-1/low-perc.m4a": {
+      "upstream": "Casio-RZ1/tom-3.m4a",
+      "bytes": 5051,
+      "sha256": "6b6087af66e32cf49db3f15ec6aba8e8890afc8d82eb98c23f8f9d79dc7f192c"
+    },
+    "rz-1/high-perc.m4a": {
+      "upstream": "Casio-RZ1/tom-1.m4a",
+      "bytes": 5111,
+      "sha256": "c1905d63be93319af9f6d618282e9b9edb771d25e31620bf20ed3c4d1167cd2f"
+    },
+    "rz-1/rim.m4a": {
+      "upstream": "Casio-RZ1/clave.m4a",
+      "bytes": 3290,
+      "sha256": "46be29bbca36a4920a6f661ad73de74d4620e77f8539e26ad83c0863aadb8b73"
+    },
+    "mfb-512/kick.m4a": {
+      "upstream": "MFB-512/kick.m4a",
+      "bytes": 2231,
+      "sha256": "40ff65293826c040e5b4ddf7c0f052d909934ab72bab59e0c3f484a59d19009e"
+    },
+    "mfb-512/snare.m4a": {
+      "upstream": "MFB-512/snare.m4a",
+      "bytes": 3525,
+      "sha256": "f31055d0b7cb1bd53a9a6d19b774eb506887e83660c41068cc7bb972d3a5d4b0"
+    },
+    "mfb-512/closed-hat.m4a": {
+      "upstream": "MFB-512/hihat-closed.m4a",
+      "bytes": 3919,
+      "sha256": "955e5e481c42a8a5a236b8eaa72d2ad0ebc6d6806873941e88360312fbc2fd09"
+    },
+    "mfb-512/open-hat.m4a": {
+      "upstream": "MFB-512/hihat-open.m4a",
+      "bytes": 27720,
+      "sha256": "2587e7a8b4d1ba3f3e204ece90f55bda1dba76e209fc97fbf6a810d9a8909fab"
+    },
+    "mfb-512/clap.m4a": {
+      "upstream": "MFB-512/clap.m4a",
+      "bytes": 3928,
+      "sha256": "d0ec8f0ffe15b4340e6c9a2bea27585608ccefb56d973228b8a344415538a11f"
+    },
+    "mfb-512/low-perc.m4a": {
+      "upstream": "MFB-512/tom-low.m4a",
+      "bytes": 5223,
+      "sha256": "a0525114f472eace784c1a9c9fc9d5aff507dc25fd85655ba3ae6ce0984f3ca4"
+    },
+    "mfb-512/high-perc.m4a": {
+      "upstream": "MFB-512/tom-hi.m4a",
+      "bytes": 6596,
+      "sha256": "2a15357f3e2b7206d7fb13efc09647796268ccbee8be4c9e74c9b7f8f137989b"
+    },
+    "mfb-512/rim.m4a": {
+      "upstream": "MFB-512/tom-mid.m4a",
+      "bytes": 5879,
+      "sha256": "9a69d6a47cc4043e2c19bb5b1bc527b9887d074dfe1f05f0383b61f1b07f7758"
+    },
+    "mr-10/kick.m4a": {
+      "upstream": "Yamaha-MR10/kick1.m4a",
+      "bytes": 4310,
+      "sha256": "24f661d03a755dc8b21c85211935d60fe3e62ea4e3a2f2c4f6a4456787672921"
+    },
+    "mr-10/snare.m4a": {
+      "upstream": "Yamaha-MR10/snare.m4a",
+      "bytes": 5958,
+      "sha256": "1666ad5c53f76c6e72e9aa0e1c9d36ca14a0e825b7db47c9d5eb10a210817958"
+    },
+    "mr-10/closed-hat.m4a": {
+      "upstream": "Yamaha-MR10/chihat.m4a",
+      "bytes": 1920,
+      "sha256": "735066f810ff56bb68f7c3a91833a66ec03b2a0dcbaacf877aa1839438a6cc85"
+    },
+    "mr-10/open-hat.m4a": {
+      "upstream": "Yamaha-MR10/ohihat.m4a",
+      "bytes": 7603,
+      "sha256": "483385dea340768fb3f9f3623d876ca470e39956fb6080232fc0cd6ee5eaee6c"
+    },
+    "mr-10/clap.m4a": {
+      "upstream": "Yamaha-MR10/shortsn.m4a",
+      "bytes": 3597,
+      "sha256": "3788fceb24c61ac668b6e2214c7ae1071d483f3d5af0dc92ce86e5fa03ea96a4"
+    },
+    "mr-10/low-perc.m4a": {
+      "upstream": "Yamaha-MR10/lowtom.m4a",
+      "bytes": 8012,
+      "sha256": "57eadcad5de21c33ce98fcb060f55c9e8621c839ee97ded2b12910f12d6fc1e5"
+    },
+    "mr-10/high-perc.m4a": {
+      "upstream": "Yamaha-MR10/hitom.m4a",
+      "bytes": 6413,
+      "sha256": "330167fbb4a77ba62f5b73a19ee73bdd5aad4eb4d37f1e0a7888e4842af20f8b"
+    },
+    "mr-10/rim.m4a": {
+      "upstream": "Yamaha-MR10/shorthi.m4a",
+      "bytes": 2573,
+      "sha256": "29ab4006a224405fa691564969b1fda251a1ed4918098524111a6c68654c0e04"
+    },
+    "808-mini/kick.m4a": {
+      "upstream": "808-mini/kick.m4a",
+      "bytes": 5511,
+      "sha256": "0746e2157b2d5a30e883fbcea49428c5a9b8093ab7166b1dedf0c0603cf5ed67"
+    },
+    "808-mini/snare.m4a": {
+      "upstream": "808-mini/snare-2.m4a",
+      "bytes": 15976,
+      "sha256": "2ef94b486707231b8160969e68826996c144d6107aca542f6169bc72ce230fd3"
+    },
+    "808-mini/closed-hat.m4a": {
+      "upstream": "808-mini/hhclosed-1.m4a",
+      "bytes": 4264,
+      "sha256": "d37b1b8258dd293e45df3f9dd11f78eb65efabd137e0d0633a9398e18785fb26"
+    },
+    "808-mini/open-hat.m4a": {
+      "upstream": "808-mini/hhopen-1.m4a",
+      "bytes": 7316,
+      "sha256": "4a321ccdd72d6e372d507f2e383d12cf909d5d62d56dfd04fc91a5470866d50e"
+    },
+    "808-mini/clap.m4a": {
+      "upstream": "808-mini/snare-3.m4a",
+      "bytes": 5160,
+      "sha256": "bac57be22f536400ff384bae00daf31fe097c8d96fe19f379d2625945592ec96"
+    },
+    "808-mini/low-perc.m4a": {
+      "upstream": "808-mini/tom-low.m4a",
+      "bytes": 11990,
+      "sha256": "6ea0981c46937a14ca414e98a2f2f5bae6848f9d6fb0298a44c70eef0c769f19"
+    },
+    "808-mini/high-perc.m4a": {
+      "upstream": "808-mini/tom-high.m4a",
+      "bytes": 11205,
+      "sha256": "245a984c052edeb577b8eb3f133c68a664c41dd6a452397aef3bec0440bd53b4"
+    },
+    "808-mini/rim.m4a": {
+      "upstream": "808-mini/hhclosed-2.m4a",
+      "bytes": 7705,
+      "sha256": "2121494d279d67d5e579fafe302807defb64fe77901bf985bfce40f3d87ca0a3"
+    },
+    "sk-1/kick.m4a": {
+      "upstream": "Casio-SK1/kick.m4a",
+      "bytes": 2038,
+      "sha256": "28a6570304059e048dcf0b5911ad5afd1957556392bc57e2ea781012c36d0ada"
+    },
+    "sk-1/snare.m4a": {
+      "upstream": "Casio-SK1/snare.m4a",
+      "bytes": 2726,
+      "sha256": "a370c64cce900b302f586aed97908ee0183108c6eb6414af7588831667466a38"
+    },
+    "sk-1/closed-hat.m4a": {
+      "upstream": "Casio-SK1/hithat.m4a",
+      "bytes": 2586,
+      "sha256": "9e6f31063aa9287a83272e37fec3e57050c0caca60d371d86f6ebad34b3eca5b"
+    },
+    "sk-1/open-hat.m4a": {
+      "upstream": "Casio-SK1/hihat-open.m4a",
+      "bytes": 4603,
+      "sha256": "3d7fd6d370aa8f76fd0dee56c840ad339eef0c0c86cf604c2adb2c890f667c53"
+    },
+    "sk-1/low-perc.m4a": {
+      "upstream": "Casio-SK1/tom-low.m4a",
+      "bytes": 2957,
+      "sha256": "aba876b8053cb9d3426332f0f6263b5705db167be0e87bbc808bb81fdad67403"
+    },
+    "sk-1/rim.m4a": {
+      "upstream": "Casio-SK1/tom-hi.m4a",
+      "bytes": 2945,
+      "sha256": "360a5507e8315de91256a4aaefbc1d178ac740d7a802af84f86b29e5daa0e501"
+    }
+  }
+}
