@@ -40,8 +40,14 @@ export default tseslint.config(
     },
   },
   {
-    // Tests are allowed to be noisier than application code.
-    files: ['tests/**', '**/*.test.ts', '**/*.test.tsx'],
+    /*
+     * Tests and development scripts are allowed to be noisier than application code.
+     *
+     * The capture script prints where it wrote its files, which is the whole reason to
+     * run it, and it hands Playwright's own loosely-typed device descriptors straight
+     * back to Playwright. Neither is worth a disable comment at every line.
+     */
+    files: ['tests/**', 'scripts/**', '**/*.test.ts', '**/*.test.tsx'],
     rules: {
       'no-console': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',

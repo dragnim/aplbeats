@@ -1,0 +1,175 @@
+name: CI
+
+# One workflow, so that deployment is a consequence of verification rather than a
+# race alongside it. Every job the deploy depends on is named, so a commit that
+# breaks a check cannot be published while CI is still discovering that it has.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  # Allows a deployment to be re-run from the Actions tab without a new commit.
+  workflow_dispatch:
+
+# Least privilege by default; the deploy job asks for what it alone needs.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # A superseded pull-request run is waste and is cancelled. A run on main may be
+  # part-way through publishing, so it is always allowed to finish.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  verify:
+    name: Typecheck, lint, format, tests and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Unit and component tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  e2e:
+    name: End-to-end tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        # Chromium and WebKit, which is what the three projects need. Chromium is
+        # where playback can be checked at all: Playwright's WebKit is built without
+        # Web Audio, and the audio tests skip themselves there rather than pretending.
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Run Playwright tests
+        run: npm run test:e2e
+
+      - name: Upload the report when something fails
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  package:
+    name: Build the Pages artifact
+    # The gate. Both must have succeeded; a failed or cancelled job leaves this one
+    # unrun, and therefore leaves the deployment unrun too.
+    needs: [verify, e2e]
+    # Never from a pull request, and only from the branch that is published. A fork's
+    # pull request cannot reach this job at all.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v6
+
+      - name: Build
+        # A second build rather than a reused one, because only here is the published
+        # base path known: configure-pages resolves it, so renaming the repository
+        # needs no code change. The checks above proved this same commit builds and
+        # passes its tests.
+        run: npm run build
+        env:
+          VITE_BASE: ${{ steps.pages.outputs.base_path }}/
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: package
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    # Deployments queue rather than cancelling each other part-way.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Confirm this commit is still the tip of main
+        # A run that waited behind a newer one would otherwise publish an older site
+        # over it. A deployment for a commit main has moved past is abandoned.
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin main
+          tip="$(git rev-parse FETCH_HEAD)"
+          if [ "$tip" != "${{ github.sha }}" ]; then
+            echo "main has moved to $tip; not publishing ${{ github.sha }} over it."
+            exit 1
+          fi
+          echo "This commit is still the tip of main."
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+        with:
+          # Thirty minutes rather than the default ten. Cancelling is what this action
+          # does when its timeout expires, so a Pages service that is merely slow has
+          # its work thrown away.
+          timeout: 1800000

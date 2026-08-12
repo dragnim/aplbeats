@@ -27,7 +27,15 @@
 
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+
+    /*
+     * The capture script is a plain JavaScript module. Named here so it belongs to
+     * this project rather than to the linter's default one, which allows only a
+     * handful of files before it refuses. Not checked: `checkJs` stays off, so this
+     * gives it types for the linter without turning it into a build.
+     */
+    "allowJs": true
   },
-  "include": ["src", "tests", "vite.config.ts", "vitest.config.ts", "playwright.config.ts"]
+  "include": ["src", "tests", "scripts", "vite.config.ts", "vitest.config.ts", "playwright.config.ts"]
 }
