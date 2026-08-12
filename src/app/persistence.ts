@@ -14,6 +14,8 @@
  * nothing has to be regenerated to restore it anyway.
  */
 
+import { resolveKitId } from '@/audio/kits/kits';
+import { SYNTH_KIT_ID, type KitId } from '@/audio/kits/types';
 import { GENERATOR_VERSION } from '@/generation/version';
 import { isPresetId, type PresetId } from '@/generation/presets';
 import { clampSeed } from '@/generation/prng';
@@ -24,6 +26,19 @@ import { clampMacro, noLocks, type CreativeState } from './studio';
 
 const STORAGE_KEY = 'aplbeats.session.v1';
 const SCHEMA_VERSION = 1;
+
+/*
+ * The drum machine, stored under its own key.
+ *
+ * Separate from the session above, and deliberately so. The session is discarded whenever the
+ * generator version changes, because a stored seed means something different after the
+ * generator is tuned — but which drum machine somebody likes has nothing to do with the
+ * generator, and losing it on a generator bump would be losing it for no reason. It is also
+ * not part of the creative state at all: choosing a kit is a listening decision, like moving a
+ * fader, and it is not in Undo.
+ */
+const KIT_STORAGE_KEY = 'aplbeats.kit.v1';
+const KIT_SCHEMA_VERSION = 1;
 
 export interface Session {
   readonly creative: CreativeState;
@@ -96,6 +111,41 @@ export function saveSession(session: Session): void {
 export function clearSession(): void {
   try {
     globalThis.localStorage?.removeItem(STORAGE_KEY);
+    globalThis.localStorage?.removeItem(KIT_STORAGE_KEY);
+  } catch {
+    // See above.
+  }
+}
+
+/**
+ * The drum machine last chosen, or the synthesised one.
+ *
+ * `resolveKitId` is what makes this safe across releases: an identifier that no longer exists
+ * — a kit withdrawn because its provenance turned out to be doubtful, say — becomes the
+ * synthesised kit rather than a startup failure or a silent instrument.
+ */
+export function loadKitChoice(): KitId {
+  try {
+    const raw = globalThis.localStorage?.getItem(KIT_STORAGE_KEY) ?? null;
+    if (raw === null) return SYNTH_KIT_ID;
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return SYNTH_KIT_ID;
+    if (parsed.schema !== KIT_SCHEMA_VERSION) return SYNTH_KIT_ID;
+
+    return resolveKitId(parsed.kitId);
+  } catch {
+    return SYNTH_KIT_ID;
+  }
+}
+
+/** Remember the drum machine. Failure is ignored, as everywhere else in this file. */
+export function saveKitChoice(kitId: KitId): void {
+  try {
+    globalThis.localStorage?.setItem(
+      KIT_STORAGE_KEY,
+      JSON.stringify({ schema: KIT_SCHEMA_VERSION, kitId: resolveKitId(kitId) }),
+    );
   } catch {
     // See above.
   }

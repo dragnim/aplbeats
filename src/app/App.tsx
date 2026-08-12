@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTransform } from '@/apl/useTransform';
+import { useDrumMachine } from '@/audio/useDrumMachine';
+import { DrumMachineSelect } from '@/components/DrumMachineSelect';
 import { GeneratorPanel } from '@/components/GeneratorPanel';
 import { TransformPanel } from '@/components/TransformPanel';
 import { Logo } from '@/components/Logo';
@@ -85,6 +87,22 @@ export function App(): React.JSX.Element {
    * `useTransform` for the rules and why they are all in one file.
    */
   const transform = useTransform({ pattern, onApply: studio.applyTransform });
+
+  /*
+   * Which drum machine plays it.
+   *
+   * A rendering choice, and nothing but: this hook holds one identifier and hands the engine
+   * eight voices. It cannot see the pattern, the seed, the macros, the locks, the transform
+   * settings, the tempo or the mixer — so changing the machine changes the sound and cannot
+   * change the rhythm, by construction rather than by care.
+   *
+   * `transport.setKit` swaps the kit in one assignment, so this behaves identically whether the
+   * transport is stopped or halfway through a bar.
+   */
+  const drumMachine = useDrumMachine({
+    onKitReady: transport.setKit,
+    baseUrl: import.meta.env.BASE_URL,
+  });
 
   /*
    * Save, a moment after things settle.
@@ -179,6 +197,7 @@ export function App(): React.JSX.Element {
           onSwingChange={(next) => {
             setSwing(clampSwing(next));
           }}
+          instrument={<DrumMachineSelect drumMachine={drumMachine} />}
         />
 
         <h2 className="visuallyHidden">Pattern</h2>
@@ -233,6 +252,29 @@ export function App(): React.JSX.Element {
           Boolean matrix underneath. The generator and the timing are local; the transformations are executed
           by Dyalog APL, through TryAPL, one whole pattern at a time.
         </p>
+
+        {/*
+          The sample credit, in the interface rather than only in the repository.
+
+          "Selected" because nine of the ten packs upstream are included and one is not, so
+          "samples from" on its own would overstate what is here. `rel="noreferrer noopener"`
+          on an external link as everywhere else, and the sentence is careful to credit the
+          collection without implying that its author had anything to do with APL Beats.
+        */}
+        <p className={styles.note}>
+          Selected drum machine samples from{' '}
+          <a
+            className={styles.link}
+            href="https://github.com/smpldsnds/drum-machines"
+            rel="noreferrer noopener"
+            target="_blank"
+          >
+            smpldsnds/drum-machines
+          </a>
+          , a public-domain collection. APL Beats is an independent project and is not affiliated with or
+          endorsed by the manufacturers of the drum machines named in it.
+        </p>
+
         <a
           className={styles.link}
           href="https://github.com/dragnim/aplbeats"

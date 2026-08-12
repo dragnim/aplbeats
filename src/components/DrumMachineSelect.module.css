@@ -1,0 +1,87 @@
+/*
+ * The drum machine selector, sitting in the transport bar.
+ *
+ * Laid out as a label above a control, matching the tempo and swing dials beside it rather
+ * than the APL panel below — it belongs to the transport row, and looking like it is how a
+ * visitor knows it changes the instrument rather than the pattern.
+ */
+
+.field {
+  display: grid;
+  /* Label, control, status: the third row is usually empty and must not move the other two. */
+  grid-template-rows: auto auto 1rem;
+  align-content: center;
+  gap: var(--space-1);
+  /* Pushed to the far end of the bar, away from Play. */
+  margin-left: auto;
+}
+
+.label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.select {
+  min-height: var(--control-height);
+  min-width: 11rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: var(--text-sm);
+  /* The native arrow, kept: a bare box that opens a menu is worse than a familiar control. */
+  cursor: pointer;
+}
+
+.select:hover {
+  border-color: var(--accent);
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/*
+ * One line, reserved whether or not there is anything in it.
+ *
+ * The row is sized in the grid above, so a kit that starts loading does not nudge the tempo
+ * slider sideways — a control that moves while you are reaching for it is worse than a moment
+ * of blank space.
+ */
+.status {
+  min-width: 0;
+  font-size: var(--text-xs);
+  line-height: 1rem;
+  color: var(--text-dim);
+  /* Long enough to be a sentence on failure; truncated rather than allowed to reflow the bar. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusFailed {
+  color: var(--accent-bright);
+  /* A failure is worth reading in full, so this one may wrap out of its reserved line. */
+  overflow: visible;
+  white-space: normal;
+}
+
+@media (pointer: coarse), (max-width: 52rem) {
+  /*
+   * On a phone the bar is a column, so the selector stops being the thing on the right and
+   * becomes the thing underneath — full width, and no longer pushed anywhere by auto margins.
+   */
+  .field {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .select {
+    width: 100%;
+  }
+}

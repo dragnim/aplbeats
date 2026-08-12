@@ -4,11 +4,13 @@ import type { TransportState } from '@/transport/Transport';
 import styles from './TransportBar.module.css';
 
 /*
- * Play, tempo, swing. Nothing else.
+ * Play, tempo, swing, and which drum machine.
  *
  * The transport is the second most important object on the page and is allowed to
- * look like it, but three controls is the whole of it — a first visit should present
- * one obvious thing to press and two obvious things to move, not a mixing desk.
+ * look like it. Stage 4 adds a fourth control and it belongs here rather than in a
+ * settings panel: choosing the instrument is what a drum machine's front panel is
+ * for, and it sits at the far end of the bar so the one obvious thing to press is
+ * still Play.
  */
 
 export interface TransportBarProps {
@@ -18,6 +20,13 @@ export interface TransportBarProps {
   readonly onToggle: () => void;
   readonly onBpmChange: (bpm: number) => void;
   readonly onSwingChange: (swing: number) => void;
+  /**
+   * The instrument control, at the far end of the bar.
+   *
+   * A slot rather than a prop for the kit itself, so this component's own props stay about the
+   * transport. What goes in it is the drum machine selector: which instrument, then play it.
+   */
+  readonly instrument?: React.ReactNode;
 }
 
 export function TransportBar({
@@ -27,6 +36,7 @@ export function TransportBar({
   onToggle,
   onBpmChange,
   onSwingChange,
+  instrument,
 }: TransportBarProps): React.JSX.Element {
   const isPlaying = state === 'playing';
   const swingPercent = Math.round(swing * 100);
@@ -114,6 +124,8 @@ export function TransportBar({
           <span className={styles.unit}>%</span>
         </output>
       </div>
+
+      {instrument}
     </div>
   );
 }
