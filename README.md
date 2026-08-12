@@ -12,12 +12,24 @@ but the whole idea. A rhythm is a rectangular array, array languages are good at
 arrays — and pressing **Apply with APL** sends that matrix to real
 [Dyalog APL](https://www.dyalog.com/) and plays back the matrix that comes home.
 
-> **What runs where, precisely.** Generation, timing and sound are local TypeScript and Web
-> Audio. The four transformations are executed by Dyalog APL, remotely, via
-> [TryAPL](https://tryapl.org/). There is no local fallback for them: if APL is unavailable
-> the transform does not happen and the beat is left alone, because an interface that says
-> "Apply with APL" and quietly computed the answer itself would be lying. See
-> [Transform with APL](#transform-with-apl).
+> **What runs where, precisely.** Generation and timing are local TypeScript and Web Audio. The
+> four transformations are executed by Dyalog APL, remotely, via [TryAPL](https://tryapl.org/).
+> There is no local fallback for them: if APL is unavailable the transform does not happen and the
+> beat is left alone, because an interface that says "Apply with APL" and quietly computed the
+> answer itself would be lying. See [Transform with APL](#transform-with-apl).
+
+```
+        TypeScript generator
+                ↓
+        Boolean 8 × 16 pattern  ⇄  real Dyalog APL transforms, through TryAPL
+                ↓
+        Web Audio scheduler
+                ↓
+        the selected drum machine — synthesised, or sampled
+```
+
+The drum machine is a **rendering** choice. It decides what the pattern sounds like and nothing
+else: APL sees the same matrix whichever machine is playing it.
 
 ![The APL Beats sequencer and generator, playing](docs/screenshot-playing.png)
 
@@ -37,6 +49,8 @@ arrays — and pressing **Apply with APL** sends that matrix to real
 - [Development commands](#development-commands)
 - [How it is put together](#how-it-is-put-together)
 - [Audio timing](#audio-timing)
+- [Drum machines](#drum-machines)
+- [Drum machine samples and credits](#drum-machine-samples-and-credits)
 - [Sounds and licensing](#sounds-and-licensing)
 - [Review tooling](#review-tooling)
 - [Accessibility](#accessibility)
@@ -53,6 +67,9 @@ arrays — and pressing **Apply with APL** sends that matrix to real
 
 - **Eight tracks, sixteen steps.** Kick, Snare, Closed Hat, Open Hat, Clap, Low Perc, High
   Perc and Rim, across one bar of four-four in sixteenth notes.
+- **Nine drum machines, plus the synthesised kit.** TR-808, LinnDrum LM-2, CR-8000, Drumtraks,
+  Casio RZ-1, MFB-512, Yamaha MR10, 808 Mini and Casio SK-1 — changing machine changes the sound
+  and never the rhythm.
 - **Four transformations, executed in APL.** Rotate, Reverse, Periodic and Euclidean, on one
   track or on the whole matrix — with the expression that ran on show if you want to see it.
 - **Randomise.** A new take on the groove you have, as far away as Variation allows.
@@ -403,23 +420,25 @@ npm run dev
 
 ## Development commands
 
-| Command                     | What it does                                                                     |
-| --------------------------- | -------------------------------------------------------------------------------- |
-| `npm run dev`               | Vite dev server                                                                  |
-| `npm run build`             | Typecheck, then build to `dist/`                                                 |
-| `npm run preview`           | Serve `dist/` at the published base path                                         |
-| `npm run typecheck`         | `tsc --noEmit`                                                                   |
-| `npm run lint`              | ESLint, type-aware                                                               |
-| `npm run format:check`      | Prettier, checking — this is what CI runs                                        |
-| `npm test`                  | Unit and component tests, once                                                   |
-| `npm run test:e2e`          | Playwright, across three browser projects                                        |
-| `npm run review:patterns`   | Inspect many generated bars — see [Review tooling](#review-tooling)              |
-| `npm run review:transforms` | Read what each transformation does to a beat, before and after                   |
-| `npm run verify:apl-live`   | **Four real TryAPL requests.** Manual, never in CI                               |
-| `npm run screenshot`        | Capture the interface to `docs/`, against a running preview                      |
-| `npm run measure:kit`       | Render every voice offline and report its level and length (needs `npm run dev`) |
-| `npm run measure:generated` | Render generated bars through the real master chain and check for clipping       |
-| `npm run verify:deployment` | Load the published site and check it works. **One real TryAPL request**          |
+| Command                     | What it does                                                                         |
+| --------------------------- | ------------------------------------------------------------------------------------ |
+| `npm run dev`               | Vite dev server                                                                      |
+| `npm run build`             | Typecheck, then build to `dist/`                                                     |
+| `npm run preview`           | Serve `dist/` at the published base path                                             |
+| `npm run typecheck`         | `tsc --noEmit`                                                                       |
+| `npm run lint`              | ESLint, type-aware                                                                   |
+| `npm run format:check`      | Prettier, checking — this is what CI runs                                            |
+| `npm test`                  | Unit and component tests, once                                                       |
+| `npm run test:e2e`          | Playwright, across three browser projects                                            |
+| `npm run review:patterns`   | Inspect many generated bars — see [Review tooling](#review-tooling)                  |
+| `npm run review:transforms` | Read what each transformation does to a beat, before and after                       |
+| `npm run verify:apl-live`   | **Four real TryAPL requests.** Manual, never in CI                                   |
+| `npm run screenshot`        | Capture the interface to `docs/`, against a running preview                          |
+| `npm run measure:kit`       | Render every synthesised voice and report its level and length (needs `npm run dev`) |
+| `npm run measure:kits`      | Measure every drum machine and check the calibration (needs `npm run dev`)           |
+| `npm run import:samples`    | Re-fetch the samples from the pinned upstream commit and checksum them               |
+| `npm run measure:generated` | Render generated bars through the real master chain and check for clipping           |
+| `npm run verify:deployment` | Load the published site and check it works. **One real TryAPL request**              |
 
 ## How it is put together
 
@@ -446,6 +465,16 @@ src/
     generator.ts   settings → an 8 × 16 matrix
     mutate.ts      how much of a candidate to adopt
     metrics.ts     measurement, for the tests and the review tooling
+  audio/
+    kits/
+      types.ts       what a kit is: eight sounds, and no authority over anything else
+      kits.ts        the ten machines, and which sound plays on which row
+      provenance.ts  where every bundled sample came from, and on what basis
+      checksums.json generated: the bytes of every bundled file
+    kit.ts         the eight synthesised voices
+    sampleKit.ts   a sampled kit, and the choke groups the hardware would have
+    kitLoader.ts   fetch, decode, cache. Never more than once
+    useDrumMachine.ts  the one identifier that is Stage 4's whole state
   pattern/     the matrix, the eight tracks, the mixer, the opening groove
   transport/   the timing arithmetic, the look-ahead scheduler, the transport
   audio/       the AudioContext boundary, the synthesised kit, the DSP pieces
@@ -469,6 +498,10 @@ every later draw and rewrite the whole kit — which would make locks impossible
 meaningless.
 
 **The audio clock and the render loop never touch.** See below.
+
+**The kit is a rendering choice and cannot reach the pattern.** The scheduler asks "play row N at
+time T" and has no way of telling whether the answer is an oscillator or a WAV. That is why Stage 4
+needed no changes to the scheduler, the transport or the timing at all.
 
 **The APL boundary is one directory and one hook.** Nothing outside `src/apl/` can cause a
 request, and inside it only `apply` can. A test forbids any module under `src/` from importing
@@ -498,12 +531,335 @@ pattern while another played for up to two seconds, and it would put a deadline 
 scheduler that Stage 1 deliberately keeps clear. With a hundred-millisecond look-ahead a
 swap is audible within about a sixteenth anyway.
 
+## Drum machines
+
+The selector sits in the transport bar, next to Play and the tempo, because that is what it is: an
+instrument control rather than a preference. Ten options — the synthesised kit APL Beats has always
+had, and nine sampled machines.
+
+**Changing drum machine changes the sound, not the rhythm.** The pattern, the seed, the preset, all
+four macros, the locks, the APL transform settings, the tempo, the swing, the mutes and the faders
+are all untouched. That is not a promise made carefully; it is a property of the code. The hook that
+holds the kit choice holds one identifier and hands the audio engine eight voices, and it cannot
+reach any of the rest.
+
+**It is not part of Undo.** Choosing an instrument is a listening decision, like moving a fader, and
+an Undo that silently swapped the kit back instead of restoring your last edit would be answering a
+question nobody asked. It is remembered under its own storage key, so it also survives a generator
+version change that discards the rest of the session.
+
+### Loading
+
+The synthesised kit is code, so **a first visit downloads no audio at all**. Choosing a sampled kit
+fetches that kit's eight samples and nothing else — no preloading, no prefetching, no speculative
+decode of the next one along. Once decoded the buffers are kept, so coming back to a machine you
+have already heard is instant and silent.
+
+Decoding happens in an `OfflineAudioContext`, which needs no user gesture, so a kit chosen before
+the first Play is ready by the time Play is pressed.
+
+**Changing kit while playing is the ordinary case, not a special one.** The eight voices are
+replaced by one assignment between scheduler ticks: the bar does not restart, the playhead does not
+reset, the tempo does not change and the pattern does not move. Notes already handed to Web Audio
+play out on the kit that scheduled them, which is correct — they were promised at a time and with a
+sound. A kit is installed only once all eight of its samples have decoded, so it is never half one
+machine and half another.
+
+### When a kit will not load
+
+The rhythm is never the casualty. A missing file, a corrupt one, a dropped connection or a browser
+without Web Audio all end the same way: the synthesised kit plays, the selector moves to it so that
+the interface shows what is actually sounding, and one line says why.
+
+```
+Could not load TR-808. Using APL Beats Synth.
+```
+
+A browser with no Web Audio at all is told so directly — _"This browser cannot play sampled kits"_ —
+and nothing is fetched, because downloading fifty kilobytes that could never be decoded would be
+spending somebody's data on a certainty. The stored choice moves back to the synthesised kit too,
+so a machine that has stopped being available does not greet you with the same error on every
+reload.
+
+## Drum machine samples and credits
+
+APL Beats uses selected samples from **[smpldsnds/drum-machines](https://github.com/smpldsnds/drum-machines)**,
+a public-domain collection of drum machine recordings. Nine of its ten packs are included here.
+
+- Upstream: <https://github.com/smpldsnds/drum-machines>
+- Commit used: [`a894cb8`](https://github.com/smpldsnds/drum-machines/tree/a894cb8c72abe15b05e7b4fd4b8ee561c0f9e960) (11 April 2024)
+- Bundled locally, unaltered. Nothing is fetched from GitHub at runtime.
+- Machine-readable manifest: [`src/audio/kits/provenance.ts`](src/audio/kits/provenance.ts)
+- Checksums for every bundled file: [`src/audio/kits/checksums.json`](src/audio/kits/checksums.json)
+- Full notices: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+
+APL Beats is an independent project and is **not affiliated with or endorsed by** Roland, Linn,
+Sequential Circuits, Casio, Yamaha, MFB or any other manufacturer named here. Machine names are
+used textually, to identify which set of sounds you are listening to. No logos or product artwork
+appear anywhere in this repository.
+
+### What the audit found
+
+The collection was read before any audio was copied, and three things about it are worth stating
+plainly because they differ from what you might assume.
+
+**There is no LICENSE file.** The only licence statement anywhere in the repository is one line in
+its README — _"A collection of public domain samples of different drum machines"_ — and for eight
+of the nine included packs that line is the entire basis. It is recorded as such rather than
+dressed up. What the audit did establish is the negative: no pack carries any restriction
+inconsistent with redistribution. There is no non-commercial clause, no no-redistribution clause
+and no licence text of any kind in any pack.
+
+**There are no WAV files.** Every pack is published as lossy `.ogg` and `.m4a` only; the WAVs the
+upstream contributing instructions mention are not committed. So there is no lossless original to
+prefer, and "preserve the originals" here means bundling upstream's own published files
+byte-for-byte rather than re-encoding them a second time. `.m4a` was chosen of the two because AAC
+decodes in every browser this application supports, where Ogg Vorbis does not decode reliably in
+Safari. The checksums file is the evidence that nothing was altered on the way in.
+
+**One pack is much better documented than the rest.** The TR-808 pack ships Michael Fischer's 1994
+notice, which names the machine, its serial number (103852), the equipment used, the sampling
+method, and states the samples are _"ABSOLUTELY FREE"_. That notice is bundled beside the audio at
+[`public/audio/tr-808/TR808.TXT`](public/audio/tr-808/TR808.TXT) and is served with it, because a
+notice that does not travel with the files it describes is not really a notice.
+
+### What was excluded
+
+**Univox Micro Rhythmer 12** is not included. It contains three samples — a closed hat, an open hat
+and a snare — and no bass drum of any kind. Eight rows cannot be filled from three sounds without
+six of them being the same sound, and a drum machine with no kick is not a drum machine.
+
+That exclusion is for coverage, not for licensing. Nothing in the collection was excluded on
+provenance grounds, because nothing in it carried a restriction that would have required it.
+
+### Size
+
+Every included kit is bundled in full, but only its eight selected voices — not the hundred-odd
+knob-position variations some packs contain. The TR-808 pack alone has 116 samples upstream; eight
+of them are here, plus its notice.
+
+| Kit           | Files  | Size         |
+| ------------- | ------ | ------------ |
+| TR-808        | 9      | 105.9 KB     |
+| LinnDrum LM-2 | 8      | 40.6 KB      |
+| CR-8000       | 8      | 41.5 KB      |
+| Drumtraks     | 8      | 64.1 KB      |
+| Casio RZ-1    | 8      | 39.3 KB      |
+| MFB-512       | 8      | 57.6 KB      |
+| Yamaha MR10   | 8      | 39.4 KB      |
+| 808 Mini      | 8      | 67.5 KB      |
+| Casio SK-1    | 6      | 17.4 KB      |
+| **Total**     | **71** | **473.4 KB** |
+
+Largest single file: `tr-808/clap.m4a` at 31.5 KB
+
+### The mapping onto eight rows
+
+APL Beats has eight rows and a machine usually has more sounds than that, so each kit's mapping is
+a deliberate musical choice rather than an alphabetical one. Where a machine had no equivalent for
+a row, the closest useful sound stands in and it is **written down as a substitution** rather than
+being passed off as an instrument the machine had.
+
+Two ordering questions were settled by measuring the audio rather than by reading the filenames,
+which would have got them backwards: the Casio RZ-1's three toms are numbered high to low, and the
+Drumtraks' "Tom 1" is the higher of its two.
+
+##### TR-808
+
+Upstream folder: `TR-808`, notice: `TR808.TXT`
+
+| APL Beats row | Upstream file         | Instrument                          |
+| ------------- | --------------------- | ----------------------------------- |
+| Kick          | `kick/bd5050.m4a`     | Bass Drum, tone and decay centred   |
+| Snare         | `snare/sd5050.m4a`    | Snare Drum, tone and snappy centred |
+| Closed Hat    | `hihat-close/ch.m4a`  | Closed Hi Hat                       |
+| Open Hat      | `hihat-open/oh50.m4a` | Open Hi Hat, decay centred          |
+| Clap          | `clap/cp.m4a`         | Hand Clap                           |
+| Low Perc      | `conga-low/lc50.m4a`  | Low Conga, tuning centred           |
+| High Perc     | `conga-hi/hc50.m4a`   | High Conga, tuning centred          |
+| Rim           | `rimshot/rs.m4a`      | Rim Shot                            |
+
+##### LinnDrum LM-2
+
+Upstream folder: `LM-2`
+
+| APL Beats row | Upstream file  | Instrument                         |
+| ------------- | -------------- | ---------------------------------- |
+| Kick          | `kick.m4a`     | Bass drum                          |
+| Snare         | `snare-m.m4a`  | Snare, middle of three tunings     |
+| Closed Hat    | `hhclosed.m4a` | Closed hi-hat                      |
+| Open Hat      | `hhopen.m4a`   | Open hi-hat                        |
+| Clap          | `clap.m4a`     | Hand clap                          |
+| Low Perc      | `conga-l.m4a`  | Low conga (151 Hz)                 |
+| High Perc     | `conga-h.m4a`  | High conga (320 Hz)                |
+| Rim           | `stick-m.m4a`  | Sidestick, middle of three tunings |
+
+##### CR-8000
+
+Upstream folder: `Roland-CR-8000`
+
+| APL Beats row | Upstream file      | Instrument          |
+| ------------- | ------------------ | ------------------- |
+| Kick          | `kick.m4a`         | Bass drum           |
+| Snare         | `snare.m4a`        | Snare drum          |
+| Closed Hat    | `hihat-closed.m4a` | Closed hi-hat       |
+| Open Hat      | `hihat-open.m4a`   | Open hi-hat         |
+| Clap          | `clap.m4a`         | Hand clap           |
+| Low Perc      | `conga-low.m4a`    | Low conga (190 Hz)  |
+| High Perc     | `conga-high.m4a`   | High conga (302 Hz) |
+| Rim           | `rimshot.m4a`      | Rimshot             |
+
+##### Drumtraks
+
+Upstream folder: `Sequential-Circuits-Drumtraks`
+
+| APL Beats row | Upstream file      | Instrument                            |
+| ------------- | ------------------ | ------------------------------------- |
+| Kick          | `DT_Kick.m4a`      | Bass drum                             |
+| Snare         | `DT_Snare.m4a`     | Snare drum                            |
+| Closed Hat    | `DT_Closedhat.m4a` | Closed hi-hat                         |
+| Open Hat      | `DT_Openhat.m4a`   | Open hi-hat                           |
+| Clap          | `DT_Clap.m4a`      | Hand clap                             |
+| Low Perc      | `DT_Tom02.m4a`     | Tom 2, the lower of the two (95 Hz)   |
+| High Perc     | `DT_Tom01.m4a`     | Tom 1, the higher of the two (160 Hz) |
+| Rim           | `DT_Rimshot.m4a`   | Rimshot                               |
+
+##### Casio RZ-1
+
+Upstream folder: `Casio-RZ1`
+
+| APL Beats row | Upstream file      | Instrument                           |
+| ------------- | ------------------ | ------------------------------------ |
+| Kick          | `kick.m4a`         | Bass drum                            |
+| Snare         | `snare.m4a`        | Snare drum                           |
+| Closed Hat    | `hihat-closed.m4a` | Closed hi-hat                        |
+| Open Hat      | `hihat-open.m4a`   | Open hi-hat                          |
+| Clap          | `clap.m4a`         | Hand clap                            |
+| Low Perc      | `tom-3.m4a`        | Tom 3, the lowest of three (95 Hz)   |
+| High Perc     | `tom-1.m4a`        | Tom 1, the highest of three (151 Hz) |
+| Rim           | `clave.m4a`        | Clave                                |
+
+##### MFB-512
+
+Upstream folder: `MFB-512`
+
+| APL Beats row | Upstream file      | Instrument        |
+| ------------- | ------------------ | ----------------- |
+| Kick          | `kick.m4a`         | Bass drum         |
+| Snare         | `snare.m4a`        | Snare drum        |
+| Closed Hat    | `hihat-closed.m4a` | Closed hi-hat     |
+| Open Hat      | `hihat-open.m4a`   | Open hi-hat       |
+| Clap          | `clap.m4a`         | Hand clap         |
+| Low Perc      | `tom-low.m4a`      | Low tom (101 Hz)  |
+| High Perc     | `tom-hi.m4a`       | High tom (143 Hz) |
+| Rim           | `tom-mid.m4a`      | Mid tom (120 Hz)  |
+
+##### Yamaha MR10
+
+Upstream folder: `Yamaha-MR10`
+
+| APL Beats row | Upstream file | Instrument                   |
+| ------------- | ------------- | ---------------------------- |
+| Kick          | `kick1.m4a`   | Bass drum, the second of two |
+| Snare         | `snare.m4a`   | Snare drum                   |
+| Closed Hat    | `chihat.m4a`  | Closed hi-hat                |
+| Open Hat      | `ohihat.m4a`  | Open hi-hat                  |
+| Clap          | `shortsn.m4a` | Short snare                  |
+| Low Perc      | `lowtom.m4a`  | Low tom (113 Hz)             |
+| High Perc     | `hitom.m4a`   | High tom (226 Hz)            |
+| Rim           | `shorthi.m4a` | Short high percussion        |
+
+##### 808 Mini
+
+Upstream folder: `808-mini`
+
+| APL Beats row | Upstream file    | Instrument                   |
+| ------------- | ---------------- | ---------------------------- |
+| Kick          | `kick.m4a`       | Bass drum                    |
+| Snare         | `snare-2.m4a`    | Snare, second of three       |
+| Closed Hat    | `hhclosed-1.m4a` | Closed hi-hat, first of two  |
+| Open Hat      | `hhopen-1.m4a`   | Open hi-hat, first of two    |
+| Clap          | `snare-3.m4a`    | Snare, third of three        |
+| Low Perc      | `tom-low.m4a`    | Low tom (95 Hz)              |
+| High Perc     | `tom-high.m4a`   | High tom (190 Hz)            |
+| Rim           | `hhclosed-2.m4a` | Closed hi-hat, second of two |
+
+##### Casio SK-1
+
+Upstream folder: `Casio-SK1`
+
+| APL Beats row | Upstream file    | Instrument        |
+| ------------- | ---------------- | ----------------- |
+| Kick          | `kick.m4a`       | Bass drum         |
+| Snare         | `snare.m4a`      | Snare drum        |
+| Closed Hat    | `hithat.m4a`     | Closed hi-hat     |
+| Open Hat      | `hihat-open.m4a` | Open hi-hat       |
+| Clap          | `snare.m4a`      | Snare drum        |
+| Low Perc      | `tom-low.m4a`    | Low tom (226 Hz)  |
+| High Perc     | `tom-low.m4a`    | Low tom (226 Hz)  |
+| Rim           | `tom-hi.m4a`     | High tom (905 Hz) |
+
+### Substitutions, in full
+
+- **MFB-512, Rim** — the machine has no rimshot, clave or woodblock. Its mid tom stands in, played
+  45% fast so that it reads as a short click rather than as a third tom.
+- **Yamaha MR10, Clap** — no hand clap. Its short snare stands in; a separate recording from the
+  one on the snare row, not the same file twice.
+- **808 Mini, Clap** — no hand clap. Its third snare stands in, again a separate recording.
+- **808 Mini, Rim** — no rimshot or clave. Its second closed hat stands in, being bright and short
+  enough to read as a click. Deliberately not in the hats' choke group: it is an independent part.
+- **Casio SK-1, Clap** — no hand clap, and only six samples in the whole pack. Its snare stands in,
+  played 20% fast. This is the one case where two rows genuinely play the same file.
+- **Casio SK-1, High Perc** — no second tuned drum. Its low tom stands in, played 60% fast, which
+  puts it around 360 Hz and clear of the low percussion row.
+- **Casio SK-1, Rim** — no rimshot or clave. Its high tom stands in, which at 905 Hz is already a
+  short click rather than a drum, so it needs no rate shift.
+
+Seven rows across four kits, then. Three of them are additionally played at a fixed rate — the
+MFB-512's rim, and the SK-1's clap and high percussion — because a borrowed sound at its own pitch
+would read as the same instrument played twice. Playback rate is used only for those three, and
+never as a control: it is part of how the kit was built, not something the interface exposes.
+
+### Level calibration
+
+Kits recorded by different people at different times arrive at wildly different levels, and
+several of the upstream files decode **above** full scale, being lossy encodes. Left alone,
+choosing a kit would have been a way of clipping the master bus.
+
+So every sample is scaled by a measured gain: at full level it peaks where the _synthesised_ voice
+for the same row peaks, less 0.6 dB of headroom. That removes the arbitrary loudness differences
+between one stranger's sample pack and another's while leaving timbre, decay and transient shape
+completely alone — an 808 kick still booms, an SK-1 snare is still a toy.
+
+The numbers are generated, not chosen: `npm run measure:kits -- --gains` prints exactly the gains
+in [`src/audio/kits/kits.ts`](src/audio/kits/kits.ts), and `npm run measure:kits` checks the
+result. Every voice on every kit lands within 0.6 dB of target, and **no kit produces a clipped
+sample** — not on the opening groove, and not on the pathological case of all eight rows firing at
+once with every fader at the top.
+
+### Sample tails and choking
+
+Real drum machines are monophonic per instrument: hitting a drum again restarts it rather than
+layering a second copy, and on nearly every machine with two hi-hats the pair share one circuit,
+so a closed hat cuts an open one off. A `BufferSource` does neither on its own, and the MFB-512's
+open hat is 913 ms long — at sixteenth notes that would be a wash rather than a hi-hat pattern.
+
+So sampled voices choke by group: the two hats share one, and every other row is monophonic in its
+own. A choked voice fades over five milliseconds rather than stopping dead, so the cut does not
+click. Tails are otherwise left to ring; nothing is truncated because the next sixteenth arrived.
+
 ## Sounds and licensing
 
-**Everything is synthesised in the browser.** There is no audio file in this repository,
-none is fetched, and nothing streams from anywhere during playback. See
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Sound design remains provisional; `Kit` in
-`src/audio/kit.ts` is the seam a sampled kit would arrive through.
+**The default kit is synthesised in the browser**, and always will be: it needs no download, it
+cannot fail, and it is the fallback whenever a sampled kit will not load. `Kit` in
+`src/audio/kit.ts` was described in Stage 1 as "the seam a sampled kit would arrive through", and
+that is exactly how the nine machines arrived — a sampled voice satisfies the same signature, so
+nothing above it changed.
+
+Stage 4 adds 473 KB of bundled audio, all of it from one credited public-domain collection, all of
+it served from this origin and none of it fetched from anywhere else at runtime. See
+[Drum machine samples and credits](#drum-machine-samples-and-credits) and
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 The generator can now produce bars with forty-odd triggers and seven voices landing on one
 sixteenth, which the hand-written opening groove never did. `npm run measure:generated`
@@ -647,12 +1003,17 @@ description, and it names exactly one external origin.
   `connect-src 'self' https://tryapl.org` — widened by exactly one origin from Stage 2's
   `'self'`, and by nothing else. No CDN, no analytics, no fonts, no images. Idle, playing or
   editing, the application makes no request at all; pressing Apply makes one.
+- **The samples are served from this origin.** Stage 4 needed no CSP change at all: the audio is
+  bundled, so `default-src 'self'` already covered it. The upstream repository is a credited source
+  and a build-time dependency, never a runtime one — APL Beats keeps working if it goes away.
+- **Audio is downloaded only when asked for.** A visitor who never opens the drum machine selector
+  fetches nothing, and one who chooses a kit fetches that kit alone, once.
 
 ## Testing
 
 ```bash
-npm test          # 349 unit and component tests, in jsdom
-npm run test:e2e  # 132 end-to-end runs across three browser projects
+npm test          # 436 unit and component tests, in jsdom
+npm run test:e2e  # 174 end-to-end runs across three browser projects
 ```
 
 **Not one of them makes a live TryAPL request.** The unit tests inject a fake client; the
@@ -681,6 +1042,11 @@ off the exception therefore made a timeout indistinguishable from a superseded r
 superseded request is deliberately silent, so a visitor on Safari whose transform timed out was
 shown nothing at all. The client now keeps its own note of why it aborted, which is both simpler
 and true everywhere.
+
+Stage 4's tests are mostly about _counts_: how many requests a kit change makes, how many times a
+sample is decoded, and how many parts of the creative state moved when the machine changed. The
+answer to the last is always zero, and it is checked by reading the whole interface — every cell,
+every slider, every lock, every mute, the preset and the seed — before and after.
 
 Three browser projects, because Playwright's WebKit is built without Web Audio —
 `AudioContext` is not on the window at all. So the phone layout is checked on the engine

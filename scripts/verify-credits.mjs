@@ -1,0 +1,366 @@
+/*
+ * Check every factual claim about the bundled samples against ground truth.
+ *
+ *   npm run verify:credits
+ *
+ * The attribution tables are generated from the manifest, and a generator that quietly drops a row
+ * produces documentation that looks complete and is not. So every claim is checked against the
+ * thing it describes: the upstream repository at the pinned commit, the bytes on disk, and the
+ * manifest the application actually runs on.
+ *
+ * It earned its keep immediately. Two real errors survived a careful read and were caught here:
+ * the notices claimed six voices were rate-shifted when three are, and both documents listed six
+ * substitutions when the manifest declares seven — the Casio SK-1's rim was missing from the
+ * README. Counts written in two places drift; counts derived from one of them cannot, so the
+ * checks below derive wherever they can.
+ *
+ * It talks to github.com, so it is a manual check rather than part of `npm test`. It makes no
+ * request to TryAPL.
+ */
+/*
+ * `fetch(...).json()` hands back `any` — the network is the other side of a serialisation
+ * boundary and there is nothing this side can know about what crossed it. Every read of it is
+ * guarded below, and the unsafety is bounded and local to this script.
+ */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+
+const readme = readFileSync('README.md', 'utf8');
+const notices = readFileSync('THIRD_PARTY_NOTICES.md', 'utf8');
+const provenance = readFileSync('src/audio/kits/provenance.ts', 'utf8');
+const kitsSource = readFileSync('src/audio/kits/kits.ts', 'utf8');
+const checksums = JSON.parse(readFileSync('src/audio/kits/checksums.json', 'utf8'));
+
+const problems = [];
+const notes = [];
+const check = (ok, label, detail = '') => {
+  if (ok) notes.push(`  ok    ${label}`);
+  else problems.push(`  FAIL  ${label}${detail ? ` — ${detail}` : ''}`);
+};
+
+const SHA = 'a894cb8c72abe15b05e7b4fd4b8ee561c0f9e960';
+const RAW = `https://raw.githubusercontent.com/smpldsnds/drum-machines/${SHA}`;
+
+/* ---- 1. the pinned commit, everywhere it appears --------------------------- */
+
+check(provenance.includes(SHA), 'provenance.ts pins the expected commit');
+check(checksums.commit === SHA, 'checksums.json pins the same commit');
+check(notices.includes(SHA), 'notices quote the full SHA');
+check(readme.includes(SHA), 'README links the full SHA');
+
+/* ---- 2. upstream still has that commit, and its tree ----------------------- */
+
+const tree = await fetch(`https://api.github.com/repos/smpldsnds/drum-machines/git/trees/${SHA}?recursive=1`)
+  .then((r) => (r.ok ? r.json() : null))
+  .catch(() => null);
+
+if (tree === null) {
+  problems.push('  FAIL  could not fetch the upstream tree to verify against');
+} else {
+  const paths = tree.tree.filter((entry) => entry.type === 'blob').map((entry) => entry.path);
+
+  check(
+    !paths.some((p) => /^LICEN[CS]E/iu.test(p)),
+    'upstream really has no root LICENSE file',
+    paths.filter((p) => /licen/iu.test(p)).join(', '),
+  );
+  check(!paths.some((p) => p.toLowerCase().endsWith('.wav')), 'upstream really ships no WAV files');
+  check(
+    paths.some((p) => p.endsWith('.m4a')),
+    'upstream ships .m4a',
+  );
+  check(
+    paths.some((p) => p.endsWith('.ogg')),
+    'upstream ships .ogg',
+  );
+
+  // The one notice file in the tree.
+  const notices_upstream = paths.filter(
+    (p) => /\.(txt|md)$/iu.test(p) && !p.startsWith('.') && p !== 'README.md',
+  );
+  check(
+    notices_upstream.length === 1 && notices_upstream[0] === 'TR-808/TR808.TXT',
+    'TR-808/TR808.TXT is the only per-pack notice upstream',
+    notices_upstream.join(', '),
+  );
+
+  // The excluded pack exists upstream and really has three samples and no kick.
+  const micro = paths.filter((p) => p.startsWith('Micro-Rhythmer-12/') && p.endsWith('.m4a'));
+  check(micro.length === 3, 'Micro Rhythmer 12 has exactly three samples upstream', String(micro.length));
+  check(
+    !micro.some((p) => /kick|bd|bass/iu.test(p)),
+    'Micro Rhythmer 12 really has no kick',
+    micro.join(', '),
+  );
+
+  // Every pack we claim to include exists upstream.
+  for (const match of provenance.matchAll(/upstreamPath:\s*'([^']+)'/gu)) {
+    check(
+      paths.some((p) => p.startsWith(`${match[1]}/`)),
+      `upstream has pack ${match[1]}`,
+    );
+  }
+}
+
+/* ---- 3. the upstream licence sentence, quoted exactly ---------------------- */
+
+const upstreamReadme = await fetch(`${RAW}/README.md`)
+  .then((r) => (r.ok ? r.text() : null))
+  .catch(() => null);
+
+if (upstreamReadme === null) {
+  problems.push('  FAIL  could not fetch the upstream README to compare the licence wording');
+} else {
+  const quoted = 'A collection of public domain samples of different drum machines';
+  check(upstreamReadme.includes(quoted), 'the quoted licence sentence appears verbatim upstream');
+  check(notices.includes(quoted), 'notices quote it exactly');
+  check(readme.includes('A collection of public domain samples'), 'README quotes it');
+  check(!/licen[cs]e/iu.test(upstreamReadme), 'upstream README mentions no licence beyond that line');
+}
+
+/* ---- 4. bundled bytes are byte-for-byte upstream --------------------------- */
+
+const entries = Object.entries(checksums.files);
+check(entries.length === 71, 'checksums cover 71 files', String(entries.length));
+
+let totalBytes = 0;
+for (const [, entry] of entries) totalBytes += entry.bytes;
+const totalKb = (totalBytes / 1024).toFixed(1);
+check(notices.includes(`${totalKb} KB`), `notices state the real total (${totalKb} KB)`);
+check(readme.includes(`${totalKb} KB`), `README states the real total (${totalKb} KB)`);
+
+// Every file on disk matches its recorded hash.
+let mismatched = 0;
+for (const [key, entry] of entries) {
+  const path = join('public/audio', key);
+  if (!existsSync(path)) {
+    problems.push(`  FAIL  bundled file missing: ${key}`);
+    continue;
+  }
+  const bytes = readFileSync(path);
+  if (bytes.length !== entry.bytes || createHash('sha256').update(bytes).digest('hex') !== entry.sha256) {
+    mismatched += 1;
+  }
+}
+check(mismatched === 0, 'every bundled file matches its recorded checksum', `${String(mismatched)} differ`);
+
+// And a sample of them match what upstream actually serves, right now.
+const sampled = entries.filter((_, index) => index % 9 === 0);
+let upstreamMismatch = 0;
+for (const [key, entry] of sampled) {
+  const response = await fetch(`${RAW}/${entry.upstream}`).catch(() => null);
+  if (response === null || !response.ok) {
+    problems.push(`  FAIL  could not fetch upstream ${entry.upstream}`);
+    continue;
+  }
+  const bytes = Buffer.from(await response.arrayBuffer());
+  const hash = createHash('sha256').update(bytes).digest('hex');
+  if (hash !== entry.sha256) {
+    upstreamMismatch += 1;
+    problems.push(`  FAIL  ${key} differs from upstream ${entry.upstream}`);
+  }
+}
+check(upstreamMismatch === 0, `${String(sampled.length)} spot-checked files are byte-for-byte upstream`);
+
+/* ---- 5. the TR-808 notice, preserved unaltered ----------------------------- */
+
+const noticePath = 'public/audio/tr-808/TR808.TXT';
+check(existsSync(noticePath), 'the TR-808 notice is bundled at the documented path');
+if (existsSync(noticePath)) {
+  const local = readFileSync(noticePath);
+  const upstream = await fetch(`${RAW}/TR-808/TR808.TXT`)
+    .then((r) => (r.ok ? r.arrayBuffer() : null))
+    .catch(() => null);
+  check(upstream !== null && Buffer.from(upstream).equals(local), 'the notice is byte-identical to upstream');
+  const text = local.toString('utf8');
+  check(text.includes('ABSOLUTELY FREE'), 'the notice contains the quoted phrase');
+  check(text.includes('103852'), 'the notice contains the quoted serial number');
+  check(text.includes('Michael Fischer'), 'the notice names its author');
+  check(notices.includes(noticePath), 'notices link the notice path');
+  check(readme.includes(noticePath), 'README links the notice path');
+}
+
+/* ---- 6. every mapping row is present and complete -------------------------- */
+
+const ROWS = ['Kick', 'Snare', 'Closed Hat', 'Open Hat', 'Clap', 'Low Perc', 'High Perc', 'Rim'];
+const kitNames = [...kitsSource.matchAll(/id:\s*'([^']+)',\s*\n\s*name:\s*'([^']+)'/gu)]
+  .filter(([, id]) => id !== 'synth')
+  .map(([, , name]) => name);
+
+check(kitNames.length === 9, 'nine sampled kits in the manifest', String(kitNames.length));
+
+for (const document of [
+  { name: 'README', text: readme },
+  { name: 'notices', text: notices },
+]) {
+  for (const kit of kitNames) {
+    // Kit names carry no regex metacharacters, so the heading is matched as plain text.
+    // Trimmed, because the files use CRLF and a stray carriage return breaks every comparison.
+    const lines = document.text.split(String.fromCharCode(10)).map((line) => line.trimEnd());
+    const at = lines.findIndex((line) => /^#{4,5} /u.test(line) && line.replace(/^#+ /u, '') === kit);
+    if (at === -1) {
+      problems.push(`  FAIL  ${document.name}: no mapping table for ${kit}`);
+      continue;
+    }
+    const table = lines.slice(at, at + 20);
+    // Prettier pads table cells to align them, so the raw prefix will not match.
+    const cellsOf = (line) => line.split('|').map((cell) => cell.trim());
+    const missing = ROWS.filter((row) => !table.some((line) => cellsOf(line)[1] === row));
+    check(missing.length === 0, `${document.name}: ${kit} maps all eight rows`, missing.join(', '));
+    check(!table.join(' ').includes('| ? |'), `${document.name}: ${kit} has no unresolved cells`);
+  }
+}
+
+/* ---- 7. table shape: every row has the same column count ------------------- */
+
+let brokenTables = 0;
+for (const document of [
+  { name: 'README', text: readme },
+  { name: 'notices', text: notices },
+]) {
+  const lines = document.text.split('\n');
+  let width = 0;
+  for (const [index, line] of lines.entries()) {
+    if (!line.trimStart().startsWith('|')) {
+      width = 0;
+      continue;
+    }
+    // `\|` inside a cell is an escaped pipe, not a column separator — the APL operations
+    // table has two of them. Removing them first is what makes this count columns rather than
+    // punctuation.
+    const columns = line.replaceAll(String.raw`\|`, '').split('|').length;
+    if (width === 0) width = columns;
+    else if (columns !== width) {
+      brokenTables += 1;
+      problems.push(
+        `  FAIL  ${document.name}:${String(index + 1)} table row has ${String(columns)} cells, expected ${String(width)}`,
+      );
+    }
+  }
+}
+check(brokenTables === 0, 'every table row has a consistent column count');
+
+/* ---- 8. gain and rate claims match the implementation ---------------------- */
+
+const rateShifted = [
+  ...kitsSource.matchAll(/(\w+):\s*\{\s*file:\s*'[^']+',\s*gain:\s*[\d.]+,\s*playbackRate:\s*([\d.]+)/gu),
+];
+check(rateShifted.length === 3, 'three voices are rate-shifted in the manifest', String(rateShifted.length));
+
+const claimedRates = { 1.45: '45%', 1.2: '20%', 1.6: '60%' };
+for (const [, row, rate] of rateShifted) {
+  const percent = claimedRates[Number(rate)];
+  check(percent !== undefined, `rate ${rate} on ${row} is a documented figure`);
+  if (percent !== undefined) {
+    check(readme.includes(`${percent} fast`), `README states "${percent} fast"`);
+  }
+}
+check(notices.includes('three voices in two kits'), 'notices count the rate-shifted voices correctly');
+{
+  /*
+   * Which kits contain a rate shift, counted by walking the manifest line by line rather than
+   * with a regex spanning whole objects — the block structure is easier to follow than the
+   * pattern that would match it.
+   */
+  const kitsWithRates = new Set();
+  let currentKit = null;
+  for (const line of kitsSource.split(String.fromCharCode(10))) {
+    const id = /^ {4}id: '([^']+)',$/u.exec(line);
+    if (id !== null) currentKit = id[1];
+    if (line.includes('playbackRate:') && currentKit !== null) kitsWithRates.add(currentKit);
+  }
+  check(kitsWithRates.size === 2, 'rate shifts occur in exactly two kits', [...kitsWithRates].join(', '));
+  check(
+    notices.includes('MFB-512') && notices.includes("Casio SK-1's clap"),
+    'notices name the rate-shifted voices',
+  );
+}
+
+/*
+ * Counted from the manifest rather than hardcoded.
+ *
+ * The first version of this check asserted "six", which is what the README happened to say — and
+ * the manifest had seven. A number written in two places drifts; a number derived from one of them
+ * cannot.
+ */
+const declaredSubstitutions = provenance
+  .split(String.fromCharCode(10))
+  .filter((line) => /^ {6}'(Rim|Clap|High Perc):/u.test(line)).length;
+const readmeSubstitutions = (readme.match(/^- \*\*[^*]+, (Rim|Clap|High Perc)\*\* —/gmu) ?? []).length;
+check(
+  readmeSubstitutions === declaredSubstitutions,
+  `README lists every substitution (${String(declaredSubstitutions)})`,
+  `README has ${String(readmeSubstitutions)}`,
+);
+check(notices.includes('Seven rows across four kits'), 'notices state the substitution count');
+check(readme.includes('Seven rows across four kits'), 'README states the substitution count');
+
+/* ---- 9. per-kit sizes -------------------------------------------------------*/
+
+const perKit = new Map();
+for (const [key, entry] of entries) {
+  const kitId = key.split('/')[0];
+  perKit.set(kitId, (perKit.get(kitId) ?? 0) + entry.bytes);
+}
+for (const [kitId, bytes] of perKit) {
+  const kb = (bytes / 1024).toFixed(1);
+  check(readme.includes(`${kb} KB`), `README states ${kitId} at ${kb} KB`);
+}
+
+const largest = entries.sort((a, b) => b[1].bytes - a[1].bytes)[0];
+check(
+  readme.includes(`\`${largest[0]}\``) && readme.includes(`${(largest[1].bytes / 1024).toFixed(1)} KB`),
+  `README names the largest file (${largest[0]})`,
+);
+
+/* ---- 10. stray files, and non-affiliation ---------------------------------- */
+
+let stray = 0;
+for (const kitId of perKit.keys()) {
+  for (const name of readdirSync(join('public/audio', kitId))) {
+    if (!checksums.files[`${kitId}/${name}`]) {
+      stray += 1;
+      problems.push(`  FAIL  unaccounted file on disk: ${kitId}/${name}`);
+    }
+  }
+}
+check(stray === 0, 'no unaccounted files under public/audio');
+
+for (const document of [
+  { name: 'README', text: readme },
+  { name: 'notices', text: notices },
+]) {
+  check(/not affiliated with or endorsed by/u.test(document.text), `${document.name} states non-affiliation`);
+  check(/[Nn]o logos/u.test(document.text), `${document.name} states that no logos appear`);
+}
+
+/* ---- 11. the two documents do not contradict each other -------------------- */
+
+const claims = [
+  [
+    'nine of ten packs included',
+    /nine of its ten packs|nine of the nine|nine included|nine sampled machines/u,
+  ],
+  ['no LICENSE file', /no LICENSE file/u],
+  ['no WAV upstream', /no WAV|are no WAV files/u],
+  ['byte-for-byte', /byte-for-byte/u],
+];
+for (const [label, pattern] of claims) {
+  check(pattern.test(readme), `README states: ${label}`);
+  check(pattern.test(notices), `notices state: ${label}`);
+}
+
+/* ---- report ---------------------------------------------------------------- */
+
+console.log(notes.join('\n'));
+console.log('');
+if (problems.length > 0) {
+  console.log(problems.join('\n'));
+  console.log(`\n${String(problems.length)} problem(s).`);
+  process.exitCode = 1;
+} else {
+  console.log(`All ${String(notes.length)} checks passed.`);
+}
