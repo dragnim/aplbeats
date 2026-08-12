@@ -26,7 +26,7 @@ import { presetById, type Preset, type PresetId, type TrackProfile } from './pre
 import { streamFor, weightedChoice, type Rng } from './prng';
 import { GENERATOR_VERSION } from './version';
 import {
-  eventCountFor,
+  exactEventCount,
   macro,
   placementWeights,
   repetitionPeriod,
@@ -125,6 +125,34 @@ interface TrackContext {
   readonly avoidance?: number;
 }
 
+/**
+ * The tracks that hold a groove's identity, and are therefore left alone by Density.
+ *
+ * See `densityBucket`. Everything else reorganises as Density moves; these two only gain
+ * and lose events.
+ */
+const RHYTHM_SECTION: ReadonlySet<TrackId> = new Set(['kick', 'snare']);
+
+/**
+ * A coarse Density band, mixed into a track's random stream.
+ *
+ * Without this, Density has dead zones ten points wide. Event counts are integers, so a
+ * control with a hundred positions and a range of eight to thirty-five triggers must
+ * repeat itself somewhere — but measured over sixty seeds the median widest plateau was
+ * ten density points and the worst was thirteen. Dragging the slider a tenth of its
+ * travel and hearing nothing is a broken control, whatever the arithmetic says.
+ *
+ * Banding Density into the stream means the *arrangement* changes every few points even
+ * when no count does. The kick and snare are excluded so the groove keeps its identity:
+ * they gain and lose events, but their figure does not reshuffle underneath you. It is
+ * the ornamentation that moves, which is what a drummer would do anyway.
+ *
+ * Still perfectly deterministic — the same Density gives the same band gives the same bar.
+ */
+function densityBucket(id: TrackId, density: number): number {
+  return RHYTHM_SECTION.has(id) ? 0 : Math.round(macro(density) * 25);
+}
+
 /** One track's steps, by whichever strategy its preset uses. */
 function generateTrack(
   id: TrackId,
@@ -133,7 +161,7 @@ function generateTrack(
   context: TrackContext = {},
 ): StepSet {
   const profile = preset.tracks[id];
-  const rng = streamFor(options.seed, GENERATOR_VERSION, preset.id, id);
+  const rng = streamFor(options.seed, GENERATOR_VERSION, preset.id, id, densityBucket(id, options.density));
   const count = countFor(profile, options, rng);
 
   if (count <= 0) return new Set();
@@ -230,27 +258,31 @@ function motifTrack(options: GenerateOptions, count: number, rng: Rng, weights: 
 /**
  * How many events a track gets, this seed.
  *
- * Density fixes the centre of the range; the seed moves it a little either way. Without
- * that jitter every seed under a preset has *exactly* the same number of events on every
- * track — only their positions differ — and twenty-four bars come out within four
- * triggers of each other. The review tooling found that immediately: Euclidean was pinned
- * at twenty-two triggers for every seed alive.
+ * Density fixes the ideal, which is fractional; this rounds it, and *how* it rounds is
+ * where two separate faults were fixed.
  *
- * Bounded by the profile's own range rather than escaping it, so a preset that insists on
- * four kicks still gets four. The jitter is a share of how wide the track's range is,
- * because moving a hat by two events is a nudge and moving a rim by two is a rewrite.
+ * The fraction is compared against a threshold drawn once per seed per track, rather than
+ * rounded to nearest. Rounding to nearest gave Density dead zones several points wide,
+ * because all eight tracks crossed their integer boundaries at almost the same moments —
+ * densities 62 and 68 produced byte-identical bars. Dithering spreads roughly thirty
+ * crossings across the control instead of clustering eight of them, so almost any move
+ * changes something. It also gives the count its own seed diversity for free.
+ *
+ * The wide tracks get a further event either way, because a hat moving by one is a nudge
+ * where a rim moving by one is half its part. Everything stays inside the profile's own
+ * range, so a preset that insists on four kicks still gets four.
  */
 function countFor(profile: TrackProfile, options: GenerateOptions, rng: Rng): number {
   const [min, max] = profile.count;
-  const base = eventCountFor(options.density, min, max, profile.countCurve ?? 1);
+  const span = max - min;
+  if (span <= 0) return min;
 
-  // A range of two or more always gets at least one event of movement; without the
-  // floor, the narrow tracks — a clap of nought-to-two, a rim of nought-to-three — fire
-  // exactly the same number of times for every seed alive.
-  const spread = max - min >= 2 ? Math.min(2, Math.max(1, Math.round((max - min) * 0.22))) : 0;
-  if (spread <= 0) return base;
+  const exact = exactEventCount(options.density, min, max, profile.countCurve ?? 1);
+  const floor = Math.floor(exact);
+  const dithered = floor + (exact - floor > rng.next() ? 1 : 0);
+  const extra = span >= 6 ? rng.range(-1, 1) : 0;
 
-  return Math.min(max, Math.max(min, base + rng.range(-spread, spread)));
+  return Math.min(max, Math.max(min, dithered + extra));
 }
 
 /** The placement weights for a track, after its profile and its neighbours. */
@@ -473,7 +505,13 @@ function glitchTrack(
  */
 function generateOpenHat(preset: Preset, options: GenerateOptions, closedHat: StepSet): StepSet {
   const profile = preset.tracks.openHat;
-  const rng = streamFor(options.seed, GENERATOR_VERSION, preset.id, 'openHat');
+  const rng = streamFor(
+    options.seed,
+    GENERATOR_VERSION,
+    preset.id,
+    'openHat',
+    densityBucket('openHat', options.density),
+  );
   const count = countFor(profile, options, rng);
   if (count <= 0) return new Set();
 
@@ -518,7 +556,13 @@ function generateOpenHat(preset: Preset, options: GenerateOptions, closedHat: St
  */
 function generateClap(preset: Preset, options: GenerateOptions, snare: StepSet): StepSet {
   const profile = preset.tracks.clap;
-  const rng = streamFor(options.seed, GENERATOR_VERSION, preset.id, 'clap');
+  const rng = streamFor(
+    options.seed,
+    GENERATOR_VERSION,
+    preset.id,
+    'clap',
+    densityBucket('clap', options.density),
+  );
   const count = countFor(profile, options, rng);
   if (count <= 0) return new Set();
 
@@ -565,7 +609,14 @@ function generateHighPerc(
   lowPerc: StepSet,
   snare: StepSet,
 ): StepSet {
-  const rng = streamFor(options.seed, GENERATOR_VERSION, preset.id, 'highPerc', 'response');
+  const rng = streamFor(
+    options.seed,
+    GENERATOR_VERSION,
+    preset.id,
+    'highPerc',
+    'response',
+    densityBucket('highPerc', options.density),
+  );
 
   if (lowPerc.size === 0 || !rng.chance(preset.callResponse)) {
     return generateTrack('highPerc', preset, options, { avoid: snare, avoidance: 0.45 });

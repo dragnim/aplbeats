@@ -11,6 +11,7 @@
  *   npm run review:patterns -- --preset broken  one preset, in full
  *   npm run review:patterns -- --sweep density  one preset across a macro's range
  *   npm run review:patterns -- --summary        statistics only, no grids
+ *   npm run review:patterns -- --plateau        how wide Density's dead zones are
  *
  * There is deliberately no score. Every number here is a count or a ratio, and what
  * they are for is making bars comparable so that a person can look at forty of them and
@@ -44,6 +45,7 @@ function parseArgs(argv: readonly string[]) {
     preset: undefined as PresetId | undefined,
     sweep: undefined as keyof Settings | undefined,
     summary: false,
+    plateau: false,
     settings: { ...DEFAULTS },
   };
 
@@ -66,10 +68,13 @@ function parseArgs(argv: readonly string[]) {
       case '--summary':
         options.summary = true;
         break;
+      case '--plateau':
+        options.plateau = true;
+        break;
       case '--density':
       case '--complexity':
       case '--syncopation':
-        options.settings[arg.slice(2) as keyof Settings] = Number(value) || 0;
+        options.settings[(arg ?? '').slice(2) as keyof Settings] = Number(value) || 0;
         i += 1;
         break;
       default:
@@ -162,6 +167,42 @@ function reportCollapse(name: string, patterns: readonly { seed: number; pattern
   if (closestPair < 0.03) console.log('    ** two seeds are nearly the same bar');
 }
 
+/**
+ * How many consecutive Density values produce the identical bar.
+ *
+ * Event counts are integers, so a control with a hundred positions must repeat itself
+ * somewhere — but it should be a few points, not a tenth of the travel. Measured on the
+ * whole pattern rather than the trigger count, because a count that holds while the
+ * arrangement moves is not a dead zone.
+ *
+ * This found the fault it exists to guard against: rounding counts to nearest gave a
+ * median plateau of ten density points and a worst of thirteen.
+ */
+function plateauReport(preset: PresetId, settings: Settings) {
+  const widths: number[] = [];
+
+  for (let index = 0; index < 60; index += 1) {
+    const seed = 977 * (index + 1);
+    let previous = '';
+    let run = 0;
+    let worst = 0;
+    for (let density = 20; density <= 95; density += 1) {
+      const fingerprint = JSON.stringify(build(seed, preset, { ...settings, density }));
+      run = fingerprint === previous ? run + 1 : 0;
+      worst = Math.max(worst, run);
+      previous = fingerprint;
+    }
+    widths.push(worst + 1);
+  }
+
+  widths.sort((a, b) => a - b);
+  const median = widths[Math.floor(widths.length / 2)] ?? 0;
+  console.log(
+    `  ${presetById(preset).name.padEnd(14)} median ${String(median).padStart(2)}  ` +
+      `worst ${String(widths[widths.length - 1]).padStart(2)}  best ${String(widths[0]).padStart(2)}`,
+  );
+}
+
 /** One preset across a macro's whole range, to see the control actually working. */
 function sweep(preset: PresetId, macro: keyof Settings, seeds: readonly number[], settings: Settings) {
   const definition = presetById(preset);
@@ -203,7 +244,13 @@ const seeds = seedsFor(options.seeds);
 
 console.log(`APL Beats generator v${String(GENERATOR_VERSION)} — ${String(seeds.length)} seeds`);
 
-if (options.sweep !== undefined) {
+if (options.plateau) {
+  console.log('');
+  console.log('Widest run of identical patterns across Density, over 60 seeds:');
+  for (const preset of options.preset === undefined ? PRESETS.map((p) => p.id) : [options.preset]) {
+    plateauReport(preset, options.settings);
+  }
+} else if (options.sweep !== undefined) {
   for (const preset of options.preset === undefined ? PRESETS.map((p) => p.id) : [options.preset]) {
     sweep(preset, options.sweep, seeds, options.settings);
   }

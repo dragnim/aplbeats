@@ -195,15 +195,18 @@ export function placementWeights({
 }
 
 /**
- * How many events a track should have, from a density macro and the track's own range.
+ * How many events a track should have — before rounding.
  *
- * The range is the track's musical character: a hat that can carry fourteen events and
- * a kick that should rarely exceed six are not on the same scale, and giving them one
- * would make Density mean "everything gets busier at the same rate", which is not what
- * a kit does. The curve is slightly eased so the middle of the control is the useful
- * middle of the range rather than arriving all at once at either end.
+ * Deliberately fractional. The range is the track's musical character: a hat that can
+ * carry fourteen events and a kick that should rarely exceed six are not on the same
+ * scale, and giving them one would make Density mean "everything gets busier at the same
+ * rate", which is not what a kit does. The curve is slightly eased so the middle of the
+ * control is the useful middle of the range.
+ *
+ * Rounding is left to the caller, which is not fussiness: rounding here gave Density
+ * dead zones several points wide — 62 and 68 produced byte-identical bars — because all
+ * eight tracks changed integer at nearly the same moments. See `countFor`.
  */
-export function eventCountFor(density: number, min: number, max: number, curve = 1): number {
-  const t = Math.pow(macro(density), curve);
-  return Math.round(min + t * (max - min));
+export function exactEventCount(density: number, min: number, max: number, curve = 1): number {
+  return min + Math.pow(macro(density), curve) * (max - min);
 }
