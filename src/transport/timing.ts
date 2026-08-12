@@ -98,29 +98,7 @@ export function swingDelaySeconds(stepIndex: number, bpm: number, swing: number)
   return clampSwing(swing) * MAX_SWING_FRACTION * secondsPerStep(bpm);
 }
 
-/**
- * When step `stepIndex` of a bar beginning at `barStartTime` should sound.
- *
- * Times are in the audio clock's seconds. Indices beyond the bar keep counting,
- * so step 16 is the first step of the next bar — which is what makes the
- * scheduler's look-ahead across a bar boundary unremarkable.
- */
-export function stepTime(barStartTime: number, stepIndex: number, bpm: number, swing: number): number {
-  return barStartTime + stepIndex * secondsPerStep(bpm) + swingDelaySeconds(stepIndex, bpm, swing);
-}
-
 /** Which column of the grid step `stepIndex` lands on, wrapping negative indices forwards. */
 export function stepIndexInBar(stepIndex: number): number {
   return ((stepIndex % STEPS_PER_BAR) + STEPS_PER_BAR) % STEPS_PER_BAR;
-}
-
-/**
- * The gap between two consecutive swung steps.
- *
- * Not a constant once swing is applied — that unevenness is the swing — and worth
- * having as a function because the shortest gap in the bar is what any future
- * per-step work has to fit inside.
- */
-export function gapToNextStep(stepIndex: number, bpm: number, swing: number): number {
-  return stepTime(0, stepIndex + 1, bpm, swing) - stepTime(0, stepIndex, bpm, swing);
 }

@@ -81,13 +81,6 @@ export class AudioEngine {
     return this.graph?.context.currentTime ?? 0;
   }
 
-  /** The device's output latency in seconds, or zero where it is not reported. */
-  get outputLatency(): number {
-    const context = this.graph?.context;
-    if (context === undefined) return 0;
-    return context.outputLatency || context.baseLatency || 0;
-  }
-
   /**
    * Open the audio device, building the graph on first use.
    *

@@ -3,7 +3,6 @@ import {
   clampVolume,
   createMixer,
   effectiveLevel,
-  isAudible,
   MAX_VOLUME,
   MIN_VOLUME,
   setVolume,
@@ -92,13 +91,6 @@ describe('the level a track actually sounds at', () => {
 
   it('is zero for a track that is not there', () => {
     expect(effectiveLevel(createMixer(), 99)).toBe(0);
-  });
-
-  it('answers whether a track would be heard at all', () => {
-    const mixer = createMixer();
-    expect(isAudible(mixer, 0)).toBe(true);
-    expect(isAudible(toggleMute(mixer, 0), 0)).toBe(false);
-    expect(isAudible(setVolume(mixer, 0, 0), 0)).toBe(false);
   });
 });
 

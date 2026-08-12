@@ -401,24 +401,6 @@ describe('pausing and resuming', () => {
   });
 });
 
-describe('seeking', () => {
-  it('moves the position without starting or stopping', () => {
-    rig.scheduler.seek(9);
-    expect(rig.scheduler.position).toBe(9);
-    expect(rig.scheduler.isRunning).toBe(false);
-
-    rig.scheduler.start();
-    expect(rig.scheduled[0]?.step).toBe(9);
-  });
-
-  it('wraps a position outside the bar', () => {
-    rig.scheduler.seek(20);
-    expect(rig.scheduler.position).toBe(4);
-    rig.scheduler.seek(-1);
-    expect(rig.scheduler.position).toBe(15);
-  });
-});
-
 describe('nonsense tempos', () => {
   it('cannot hang the scheduler', () => {
     /*

@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   cellAt,
-  clearPattern,
-  clearTrack,
   countTriggers,
   createPattern,
   fromBits,
@@ -12,7 +10,6 @@ import {
   toBits,
   toggleCell,
   TRACK_COUNT,
-  tracksFiringOn,
 } from '@/pattern/pattern';
 
 describe('creating a pattern', () => {
@@ -110,45 +107,6 @@ describe('toggling and setting', () => {
     let pattern = createPattern();
     for (let pass = 0; pass < 5; pass += 1) pattern = setCell(pattern, 4, 4, true);
     expect(countTriggers(pattern)).toBe(1);
-  });
-});
-
-describe('clearing', () => {
-  it('empties one track and leaves the rest', () => {
-    let pattern = createPattern();
-    pattern = setCell(pattern, 0, 0, true);
-    pattern = setCell(pattern, 1, 0, true);
-
-    const cleared = clearTrack(pattern, 0);
-    expect(cellAt(cleared, 0, 0)).toBe(false);
-    expect(cellAt(cleared, 1, 0)).toBe(true);
-  });
-
-  it('empties the whole grid', () => {
-    const pattern = setCell(createPattern(), 5, 5, true);
-    expect(countTriggers(clearPattern(pattern))).toBe(0);
-  });
-
-  it('ignores a track that does not exist', () => {
-    const pattern = createPattern();
-    expect(clearTrack(pattern, 8)).toBe(pattern);
-  });
-});
-
-describe('reading a column', () => {
-  it('lists the tracks firing on a step, in track order', () => {
-    let pattern = createPattern();
-    pattern = setCell(pattern, 5, 3, true);
-    pattern = setCell(pattern, 0, 3, true);
-    pattern = setCell(pattern, 2, 3, true);
-    pattern = setCell(pattern, 1, 4, true);
-
-    expect(tracksFiringOn(pattern, 3)).toEqual([0, 2, 5]);
-    expect(tracksFiringOn(pattern, 4)).toEqual([1]);
-  });
-
-  it('reports nothing for a step outside the bar', () => {
-    expect(tracksFiringOn(createPattern(), 99)).toEqual([]);
   });
 });
 

@@ -49,8 +49,3 @@ export const TRACKS: readonly TrackDefinition[] = [
   { id: 'highPerc', name: 'High Perc', defaultVolume: 0.52 },
   { id: 'rim', name: 'Rim', defaultVolume: 0.46 },
 ];
-
-/** The track in row `index`, or `undefined` past the end of the kit. */
-export function trackAt(index: number): TrackDefinition | undefined {
-  return TRACKS[index];
-}

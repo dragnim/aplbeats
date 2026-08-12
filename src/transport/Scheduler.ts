@@ -204,16 +204,6 @@ export class Scheduler {
     this.reachedStep = 0;
   }
 
-  /** Jump to a step without starting or stopping. */
-  seek(step: number): void {
-    this.nextStep = stepIndexInBar(Math.trunc(step));
-    this.reachedStep = this.nextStep;
-    this.pending = [];
-    if (this.running) {
-      this.nextGridTime = this.clock() + START_OFFSET_SECONDS;
-    }
-  }
-
   /**
    * Which step the playhead should be drawn on.
    *

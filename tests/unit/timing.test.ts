@@ -3,7 +3,6 @@ import {
   BEATS_PER_BAR,
   clampBpm,
   clampSwing,
-  gapToNextStep,
   isSwungStep,
   MAX_BPM,
   MAX_SWING_FRACTION,
@@ -12,7 +11,6 @@ import {
   secondsPerBeat,
   secondsPerStep,
   stepIndexInBar,
-  stepTime,
   STEPS_PER_BAR,
   STEPS_PER_BEAT,
   swingDelaySeconds,
@@ -107,40 +105,42 @@ describe('swing', () => {
   });
 });
 
-describe('when a step sounds', () => {
-  it('is the bar start plus that many steps, when straight', () => {
-    for (let step = 0; step < 16; step += 1) {
-      expect(stepTime(10, step, 120, 0)).toBeCloseTo(10 + step * 0.125, 12);
+describe('the shape of a swung bar', () => {
+  it('leaves every beat where it was and pushes only the notes between them', () => {
+    // Which is what makes swing swing rather than a tempo change: the pulse does not
+    // move, and what falls between beats leans late against it.
+    for (const beat of [0, 4, 8, 12, 16]) {
+      expect(swingDelaySeconds(beat, 112, 1)).toBe(0);
+    }
+    for (const between of [1, 3, 5, 7, 9, 11, 13, 15]) {
+      expect(swingDelaySeconds(between, 112, 1)).toBeGreaterThan(0);
     }
   });
 
-  it('pushes the odd steps late and holds the even ones', () => {
-    const swung = stepTime(0, 1, 120, 1);
-    expect(swung).toBeCloseTo(0.125 + 0.0625, 12);
-    expect(stepTime(0, 2, 120, 1)).toBeCloseTo(0.25, 12);
-  });
-
-  it('does not make the bar longer, however hard it swings', () => {
+  it('cannot lengthen the bar, because the first step of one is never swung', () => {
     /*
-     * The property the whole design of swing hangs on.
+     * The property the whole design of swing hangs on, and the reason the delay is a
+     * function of the step index rather than something added to a running total: were
+     * it accumulated, the bar would grow a little on every pass and the tempo would
+     * drift. That is the one fault in a drum machine that is almost impossible to hear
+     * happening and trivial to assert about.
      *
-     * Swing is applied to a step's position on the straight grid, never added to a
-     * running total. Were it accumulated, the bar would grow a little on every pass
-     * and the tempo would drift — the one fault in a drum machine that is almost
-     * impossible to hear happening and trivial to assert about.
+     * `Scheduler.test.ts` asserts it again of the scheduler itself, over sixty-four
+     * steps of real scheduling. This is the same fact about the arithmetic beneath it.
      */
     for (const swing of [0, 0.18, 0.5, 2 / 3, 1]) {
-      const firstBar = stepTime(0, 0, 112, swing);
-      const secondBar = stepTime(0, 16, 112, swing);
-      expect(secondBar - firstBar).toBeCloseTo(secondsPerBar(112), 12);
+      expect(swingDelaySeconds(0, 112, swing)).toBe(0);
+      expect(swingDelaySeconds(STEPS_PER_BAR, 112, swing)).toBe(0);
     }
   });
 
-  it('keeps counting past the end of the bar', () => {
-    // Which is what makes the scheduler's look-ahead across a bar boundary
-    // unremarkable: step 16 is simply the first step of the next bar.
-    expect(stepTime(0, 16, 120, 0)).toBeCloseTo(2, 12);
-    expect(stepTime(0, 17, 120, 0)).toBeCloseTo(2.125, 12);
+  it('is long-short between swung pairs, and the pair still adds up', () => {
+    const step = secondsPerStep(120);
+    const late = swingDelaySeconds(1, 120, 1);
+    const long = step + late;
+    const short = step - late;
+    expect(long).toBeGreaterThan(short);
+    expect(long + short).toBeCloseTo(step * 2, 12);
   });
 });
 
@@ -159,20 +159,5 @@ describe('which column a step is', () => {
     expect(stepIndexInBar(-3)).toBe(13);
     expect(stepIndexInBar(-16)).toBe(0);
     expect(stepIndexInBar(-17)).toBe(15);
-  });
-});
-
-describe('the gap between steps', () => {
-  it('is even when straight', () => {
-    for (let step = 0; step < 16; step += 1) {
-      expect(gapToNextStep(step, 120, 0)).toBeCloseTo(0.125, 12);
-    }
-  });
-
-  it('is long-short when swung, and the pair still adds up', () => {
-    const long = gapToNextStep(0, 120, 1);
-    const short = gapToNextStep(1, 120, 1);
-    expect(long).toBeGreaterThan(short);
-    expect(long + short).toBeCloseTo(0.25, 12);
   });
 });

@@ -229,5 +229,3 @@ export function oscillator(
   node.frequency.value = frequency;
   return node;
 }
-
-export { SILENCE };

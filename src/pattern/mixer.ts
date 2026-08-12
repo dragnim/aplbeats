@@ -64,11 +64,6 @@ export function effectiveLevel(mixer: Mixer, track: number): number {
   return entry.muted ? 0 : clampVolume(entry.volume);
 }
 
-/** Whether a track would make any sound at all if its row fired. */
-export function isAudible(mixer: Mixer, track: number): boolean {
-  return effectiveLevel(mixer, track) > 0;
-}
-
 /** The track identifier for a row, for the engine to look up a voice with. */
 export function trackIdFor(track: number): TrackId | undefined {
   return TRACKS[track]?.id;

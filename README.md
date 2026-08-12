@@ -280,7 +280,7 @@ meant to hold for every stage of the project.
 ## Testing
 
 ```bash
-npm test          # 138 unit and component tests, in jsdom
+npm test          # 127 unit and component tests, in jsdom
 npm run test:e2e  # 25 end-to-end tests across three browser projects
 ```
 

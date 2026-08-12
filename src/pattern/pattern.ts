@@ -71,26 +71,6 @@ export function toggleCell(pattern: Pattern, track: number, step: number): Patte
   return setCell(pattern, track, step, !cellAt(pattern, track, step));
 }
 
-/** `pattern` with every step of one track silenced. */
-export function clearTrack(pattern: Pattern, track: number): Pattern {
-  if (pattern[track] === undefined) return pattern;
-  return pattern.map((row, rowIndex) => (rowIndex === track ? row.map(() => false) : row));
-}
-
-/** An empty pattern of the same shape as `pattern`. */
-export function clearPattern(pattern: Pattern): Pattern {
-  return pattern.map((row) => row.map(() => false));
-}
-
-/** Which tracks fire on `step`, in track order. Steps outside the bar fire nothing. */
-export function tracksFiringOn(pattern: Pattern, step: number): number[] {
-  const firing: number[] = [];
-  for (let track = 0; track < pattern.length; track += 1) {
-    if (cellAt(pattern, track, step)) firing.push(track);
-  }
-  return firing;
-}
-
 /** How many cells fire in total. Used by tests and, later, by the density control. */
 export function countTriggers(pattern: Pattern): number {
   return pattern.reduce((total, row) => total + row.filter(Boolean).length, 0);

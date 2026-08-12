@@ -150,12 +150,6 @@ export class Transport {
     });
   }
 
-  /** Stop playing and return to the top of the bar. */
-  stop(): void {
-    this.pause();
-    this.scheduler.stop();
-  }
-
   /** Play one voice now, for auditioning an edit while stopped. */
   audition(trackId: TrackId, level: number): void {
     if (!this.engine.isRunning) return;
