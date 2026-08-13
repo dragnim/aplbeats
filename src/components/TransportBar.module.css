@@ -2,7 +2,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3) var(--space-5);
+  gap: var(--space-3) var(--space-3);
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -67,8 +67,24 @@
   text-align: left;
 }
 
+/*
+ * A dial shares the width that is left, rather than claiming a fixed amount.
+ *
+ * Fixed-width sliders were what pushed Master onto a second row: five controls each insisting on
+ * their natural size added up to more than the bar had, and flex wrapping obliged. Letting the
+ * three dials flex means they take exactly what remains after Play and the kit selector, so the
+ * strip stays on one line and simply gets roomier on a wider screen.
+ */
 .dial {
   display: flex;
+  /*
+   * The basis is what decides wrapping — a flex line breaks on the items' hypothetical sizes,
+   * not on what they could shrink to. At `auto` each dial asked for its full natural width and
+   * five of those did not fit, which is what put Master on a row of its own. Eleven and a half
+   * rems is comfortably more than the dial's minimum and small enough that all five fit; on a
+   * wider screen they simply grow into the space.
+   */
+  flex: 1 1 10.5rem;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
@@ -87,7 +103,11 @@
   display: inline-flex;
   align-items: baseline;
   gap: 0.15em;
-  min-width: 3.75rem;
+  /*
+   * Wide enough for "112 BPM" and "100 %" so the number changing does not shift the slider
+   * beside it, and no wider — this is repeated three times across the bar.
+   */
+  min-width: 3.25rem;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
@@ -104,8 +124,13 @@
 .slider {
   -webkit-appearance: none;
   appearance: none;
-  width: 9rem;
-  min-width: 5rem;
+  /*
+   * Grows into whatever the dial was given. The basis is small enough that three of them never
+   * force a wrap, and `min-width` is what stops "shares the space" becoming "is a sliver".
+   */
+  flex: 1 1 4rem;
+  width: auto;
+  min-width: 3.5rem;
   height: 1.25rem;
   margin: 0;
   background: none;
@@ -174,6 +199,7 @@
   }
 
   .slider {
+    flex: 1 1 6rem;
     width: 100%;
     height: 1.75rem;
   }

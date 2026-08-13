@@ -157,6 +157,39 @@ test('is remembered, and does not start playing', async ({ page }) => {
   expect(problems).toEqual([]);
 });
 
+test('survives discarding an Explore draft', async ({ page }) => {
+  /*
+   * The interaction that had a bug in it. Load current transform throws the draft away, and for
+   * one commit it threw the volume away too — invisible until a reload, and invisible to every
+   * test that only ever looked at one storage key at a time.
+   */
+  const problems = watchForProblems(page);
+  await freshVisit(page);
+
+  await master(page).fill('37');
+  await page.getByRole('button', { name: 'Peek at the APL' }).click();
+  await page.getByRole('button', { name: 'Edit this APL' }).click();
+
+  const editor = page.getByRole('textbox', { name: 'Your APL expression' });
+  await editor.fill('~m[2;]');
+  await page.waitForTimeout(700);
+
+  await page.getByRole('button', { name: 'Load current transform' }).click();
+  await expect(master(page)).toHaveValue('37');
+
+  await page.waitForTimeout(400);
+  await page.reload();
+  await expect(page.locator(CELL).first()).toBeVisible();
+
+  // The draft is gone, as asked. The volume is not.
+  await expect(master(page)).toHaveValue('37');
+  await page.getByRole('button', { name: 'Peek at the APL' }).click();
+  await page.getByRole('button', { name: 'Edit this APL' }).click();
+  await expect(page.getByRole('textbox', { name: 'Your APL expression' })).toHaveValue('¯1⌽m');
+
+  expect(problems).toEqual([]);
+});
+
 test('survives a change of drum machine', async ({ page }) => {
   const problems = watchForProblems(page);
   await freshVisit(page);
@@ -243,6 +276,81 @@ test('the transport bar still fits, with the new control on it', async ({ page }
 });
 
 /* ------------------------------------------------------------------------- */
+
+test('the desktop transport is one row', async ({ page }, testInfo) => {
+  /*
+   * A regression guard with a specific memory.
+   *
+   * Adding Master made five controls where there had been four, and the drum machine selector —
+   * which was laid out label-above-control, a head taller than its neighbours — was pushed onto a
+   * second row on its own. The bar went from one line to two and gained a large empty area, at
+   * ordinary desktop widths, which is not something a screenshot review should have to catch.
+   *
+   * Rows are counted from the laid-out geometry rather than from the CSS: group every control by
+   * its vertical centre and count the distinct bands. That is what "one row" means to somebody
+   * looking at it, so it is what gets asserted.
+   */
+  test.skip(testInfo.project.use.hasTouch === true, 'Stacking is the intended layout on a phone.');
+
+  const problems = watchForProblems(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await freshVisit(page);
+
+  const layout = await page.evaluate(() => {
+    const bar = document.querySelector('[class*="bar"]');
+    if (bar === null) return null;
+
+    const controls = [...bar.querySelectorAll('button, input[type="range"], select')];
+    const bands: number[] = [];
+    for (const control of controls) {
+      const box = control.getBoundingClientRect();
+      const centre = box.top + box.height / 2;
+      if (!bands.some((existing) => Math.abs(existing - centre) < 12)) bands.push(centre);
+    }
+
+    return {
+      rows: bands.length,
+      height: bar.getBoundingClientRect().height,
+      controls: controls.length,
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    };
+  });
+
+  expect(layout).not.toBeNull();
+  // Play, the kit selector, and the three dials — all of them, on one line.
+  expect(layout?.controls).toBe(5);
+  expect(layout?.rows, 'the transport wrapped onto more than one row').toBe(1);
+  // One row of controls plus padding. Two rows measured 90px, so this fails loudly if it returns.
+  expect(layout?.height ?? 0).toBeLessThan(72);
+  expect(layout?.overflow).toBeLessThanOrEqual(1);
+
+  expect(problems).toEqual([]);
+});
+
+test('the controls stay a usable size once they share a row', async ({ page }, testInfo) => {
+  // Fitting on one line must not have been bought by making everything tiny.
+  test.skip(testInfo.project.use.hasTouch === true, 'Stacking is the intended layout on a phone.');
+
+  const problems = watchForProblems(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await freshVisit(page);
+
+  for (const name of ['Tempo', 'Swing', 'Master volume']) {
+    const box = await page.getByRole('slider', { name }).boundingBox();
+    expect(box?.width ?? 0, `${name} is too narrow to use`).toBeGreaterThanOrEqual(80);
+    expect(box?.height ?? 0, `${name} is too short to hit`).toBeGreaterThanOrEqual(16);
+  }
+
+  const select = await page.getByRole('combobox', { name: 'Drum machine' }).boundingBox();
+  expect(select?.width ?? 0).toBeGreaterThanOrEqual(120);
+  expect(select?.height ?? 0).toBeGreaterThanOrEqual(28);
+
+  // And Play is still the strongest thing on the bar.
+  const play = await page.getByRole('button', { name: 'Play', exact: true }).boundingBox();
+  expect(play?.height ?? 0).toBeGreaterThanOrEqual(32);
+
+  expect(problems).toEqual([]);
+});
 
 test('is the final attenuation stage, and 100% is the output we already had', async ({ page }) => {
   /*

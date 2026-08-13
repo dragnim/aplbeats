@@ -24,7 +24,7 @@ export interface TransportBarProps {
   readonly masterVolume: number;
   readonly onMasterVolumeChange: (volume: number) => void;
   /**
-   * The instrument control, at the far end of the bar.
+   * The instrument control, immediately after Play.
    *
    * A slot rather than a prop for the kit itself, so this component's own props stay about the
    * transport. What goes in it is the drum machine selector: which instrument, then play it.
@@ -77,6 +77,15 @@ export function TransportBar({
         </span>
         <span className={styles.playLabel}>{isPlaying ? 'Pause' : 'Play'}</span>
       </button>
+
+      {/*
+        The instrument, immediately after Play.
+        Which is the order somebody works in: press the thing that makes a sound, then decide
+        what it should sound like, then shape how it is played. It also puts the one control
+        that is not a slider next to the one control that is not a dial, so the three dials read
+        as a group rather than being interrupted.
+      */}
+      {instrument}
 
       <div className={styles.dial}>
         <label className={styles.dialLabel} htmlFor="transport-bpm">
@@ -158,8 +167,6 @@ export function TransportBar({
           <span className={styles.unit}>%</span>
         </output>
       </div>
-
-      {instrument}
     </div>
   );
 }
