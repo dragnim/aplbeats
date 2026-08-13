@@ -52,6 +52,16 @@ const KIT_SCHEMA_VERSION = 1;
 const EXPLORE_STORAGE_KEY = 'aplbeats.explore.v1';
 const EXPLORE_SCHEMA_VERSION = 1;
 
+/*
+ * The listening level, under its own key for the third time and the same reason.
+ *
+ * How loud somebody wants their speakers is a fact about their room, not about their groove. It
+ * has nothing to do with the generator's version, and losing it because a stored bar became
+ * invalid would be losing it for no reason at all.
+ */
+const VOLUME_STORAGE_KEY = 'aplbeats.master-volume.v1';
+const VOLUME_SCHEMA_VERSION = 1;
+
 /** How much hand-written APL is worth remembering. Comfortably past the editor's own limit. */
 const MAX_DRAFT_LENGTH = 1000;
 
@@ -128,6 +138,7 @@ export function clearSession(): void {
     globalThis.localStorage?.removeItem(STORAGE_KEY);
     globalThis.localStorage?.removeItem(KIT_STORAGE_KEY);
     globalThis.localStorage?.removeItem(EXPLORE_STORAGE_KEY);
+    globalThis.localStorage?.removeItem(VOLUME_STORAGE_KEY);
   } catch {
     // See above.
   }
@@ -196,6 +207,7 @@ export function saveExploreDraft(draft: ExploreDraft | null): void {
   try {
     if (draft === null) {
       globalThis.localStorage?.removeItem(EXPLORE_STORAGE_KEY);
+      globalThis.localStorage?.removeItem(VOLUME_STORAGE_KEY);
       return;
     }
     globalThis.localStorage?.setItem(
@@ -205,6 +217,43 @@ export function saveExploreDraft(draft: ExploreDraft | null): void {
         expression: draft.expression.slice(0, MAX_DRAFT_LENGTH),
         target: draft.target,
       }),
+    );
+  } catch {
+    // See above.
+  }
+}
+
+/**
+ * The listening level, or full volume.
+ *
+ * Every failure resolves to 1 rather than to silence. A stored value that cannot be read is a
+ * reason to be loud, not a reason to be inaudible: somebody arriving at a silent drum machine
+ * has no way of telling it apart from a broken one.
+ */
+export function loadMasterVolume(): number {
+  try {
+    const raw = globalThis.localStorage?.getItem(VOLUME_STORAGE_KEY) ?? null;
+    if (raw === null) return 1;
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return 1;
+    if (parsed.schema !== VOLUME_SCHEMA_VERSION) return 1;
+
+    const { volume } = parsed;
+    if (typeof volume !== 'number' || !Number.isFinite(volume)) return 1;
+    return Math.min(1, Math.max(0, volume));
+  } catch {
+    return 1;
+  }
+}
+
+/** Remember the listening level. Failure is ignored, as everywhere else in this file. */
+export function saveMasterVolume(volume: number): void {
+  try {
+    const safe = Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 1;
+    globalThis.localStorage?.setItem(
+      VOLUME_STORAGE_KEY,
+      JSON.stringify({ schema: VOLUME_SCHEMA_VERSION, volume: safe }),
     );
   } catch {
     // See above.

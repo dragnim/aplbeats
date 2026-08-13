@@ -12,8 +12,6 @@
   grid-template-rows: auto auto 1rem;
   align-content: center;
   gap: var(--space-1);
-  /* Pushed to the far end of the bar, away from Play. */
-  margin-left: auto;
 }
 
 .label {
@@ -72,12 +70,8 @@
 }
 
 @media (pointer: coarse), (max-width: 52rem) {
-  /*
-   * On a phone the bar is a column, so the selector stops being the thing on the right and
-   * becomes the thing underneath — full width, and no longer pushed anywhere by auto margins.
-   */
+  /* On a phone the bar is a column, so the selector becomes the thing underneath, full width. */
   .field {
-    margin-left: 0;
     width: 100%;
   }
 

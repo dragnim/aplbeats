@@ -59,6 +59,7 @@ else: APL sees the same matrix whichever machine is playing it.
 - [Local setup](#local-setup)
 - [Development commands](#development-commands)
 - [How it is put together](#how-it-is-put-together)
+- [Master volume](#master-volume)
 - [Audio timing](#audio-timing)
 - [Drum machines](#drum-machines)
 - [Drum machine samples and credits](#drum-machine-samples-and-credits)
@@ -95,7 +96,7 @@ else: APL sees the same matrix whichever machine is playing it.
 - **Undo**, thirty deep, over every creative action.
 - **A groove on arrival.** Audio does not autoplay, so the first press of Play is the first
   sound.
-- **Play and Pause**, live tempo and swing, mute and a fader per track.
+- **Play and Pause**, live tempo and swing, master volume, mute and a fader per track.
 - **Editing by click, tap, drag or keyboard**, unchanged from Stage 1.
 - **Your session comes back** when you do — pattern, seed, preset, macros, locks, tempo,
   swing and mixer. It never starts playing on its own.
@@ -645,6 +646,27 @@ needed no changes to the scheduler, the transport or the timing at all.
 request, and inside it only `apply` can. A test forbids any module under `src/` from importing
 `reference.ts`, so a silent fallback to the TypeScript implementations is structurally
 impossible rather than merely unintended — which is the whole credibility of this stage.
+
+## Master volume
+
+A fader in the transport bar, 0 to 100%, remembered under its own storage key and starting at
+full.
+
+The distinction worth stating: **the eight track faders set the mix; Master changes only the
+final listening level.** It is the last node in the chain — after the mix bus gain, after the
+compressor, after the soft limiter — so turning it down attenuates a finished signal and nothing
+else. Put anywhere earlier it would change how hard the compressor is driven, which would alter
+the instrument's character and quietly invalidate the kit calibration from
+[Drum machines](#drum-machines).
+
+At 100% the output is the one APL Beats has always had, and an end-to-end test proves it by
+rendering the same signal through the chain with and without the new node and comparing the
+samples. There is no setting above 100%: this is attenuation only, because the headroom at the
+top of this chain was measured rather than guessed.
+
+Changes ramp over 20 ms so a moving fader does not click, and moving it while the machine is
+stopped opens no audio device at all — the engine simply remembers the number until there is a
+graph to apply it to.
 
 ## Audio timing
 

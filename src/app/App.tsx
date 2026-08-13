@@ -12,7 +12,7 @@ import { createMixer, effectiveLevel, setVolume, toggleMute, trackIdFor, type Mi
 import { TRACKS } from '@/pattern/tracks';
 import { clampBpm, clampSwing } from '@/transport/timing';
 import { useTransport } from '@/transport/useTransport';
-import { loadSession, saveSession } from './persistence';
+import { loadMasterVolume, loadSession, saveMasterVolume, saveSession } from './persistence';
 import { INITIAL_CREATIVE_STATE } from './openingState';
 import { usePageVisibility } from './usePageVisibility';
 import { useStudio } from './useStudio';
@@ -55,6 +55,14 @@ export function App(): React.JSX.Element {
   const [mixer, setMixer] = useState<Mixer>(() => restored?.mixer ?? createMixer());
   const [bpm, setBpm] = useState(() => restored?.bpm ?? INITIAL_BPM);
   const [swing, setSwing] = useState(() => restored?.swing ?? INITIAL_SWING);
+  /*
+   * How loud, which is listening state and nothing else.
+   *
+   * Not in the session with the pattern, not in Undo, and not part of the mix: the eight track
+   * faders decide the balance between the voices, and this decides how loud the finished result
+   * is. Moving it changes one number and one gain node.
+   */
+  const [masterVolume, setMasterVolume] = useState(() => loadMasterVolume());
 
   const isVisible = usePageVisibility();
   const { pattern, locks } = studio.state;
@@ -99,6 +107,36 @@ export function App(): React.JSX.Element {
    * `transport.setKit` swaps the kit in one assignment, so this behaves identically whether the
    * transport is stopped or halfway through a bar.
    */
+  /*
+   * The listening level, applied to the engine and remembered.
+   *
+   * Written straight through rather than debounced: a gain change is one assignment and one
+   * short ramp, which is far cheaper than the serialise a debounce exists to avoid. The storage
+   * write is cheap too, and a volume nobody kept because they closed the tab quickly would be a
+   * small thing to lose for no reason.
+   */
+  const handleMasterVolumeChange = useCallback(
+    (next: number) => {
+      const clamped = Number.isFinite(next) ? Math.min(1, Math.max(0, next)) : 1;
+      setMasterVolume(clamped);
+      transport.setMasterVolume(clamped);
+      saveMasterVolume(clamped);
+    },
+    [transport],
+  );
+
+  /*
+   * The restored level, handed to the engine once.
+   *
+   * The engine remembers it whether or not a graph exists, so this simply makes sure a session
+   * that opened at 37% is at 37% the moment the audio device opens — without opening one.
+   */
+  useEffect(() => {
+    transport.setMasterVolume(masterVolume);
+    // Deliberately once: later changes go through `handleMasterVolumeChange`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const drumMachine = useDrumMachine({
     onKitReady: transport.setKit,
     baseUrl: import.meta.env.BASE_URL,
@@ -197,6 +235,8 @@ export function App(): React.JSX.Element {
           onSwingChange={(next) => {
             setSwing(clampSwing(next));
           }}
+          masterVolume={masterVolume}
+          onMasterVolumeChange={handleMasterVolumeChange}
           instrument={<DrumMachineSelect drumMachine={drumMachine} />}
         />
 

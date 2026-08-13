@@ -4,7 +4,7 @@ import type { TransportState } from '@/transport/Transport';
 import styles from './TransportBar.module.css';
 
 /*
- * Play, tempo, swing, and which drum machine.
+ * Play, tempo, swing, master volume, and which drum machine.
  *
  * The transport is the second most important object on the page and is allowed to
  * look like it. Stage 4 adds a fourth control and it belongs here rather than in a
@@ -20,6 +20,9 @@ export interface TransportBarProps {
   readonly onToggle: () => void;
   readonly onBpmChange: (bpm: number) => void;
   readonly onSwingChange: (swing: number) => void;
+  /** The listening level, 0 to 1. */
+  readonly masterVolume: number;
+  readonly onMasterVolumeChange: (volume: number) => void;
   /**
    * The instrument control, at the far end of the bar.
    *
@@ -36,10 +39,13 @@ export function TransportBar({
   onToggle,
   onBpmChange,
   onSwingChange,
+  masterVolume,
+  onMasterVolumeChange,
   instrument,
 }: TransportBarProps): React.JSX.Element {
   const isPlaying = state === 'playing';
   const swingPercent = Math.round(swing * 100);
+  const volumePercent = Math.round(masterVolume * 100);
 
   return (
     <div className={styles.bar}>
@@ -121,6 +127,34 @@ export function TransportBar({
         />
         <output className={styles.readout} htmlFor="transport-swing" aria-hidden="true">
           {swingPercent}
+          <span className={styles.unit}>%</span>
+        </output>
+      </div>
+
+      <div className={styles.dial}>
+        <label className={styles.dialLabel} htmlFor="transport-master">
+          Master
+        </label>
+        <input
+          id="transport-master"
+          type="range"
+          className={styles.slider}
+          min={0}
+          max={100}
+          step={1}
+          value={volumePercent}
+          onChange={(event) => {
+            onMasterVolumeChange(Number(event.currentTarget.value) / 100);
+          }}
+          /*
+            Named for what it does rather than for what it says on screen: "Master" is enough
+            beside a row of transport controls, and is not enough read out on its own.
+          */
+          aria-label="Master volume"
+          aria-valuetext={volumePercent === 0 ? 'Silent' : `${String(volumePercent)} per cent`}
+        />
+        <output className={styles.readout} htmlFor="transport-master" aria-hidden="true">
+          {volumePercent}
           <span className={styles.unit}>%</span>
         </output>
       </div>
