@@ -118,7 +118,19 @@ const measurements = await page.evaluate(async () => {
     glue.attack.value = 0.004;
     glue.release.value = 0.14;
     master.connect(glue);
-    glue.connect(saturator(context, 1.25)).connect(context.destination);
+    /*
+     * The master volume node, always at 1.
+     *
+     * Included so this chain is the one the engine really builds, and pinned at full output
+     * so that what is measured is the instrument rather than whatever level happens to be
+     * stored in somebody's browser. A gain of 1 is arithmetically a no-op, so these figures —
+     * and the Stage 4 kit calibration derived from them — are unaffected by the control
+     * existing.
+     */
+    const output = context.createGain();
+    output.gain.value = 1;
+    glue.connect(saturator(context, 1.25)).connect(output);
+    output.connect(context.destination);
     return master;
   }
 

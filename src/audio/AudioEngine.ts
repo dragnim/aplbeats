@@ -26,12 +26,30 @@ import { SYNTH_KIT, type Kit, type VoiceContext } from './kit';
 import { triggersForStep } from './triggers';
 
 /**
- * How much of the way up the master fader is comfortable.
+ * How hard the mix bus drives the master processing.
  *
  * Eight percussion voices can land on the same step, and the compressor below
  * catches that, but leaving headroom is better than relying on it.
+ *
+ * This is **not** the volume control, and the distinction matters more than the
+ * name suggests. It sits *before* the compressor, so it decides how hard that
+ * compressor is driven — which is part of how the instrument sounds, and part of
+ * the gain staging every sampled kit was calibrated against in Stage 4. Turning it
+ * down would quietly recalibrate the whole instrument. Master Volume is a separate
+ * node at the very end of the chain; see `build`.
  */
-const MASTER_GAIN = 0.72;
+const MIX_BUS_GAIN = 0.72;
+
+/**
+ * How long the output gain takes to reach a new setting.
+ *
+ * Twenty milliseconds: short enough that a slider feels connected to the sound,
+ * long enough that the jump does not arrive as a click. A gain that moves
+ * instantaneously is a step discontinuity in the waveform, and a step
+ * discontinuity is a click — audible precisely when somebody is reaching for the
+ * volume because it is already too loud.
+ */
+const VOLUME_RAMP_SECONDS = 0.02;
 
 export interface AudioEngineOptions {
   /** Swap the kit. Present so a sample-backed kit can be dropped in, and for tests. */
@@ -43,11 +61,29 @@ export interface AudioEngineOptions {
 interface Graph {
   readonly context: AudioContext;
   readonly voiceContext: VoiceContext;
+  /**
+   * The last node before the speakers.
+   *
+   * Everything else in the chain is finished by the time signal arrives here: the
+   * mix is balanced, the compressor has glued it together and the limiter has
+   * caught the peaks. This only makes the result quieter.
+   */
+  readonly output: GainNode;
 }
 
 export class AudioEngine {
   private kit: Kit;
   private readonly createContext: () => AudioContext;
+  /**
+   * The listening level, 0 to 1, held whether or not a graph exists.
+   *
+   * Kept here rather than only on the node so that a volume chosen while the
+   * machine is stopped is already in place when the audio device is finally
+   * opened. Moving the slider must never open one by itself: a page that started
+   * an `AudioContext` because somebody touched a fader would be a page that made
+   * noise nobody asked for.
+   */
+  private masterVolume = 1;
   private graph: Graph | null = null;
 
   constructor(options: AudioEngineOptions = {}) {
@@ -68,6 +104,47 @@ export class AudioEngine {
   /** Whether the audio device is open and the clock is running. */
   get isRunning(): boolean {
     return this.graph?.context.state === 'running';
+  }
+
+  /** The listening level, 0 to 1. */
+  get volume(): number {
+    return this.masterVolume;
+  }
+
+  /**
+   * Set the listening level.
+   *
+   * Attenuation only: 1 is the output APL Beats has always had, and there is no
+   * setting above it. A volume control that could add gain would be a volume
+   * control that could clip, and the headroom at the top of this chain was
+   * measured rather than guessed.
+   *
+   * Ramped rather than assigned, because an instantaneous gain change is a step in
+   * the waveform and a step is a click. Any automation already scheduled is
+   * cancelled first and the current value pinned, so dragging the slider quickly
+   * cannot queue a tail of ramps fighting each other.
+   *
+   * Creates nothing. With no graph this only remembers the number, which is what
+   * makes moving the fader while stopped genuinely free.
+   */
+  setMasterVolume(volume: number): void {
+    const wanted = Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 1;
+    this.masterVolume = wanted;
+
+    const graph = this.graph;
+    if (graph === null) return;
+
+    const { gain } = graph.output;
+    const now = graph.context.currentTime;
+
+    /*
+     * `cancelScheduledValues` then `setValueAtTime` rather than
+     * `cancelAndHoldAtTime`, which not every engine has — the same reason the
+     * sampled voices choke the way they do.
+     */
+    gain.cancelScheduledValues(now);
+    gain.setValueAtTime(gain.value, now);
+    gain.linearRampToValueAtTime(wanted, now + VOLUME_RAMP_SECONDS);
   }
 
   /**
@@ -182,7 +259,7 @@ export class AudioEngine {
     const context = this.createContext();
 
     const master = context.createGain();
-    master.gain.value = MASTER_GAIN;
+    master.gain.value = MIX_BUS_GAIN;
 
     const glue = context.createDynamicsCompressor();
     glue.threshold.value = -14;
@@ -191,11 +268,28 @@ export class AudioEngine {
     glue.attack.value = 0.004;
     glue.release.value = 0.14;
 
+    /*
+     * The volume control, last of all.
+     *
+     * After the compressor and the limiter rather than before them, which is the
+     * whole point: attenuating a finished signal changes how loud it is and
+     * nothing else. Put anywhere earlier it would change how hard the compressor
+     * is driven, and turning the volume down would quietly alter the instrument's
+     * character and invalidate Stage 4's kit calibration along with it.
+     *
+     * It starts at whatever was last chosen, so a graph built after the slider
+     * moved opens at the right level rather than jumping to it.
+     */
+    const output = context.createGain();
+    output.gain.value = this.masterVolume;
+
     master.connect(glue);
-    glue.connect(saturator(context, 1.25)).connect(context.destination);
+    glue.connect(saturator(context, 1.25)).connect(output);
+    output.connect(context.destination);
 
     const graph: Graph = {
       context,
+      output,
       voiceContext: {
         context,
         destination: master,

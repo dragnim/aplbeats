@@ -48,6 +48,13 @@ export interface TransportApi {
    * Safe at any time, playing or stopped: it replaces eight voices and touches nothing else.
    */
   readonly setKit: (kit: Kit) => void;
+  /**
+   * Set the listening level, 0 to 1.
+   *
+   * Safe at any time, and it opens nothing: with no audio device yet the engine simply
+   * remembers the number, so moving the fader while stopped costs nothing at all.
+   */
+  readonly setMasterVolume: (volume: number) => void;
 }
 
 export function useTransport(options: UseTransportOptions): TransportApi {
@@ -197,9 +204,27 @@ export function useTransport(options: UseTransportOptions): TransportApi {
     [getTransport],
   );
 
+  const setMasterVolume = useCallback(
+    (volume: number) => {
+      getTransport().setMasterVolume(volume);
+    },
+    [getTransport],
+  );
+
   const prepare = useCallback(() => {
     void getTransport().prepare();
   }, [getTransport]);
 
-  return { state, isPlaying, playheadStep, play, pause, toggle, audition, prepare, setKit };
+  return {
+    state,
+    isPlaying,
+    playheadStep,
+    play,
+    pause,
+    toggle,
+    audition,
+    prepare,
+    setKit,
+    setMasterVolume,
+  };
 }

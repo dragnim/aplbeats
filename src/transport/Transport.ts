@@ -97,6 +97,17 @@ export class Transport {
   }
 
   /**
+   * Change the listening level, 0 to 1.
+   *
+   * Forwarded straight to the engine, which attenuates its finished output. Like the kit, this
+   * is deliberately not a special case for "while playing": the transport's state, clock, tempo
+   * and position are all untouched, so there is nothing to restart.
+   */
+  setMasterVolume(volume: number): void {
+    this.engine.setMasterVolume(volume);
+  }
+
+  /**
    * Change which kit sounds the pattern.
    *
    * Forwarded straight to the engine, which swaps it in one assignment. Deliberately not a
