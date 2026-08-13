@@ -293,6 +293,56 @@ describe('the client itself', () => {
     expect(JSON.parse((init as RequestInit).body as string)).toEqual(['', 0, '', expression]);
   });
 
+  it('carries what Dyalog said, so Explore can show it', async () => {
+    /*
+     * The boundary Stage 5 leans on. An interpreter error arrives as ordinary output with a
+     * cheerful status code, and it is the client that recognises it — so the client is also
+     * where the error, the echoed source and the caret have to be picked up. Explore shows those
+     * three lines verbatim; without them "APL could not run that" is useless to somebody trying
+     * to fix their own expression.
+     */
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(
+        jsonResponse([
+          '',
+          0,
+          '',
+          ['RANK ERROR: Mismatched left and right argument ranks', '      m←(2 3⍴m)', '         ∧', ''],
+        ]),
+      ),
+    );
+    const client = new TryAplClient({ fetchImpl });
+
+    await client.execute(expression).then(
+      () => expect.fail('should have rejected'),
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(AplError);
+        if (!(error instanceof AplError)) return;
+
+        expect(error.kind).toBe('aplError');
+        expect(error.aplLines).toHaveLength(3);
+        expect(error.aplLines[0]).toContain('RANK ERROR');
+        expect(error.aplLines[1]).toContain('m←(2 3⍴m)');
+        // The caret only means anything if its leading spaces survive.
+        expect(error.aplLines[2]).toBe('         ∧');
+      },
+    );
+  });
+
+  it('carries nothing extra when the failure was not APL’s', async () => {
+    // A network or service failure has no interpreter output to show, and inventing some would
+    // be worse than saying nothing.
+    const fetchImpl = vi.fn(() => Promise.resolve(jsonResponse({}, 503)));
+    const client = new TryAplClient({ fetchImpl });
+
+    await client.execute(expression).then(
+      () => expect.fail('should have rejected'),
+      (error: unknown) => {
+        if (error instanceof AplError) expect(error.aplLines).toEqual([]);
+      },
+    );
+  });
+
   it('reports an APL error that arrived with HTTP 200', async () => {
     const fetchImpl = vi.fn(() =>
       Promise.resolve(jsonResponse(['', 0, '', ['SYNTAX ERROR', '      ⌽⌽', '      ∧']])),

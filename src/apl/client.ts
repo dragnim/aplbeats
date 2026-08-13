@@ -20,7 +20,7 @@
  */
 
 import { aplConfig } from './config';
-import { aplErrorIn, buildRequestPayload, parseWireResponse } from './wire';
+import { aplErrorDetail, aplErrorIn, buildRequestPayload, parseWireResponse } from './wire';
 
 /** Why a transform did not happen. Each maps to one sentence the visitor can act on. */
 export type AplFailureKind =
@@ -44,13 +44,21 @@ export interface AplFailure {
 export class AplError extends Error implements AplFailure {
   readonly kind: AplFailureKind;
   readonly detail: string | undefined;
+  /**
+   * What Dyalog said, when Dyalog is the one that objected.
+   *
+   * Empty for every other kind of failure. This is the part Explore shows to somebody who has
+   * written their own expression: the error, the source and the caret, and nothing else.
+   */
+  readonly aplLines: readonly string[];
 
-  constructor(kind: AplFailureKind, message: string, detail?: string) {
+  constructor(kind: AplFailureKind, message: string, detail?: string, aplLines: readonly string[] = []) {
     super(detail === undefined ? message : `${message} (${detail})`);
     this.name = 'AplError';
     this.kind = kind;
     this.message = message;
     this.detail = detail;
+    this.aplLines = aplLines;
   }
 }
 
@@ -62,19 +70,19 @@ export class AplError extends Error implements AplFailure {
  * error text in the middle of an instrument is noise, and the detail goes to the console for
  * whoever wants it.
  */
-function failure(kind: AplFailureKind, detail?: string): AplError {
+function failure(kind: AplFailureKind, detail?: string, aplLines: readonly string[] = []): AplError {
   const messages: Record<AplFailureKind, string> = {
     offline: 'You appear to be offline. Your beat was not changed.',
     timeout: 'APL took too long to answer. Your beat was not changed.',
     cancelled: 'That transform was replaced by a newer one.',
     unavailable: 'APL is unavailable right now. Your beat was not changed.',
-    aplError: 'APL could not complete that transform. Your beat was not changed.',
+    aplError: 'APL could not run that. Your beat was not changed.',
     badResponse: 'APL sent something unexpected. Your beat was not changed.',
     tooLarge: 'APL sent more than expected. Your beat was not changed.',
     sourceTooLong: 'That transform is too long to send. Your beat was not changed.',
   };
 
-  return new AplError(kind, messages[kind], detail);
+  return new AplError(kind, messages[kind], detail, aplLines);
 }
 
 export interface AplExecution {
@@ -201,7 +209,9 @@ export class TryAplClient implements AplClient {
        * like a successful reply as far as HTTP is concerned.
        */
       const aplError = aplErrorIn(parsed.response.outputLines);
-      if (aplError !== null) throw failure('aplError', aplError);
+      if (aplError !== null) {
+        throw failure('aplError', aplError, aplErrorDetail(parsed.response.outputLines));
+      }
 
       return { outputLines: parsed.response.outputLines, durationMs: Date.now() - startedAt };
     } catch (error) {

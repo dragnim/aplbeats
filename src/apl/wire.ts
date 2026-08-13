@@ -122,6 +122,39 @@ export function aplErrorIn(outputLines: readonly string[]): string | null {
   return null;
 }
 
+/**
+ * How many lines of an APL error are worth showing.
+ *
+ * Dyalog reports a failure as the error, then the offending source, then a caret under the
+ * glyph that could not be applied. All three are useful to somebody fixing their own
+ * expression — the caret especially — and nothing after them is.
+ */
+const ERROR_LINES = 3;
+
+/**
+ * The error, with the source and caret that came with it.
+ *
+ * Stage 3 could keep interpreter detail out of sight, because the application generated the
+ * APL and any error was its own bug. Stage 5 cannot: people write their own expressions and
+ * get them wrong, and "APL could not complete that transform" is useless when what they need
+ * is the word RANK and a caret pointing at the ⍴ they misused.
+ *
+ * Bounded and trimmed rather than passed through, because this is going on screen: three lines
+ * is the error, not a transcript.
+ */
+export function aplErrorDetail(outputLines: readonly string[]): readonly string[] {
+  const from = outputLines.findIndex((line) => {
+    const trimmed = line.trim();
+    return APL_ERRORS.some((name) => trimmed.startsWith(name));
+  });
+  if (from === -1) return [];
+
+  return outputLines
+    .slice(from, from + ERROR_LINES)
+    .map((line) => line.replace(/\s+$/u, ''))
+    .filter((line, index) => index === 0 || line.length > 0);
+}
+
 function describe(value: unknown): string {
   if (value === null) return 'null';
   if (Array.isArray(value)) return `an array of ${String(value.length)}`;

@@ -21,6 +21,7 @@
 
 import { patternsEqual, type Pattern } from '@/pattern/pattern';
 import { AplError, type AplClient } from './client';
+import { buildCustomSource } from './custom';
 import { parseAplMatrix } from './matrix';
 import {
   buildTransformSource,
@@ -36,6 +37,22 @@ export interface TransformRequest {
   readonly operation: Operation;
   readonly target: Target;
   readonly parameters: Parameters;
+  readonly pattern: Pattern;
+}
+
+/**
+ * A hand-written expression, from Explore.
+ *
+ * Deliberately handled by this same service rather than by one of its own. Everything that
+ * matters — the client, the timeout, the cache, the parser, the refusal to accept a partial
+ * answer — is identical whether the APL was generated from a template or typed by a person,
+ * and a second service with its own copy of those rules would be a second set of rules to keep
+ * in step.
+ */
+export interface CustomRequest {
+  /** Exactly what the editor holds, trimmed. Never rewritten. */
+  readonly core: string;
+  readonly target: Target;
   readonly pattern: Pattern;
 }
 
@@ -74,6 +91,22 @@ export function cacheKey(request: TransformRequest): string {
   const bits = request.pattern.map((row) => row.map((cell) => (cell ? '1' : '0')).join('')).join('');
 
   return `${request.operation.id}|${String(request.target)}|${parameters}|${bits}`;
+}
+
+/**
+ * The same idea for a hand-written expression.
+ *
+ * The expression goes in verbatim, whitespace and all. Normalising it would mean understanding
+ * APL well enough to know which whitespace is meaningless, which this application does not and
+ * should not claim to — and the cost of getting that wrong is handing back the answer to a
+ * different program. Two spaces instead of one is a cache miss and one extra request, which is
+ * a much better failure than a wrong rhythm.
+ *
+ * Prefixed, so a custom expression can never collide with a generated one.
+ */
+export function customCacheKey(request: CustomRequest): string {
+  const bits = request.pattern.map((row) => row.map((cell) => (cell ? '1' : '0')).join('')).join('');
+  return `custom|${String(request.target)}|${request.core}|${bits}`;
 }
 
 export class TransformService {
@@ -118,7 +151,33 @@ export class TransformService {
       pattern: request.pattern,
     });
 
-    const key = cacheKey(request);
+    return this.execute(cacheKey(request), source, signal);
+  }
+
+  /**
+   * Run a hand-written expression.
+   *
+   * Every target is valid here, unlike the built-in operations: Periodic and Euclidean refuse
+   * "all tracks" because they replace a row and eight identical rows is not a rhythm, but a
+   * person writing their own expression may perfectly well mean to build a whole matrix.
+   */
+  async runCustom(request: CustomRequest, signal?: AbortSignal): Promise<TransformOutcome> {
+    const source = buildCustomSource(request);
+    return this.execute(customCacheKey(request), source, signal);
+  }
+
+  /**
+   * The lane both of them run in.
+   *
+   * Cache, execute, parse, remember — in that order, and identically whichever kind of request
+   * arrived. There is deliberately no third outcome: no partial result, no best effort, and
+   * above all no local computation standing in for a failed request.
+   */
+  private async execute(
+    key: string,
+    source: TransformSource,
+    signal?: AbortSignal,
+  ): Promise<TransformOutcome> {
     const remembered = this.cache.get(key);
     if (remembered !== undefined) {
       // Re-inserted so the most recently useful answer is the last to be dropped.
@@ -151,6 +210,11 @@ export class TransformService {
   /** Whether this exact request already has an answer. */
   has(request: TransformRequest): boolean {
     return this.cache.has(cacheKey(request));
+  }
+
+  /** The same, for a hand-written expression. */
+  hasCustom(request: CustomRequest): boolean {
+    return this.cache.has(customCacheKey(request));
   }
 
   private remember(key: string, pattern: Pattern): void {
