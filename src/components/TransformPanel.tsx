@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { cx } from '@/app/cx';
+import { ExploreEditor } from './ExploreEditor';
 import type { TransformApi } from '@/apl/useTransform';
 import { rowToAplLiteral } from '@/apl/matrix';
 import { OPERATIONS, targetName, type Target } from '@/apl/operations';
@@ -28,9 +29,26 @@ export interface TransformPanelProps {
 export function TransformPanel({ transform, pattern }: TransformPanelProps): React.JSX.Element {
   const ids = useId();
   const [peekOpen, setPeekOpen] = useState(false);
+  /*
+   * Explore, opened from inside Peek and kept open once it is.
+   *
+   * Not reset when Peek closes: somebody who collapses Peek to see the grid and reopens it has
+   * not asked to throw their expression away, and the editor coming back empty would feel like
+   * losing work even though the draft is stored.
+   */
+  const [exploreOpen, setExploreOpen] = useState(false);
 
-  const { operation, target, parameters, status, error, source, canApply, lastWasCached } = transform;
+  const { operation, target, parameters, status, error, source, canApply, lastWasCached, lastRun } =
+    transform;
   const running = status === 'running';
+  /*
+   * Whose outcome this is.
+   *
+   * Apply with APL and Explore's Run share one execution lane, so they also share one status —
+   * but each must only report what it did. A result from the editor appearing beside the Apply
+   * button would be the interface claiming something it did not do.
+   */
+  const fixedRun = lastRun === 'fixed';
 
   /**
    * Which targets this operation will accept.
@@ -122,11 +140,18 @@ export function TransformPanel({ transform, pattern }: TransformPanelProps): Rea
           </div>
         ))}
 
+        {/*
+          A stable accessible name, with `aria-busy` for the progress. Stage 1's Play button
+          changes its name because the *action* changes; this one's does not, and two buttons
+          both announcing "Running APL…" would be two buttons nobody could tell apart.
+        */}
         <button
           type="button"
           className={styles.apply}
           onClick={transform.apply}
           disabled={!canApply || running}
+          aria-label="Apply with APL"
+          aria-busy={running}
         >
           {running ? 'Running APL…' : 'Apply with APL'}
         </button>
@@ -142,13 +167,14 @@ export function TransformPanel({ transform, pattern }: TransformPanelProps): Rea
         twice per transform — running, then applied or failed — so it reports rather than chatters.
       */}
       <p
-        className={cx(styles.status, status === 'failed' && styles.statusFailed)}
+        className={cx(styles.status, fixedRun && status === 'failed' && styles.statusFailed)}
         role="status"
         aria-label="APL transform"
       >
-        {status === 'running' && 'Running APL…'}
-        {status === 'applied' && (lastWasCached ? 'Applied, from cache.' : 'Applied.')}
-        {status === 'failed' && error}
+        {fixedRun && status === 'running' && 'Running APL…'}
+        {fixedRun && status === 'applied' && (lastWasCached ? 'Applied, from cache.' : 'Applied.')}
+        {fixedRun && status === 'unchanged' && 'That made no difference to this bar.'}
+        {fixedRun && status === 'failed' && error}
       </p>
 
       <div className={styles.peek}>
@@ -183,6 +209,31 @@ export function TransformPanel({ transform, pattern }: TransformPanelProps): Rea
                   <li key={line}>{line}</li>
                 ))}
               </ul>
+
+              {/*
+                Peek leads into Explore, right here, under the expression it is about to let
+                somebody edit. A separate panel elsewhere would break the thread: the whole
+                argument of the feature is "that line you are reading — you can change it".
+              */}
+              {!exploreOpen && (
+                <button
+                  type="button"
+                  className={styles.editToggle}
+                  onClick={() => {
+                    setExploreOpen(true);
+                  }}
+                  aria-expanded={false}
+                  aria-controls={`${ids}-explore`}
+                >
+                  Edit this APL
+                </button>
+              )}
+
+              {exploreOpen && (
+                <div id={`${ids}-explore`}>
+                  <ExploreEditor transform={transform} />
+                </div>
+              )}
             </div>
 
             <div className={styles.peekBlock}>

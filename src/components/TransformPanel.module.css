@@ -246,6 +246,34 @@
   word-break: break-all;
 }
 
+/*
+ * Peek's way into Explore.
+ *
+ * Deliberately quiet — an outline rather than the solid accent — because Play is still the one
+ * obvious thing to press on this page, and this is an invitation rather than an instruction.
+ */
+.editToggle {
+  justify-self: start;
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--accent-bright);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.editToggle:hover {
+  background: var(--accent-wash);
+}
+
+.editToggle:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
 .explanation {
   display: grid;
   gap: var(--space-1);

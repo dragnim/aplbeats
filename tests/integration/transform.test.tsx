@@ -453,10 +453,22 @@ describe('the controls', () => {
     const { client } = countingClient(() => reply(GROOVE), 300);
     render(<Harness client={client} />);
 
-    await user.click(screen.getByRole('button', { name: 'Apply with APL' }));
+    const apply = screen.getByRole('button', { name: 'Apply with APL' });
+    await user.click(apply);
 
-    const running = await screen.findByRole('button', { name: /Running APL/u });
-    expect(running).toBeDisabled();
+    /*
+     * The name stays put while the label changes.
+     *
+     * Stage 5 put a second Run button on the page, and two buttons both *named* "Running APL…"
+     * would be two buttons nobody could tell apart — so the accessible name is stable, the
+     * visible text carries the progress, and `aria-busy` says it out loud.
+     */
+    await waitFor(() => {
+      expect(apply).toHaveTextContent('Running APL…');
+    });
+    expect(apply).toBeDisabled();
+    expect(apply).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByRole('button', { name: 'Apply with APL' })).toBe(apply);
     expect(screen.getByRole('status', { name: 'APL transform' })).toHaveTextContent(/Running APL/u);
   });
 });

@@ -14,6 +14,7 @@
  * nothing has to be regenerated to restore it anyway.
  */
 
+import type { Target } from '@/apl/operations';
 import { resolveKitId } from '@/audio/kits/kits';
 import { SYNTH_KIT_ID, type KitId } from '@/audio/kits/types';
 import { GENERATOR_VERSION } from '@/generation/version';
@@ -39,6 +40,20 @@ const SCHEMA_VERSION = 1;
  */
 const KIT_STORAGE_KEY = 'aplbeats.kit.v1';
 const KIT_SCHEMA_VERSION = 1;
+
+/*
+ * The Explore draft, under its own key again, and for the same reason.
+ *
+ * Somebody halfway through writing an expression should not lose it to a refresh — but an
+ * unfinished experiment has nothing to do with the generator's version, and coupling it to the
+ * session would throw it away every time the generator was tuned. It is never executed on
+ * restore; it is text in a box until somebody presses Run.
+ */
+const EXPLORE_STORAGE_KEY = 'aplbeats.explore.v1';
+const EXPLORE_SCHEMA_VERSION = 1;
+
+/** How much hand-written APL is worth remembering. Comfortably past the editor's own limit. */
+const MAX_DRAFT_LENGTH = 1000;
 
 export interface Session {
   readonly creative: CreativeState;
@@ -112,6 +127,7 @@ export function clearSession(): void {
   try {
     globalThis.localStorage?.removeItem(STORAGE_KEY);
     globalThis.localStorage?.removeItem(KIT_STORAGE_KEY);
+    globalThis.localStorage?.removeItem(EXPLORE_STORAGE_KEY);
   } catch {
     // See above.
   }
@@ -136,6 +152,62 @@ export function loadKitChoice(): KitId {
     return resolveKitId(parsed.kitId);
   } catch {
     return SYNTH_KIT_ID;
+  }
+}
+
+export interface ExploreDraft {
+  readonly expression: string;
+  readonly target: Target;
+}
+
+/**
+ * The Explore draft, or nothing.
+ *
+ * Every field validated: the target must be one this application has, and the expression must
+ * be a string of sensible length. A stored draft from a future version, or one somebody has
+ * edited by hand in the developer tools, is discarded rather than trusted — it would otherwise
+ * be a way to put arbitrary text into an editor that has a Run button next to it.
+ */
+export function loadExploreDraft(): ExploreDraft | null {
+  try {
+    const raw = globalThis.localStorage?.getItem(EXPLORE_STORAGE_KEY) ?? null;
+    if (raw === null) return null;
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return null;
+    if (parsed.schema !== EXPLORE_SCHEMA_VERSION) return null;
+
+    const { expression, target } = parsed;
+    if (typeof expression !== 'string' || expression.length === 0) return null;
+    if (expression.length > MAX_DRAFT_LENGTH) return null;
+
+    if (target === 'all') return { expression, target: 'all' };
+    if (typeof target === 'number' && Number.isInteger(target) && target >= 0 && target < TRACK_COUNT) {
+      return { expression, target };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Remember the Explore draft. Failure is ignored, as everywhere else in this file. */
+export function saveExploreDraft(draft: ExploreDraft | null): void {
+  try {
+    if (draft === null) {
+      globalThis.localStorage?.removeItem(EXPLORE_STORAGE_KEY);
+      return;
+    }
+    globalThis.localStorage?.setItem(
+      EXPLORE_STORAGE_KEY,
+      JSON.stringify({
+        schema: EXPLORE_SCHEMA_VERSION,
+        expression: draft.expression.slice(0, MAX_DRAFT_LENGTH),
+        target: draft.target,
+      }),
+    );
+  } catch {
+    // See above.
   }
 }
 
