@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AudioEngine } from '@/audio/AudioEngine';
 import { Transport } from '@/transport/Transport';
-import { loadMasterVolume, saveMasterVolume } from '@/app/persistence';
+import {
+  clearSession,
+  loadExploreDraft,
+  loadMasterVolume,
+  saveExploreDraft,
+  saveMasterVolume,
+} from '@/app/persistence';
 import { createMixer } from '@/pattern/mixer';
 import { createInitialGroove } from '@/pattern/initialGroove';
 import { SYNTH_KIT } from '@/audio/kit';
@@ -486,6 +492,48 @@ describe('remembering the level', () => {
 
     expect(window.localStorage.getItem('aplbeats.master-volume.v1')).not.toBeNull();
     expect(window.localStorage.getItem('aplbeats.session.v1')).toBeNull();
+  });
+
+  it('is not collateral damage when the Explore draft is discarded', () => {
+    /*
+     * A real bug, caught by driving the published build rather than by reading the code.
+     *
+     * `Load current transform` discards the Explore draft, and for one commit it discarded the
+     * master volume with it: a global search-and-replace had put the volume's `removeItem` into
+     * `saveExploreDraft` as well as into `clearSession`. Everything still passed, because no test
+     * had ever asked one storage key what happened when a different one was cleared.
+     *
+     * Each save function touches only the key it is named for. `clearSession` is the one thing
+     * entitled to reach across them.
+     */
+    window.localStorage.clear();
+    saveMasterVolume(0.37);
+    saveExploreDraft({ expression: '~m[2;]', target: 'all' });
+
+    saveExploreDraft(null);
+
+    expect(loadExploreDraft()).toBeNull();
+    expect(loadMasterVolume()).toBe(0.37);
+  });
+
+  it('is not disturbed by writing an Explore draft either', () => {
+    window.localStorage.clear();
+    saveMasterVolume(0.12);
+    saveExploreDraft({ expression: '⌽m', target: 3 });
+
+    expect(loadMasterVolume()).toBe(0.12);
+    expect(loadExploreDraft()).toEqual({ expression: '⌽m', target: 3 });
+  });
+
+  it('goes when the whole session is cleared, which is the one thing that may take it', () => {
+    window.localStorage.clear();
+    saveMasterVolume(0.5);
+    saveExploreDraft({ expression: '⌽m', target: 'all' });
+
+    clearSession();
+
+    expect(loadMasterVolume()).toBe(1);
+    expect(loadExploreDraft()).toBeNull();
   });
 
   it('survives a storage that refuses to be written to', () => {

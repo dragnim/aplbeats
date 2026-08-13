@@ -206,8 +206,9 @@ export function loadExploreDraft(): ExploreDraft | null {
 export function saveExploreDraft(draft: ExploreDraft | null): void {
   try {
     if (draft === null) {
+      // This one key, and no other. Every save function here touches only what it is named for;
+      // `clearSession` is the only thing entitled to reach across them.
       globalThis.localStorage?.removeItem(EXPLORE_STORAGE_KEY);
-      globalThis.localStorage?.removeItem(VOLUME_STORAGE_KEY);
       return;
     }
     globalThis.localStorage?.setItem(
