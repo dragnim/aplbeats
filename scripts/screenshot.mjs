@@ -26,7 +26,10 @@ mkdirSync(outputDirectory, { recursive: true });
 const browser = await chromium.launch();
 
 /** Load the page, optionally press Play, let it settle, and shoot. */
-async function capture(name, { play = false, contextOptions = {}, viewport, peek = false } = {}) {
+async function capture(
+  name,
+  { play = false, contextOptions = {}, viewport, peek = false, explore = false } = {},
+) {
   const context = await browser.newContext({ ...contextOptions });
   const page = await context.newPage();
   if (viewport) await page.setViewportSize(viewport);
@@ -45,6 +48,19 @@ async function capture(name, { play = false, contextOptions = {}, viewport, peek
     await page.getByText('Core APL').waitFor();
   }
 
+  if (explore) {
+    /*
+     * Opened, not run. Explore builds its request in the browser, so showing the editor costs
+     * nothing — and a screenshot must never become a reason to call TryAPL.
+     */
+    await page.getByRole('button', { name: 'Peek at the APL' }).click();
+    await page.getByRole('button', { name: 'Edit this APL' }).click();
+    const editor = page.getByRole('textbox', { name: 'Your APL expression' });
+    await editor.waitFor();
+    await editor.fill('m[1;]∨2⌽m[1;]');
+    await page.getByLabel('Result goes to').selectOption('4');
+  }
+
   if (play) {
     await page.getByRole('button', { name: 'Play', exact: true }).click();
     // Far enough into the bar that the playhead is somewhere interesting rather than
@@ -61,6 +77,7 @@ await capture('screenshot-stopped', { viewport: { width: 1280, height: 860 } });
 await capture('screenshot-playing', { play: true, viewport: { width: 1280, height: 860 } });
 await capture('screenshot-narrow', { viewport: { width: 720, height: 900 } });
 await capture('screenshot-peek', { peek: true, viewport: { width: 1280, height: 1180 } });
+await capture('screenshot-explore', { explore: true, viewport: { width: 1280, height: 1400 } });
 await capture('screenshot-mobile', { play: true, contextOptions: devices['Pixel 7'] });
 await capture('screenshot-reduced-motion', {
   play: true,

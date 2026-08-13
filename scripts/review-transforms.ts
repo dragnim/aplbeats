@@ -262,6 +262,107 @@ function staggerSweep(before: Pattern): void {
   console.log('');
 }
 
+/* ------------------------------------------------------------------------- */
+
+/**
+ * Hand-written expressions, reviewed the way the built-in operations were.
+ *
+ * Stage 5 lets somebody write their own APL, which raises a question no test can answer: does
+ * writing your own actually produce rhythms worth having, or only rhythms that parse? So a few
+ * representative expressions are modelled here in TypeScript and printed as grids — the same
+ * arrangement `reference.ts` uses, and for the same reason. **Nothing here runs in the
+ * application.** These are a reading aid; the real expressions go to Dyalog.
+ *
+ * They were chosen to cover the four things somebody is likely to try in their first ten
+ * minutes: change a number, build a row from a formula, build one track out of another, and
+ * combine two rows.
+ */
+interface Experiment {
+  /** The APL, exactly as it would be typed into the editor. */
+  readonly apl: string;
+  readonly target: Target;
+  readonly note: string;
+  /** What that APL means, modelled locally. Review only. */
+  readonly run: (pattern: Pattern) => readonly boolean[];
+}
+
+const rotateRow = (row: readonly boolean[], by: number): boolean[] => {
+  const n = row.length;
+  const shift = ((Math.trunc(by) % n) + n) % n;
+  return Array.from({ length: n }, (_unused, index) => row[(index + shift) % n] === true);
+};
+
+const EXPERIMENTS: readonly Experiment[] = [
+  {
+    apl: '¯2⌽m[0;]',
+    target: KICK,
+    note: 'the first experiment: change the number, and the kick moves an eighth instead of a sixteenth',
+    run: (m) => rotateRow(m[KICK] ?? [], -2),
+  },
+  {
+    apl: '0=3|⍳16',
+    target: 2,
+    note: 'a formula rather than a sample of an existing row: every third sixteenth on the hat',
+    run: () => Array.from({ length: STEP_COUNT }, (_unused, step) => step % 3 === 0),
+  },
+  {
+    apl: 'm[1;]∨2⌽m[1;]',
+    target: 4,
+    note: 'a clap built out of the snare, doubled an eighth earlier',
+    run: (m) => {
+      const snare = m[SNARE] ?? [];
+      const early = rotateRow(snare, 2);
+      return snare.map((cell, step) => cell || early[step] === true);
+    },
+  },
+  {
+    apl: 'm[0;]∧~m[1;]',
+    target: 7,
+    note: 'a rim wherever the kick plays and the snare does not — one row from two',
+    run: (m) => (m[KICK] ?? []).map((cell, step) => cell && (m[SNARE] ?? [])[step] !== true),
+  },
+  {
+    apl: '~m[2;]',
+    target: 3,
+    note: 'the open hat in the gaps the closed hat leaves: the complement of a row',
+    run: (m) => (m[2] ?? []).map((cell) => !cell),
+  },
+  {
+    apl: '16⍴1 0 0',
+    target: 6,
+    note: 'reshape a short figure to fill the bar, which is where ⍴ starts to feel useful',
+    run: () => Array.from({ length: STEP_COUNT }, (_unused, step) => step % 3 === 0),
+  },
+];
+
+function exploreReview(before: Pattern): void {
+  console.log('');
+  console.log('══ Explore: hand-written expressions');
+  console.log('');
+  console.log('  Modelled locally for reading. The real ones are executed by Dyalog.');
+  console.log('');
+  console.log('    before');
+  for (const line of gridText(
+    before,
+    TRACKS.map(() => false),
+  ))
+    console.log(line);
+  console.log(`    ${spineText(spineOf(before))}`);
+
+  for (const experiment of EXPERIMENTS) {
+    const row = experiment.run(before);
+    const track = experiment.target === 'all' ? 0 : experiment.target;
+    const after = before.map((existing, index) => (index === track ? [...row] : existing));
+
+    console.log('');
+    console.log(`  ── ${experiment.apl}   → ${targetName(experiment.target)}`);
+    console.log(`     ${experiment.note}`);
+    for (const line of gridText(after, changedRows(before, after))) console.log(line);
+    console.log(`    ${spineText(spineOf(after))}`);
+  }
+  console.log('');
+}
+
 /** A row the visitor locked, and what each operation does to it. */
 function lockReview(before: Pattern): void {
   console.log('');
@@ -291,6 +392,8 @@ const groove = createInitialGroove();
 
 if (wants('--stagger')) {
   staggerSweep(groove);
+} else if (wants('--explore')) {
+  exploreReview(groove);
 } else if (wants('--locks')) {
   lockReview(groove);
 } else {

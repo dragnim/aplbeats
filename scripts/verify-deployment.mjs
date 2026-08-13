@@ -131,10 +131,15 @@ if (presets !== 8) note(`expected 8 presets, found ${String(presets)}`);
 /*
  * The check nothing else can make.
  *
- * The end-to-end suite mocks the endpoint, so it proves the product flow and says nothing
- * about whether the browser will *allow* the request from https://dragnim.github.io — which
- * depends on TryAPL's CORS headers and on the Content-Security-Policy as actually served.
- * Those are properties of the deployment, so they are checked against the deployment, once.
+ * The end-to-end suite mocks the endpoint, so it proves the product flow and says nothing about
+ * whether the browser will *allow* the request from https://dragnim.github.io — which depends on
+ * TryAPL's CORS headers and on the Content-Security-Policy as actually served. Those are
+ * properties of the deployment, so they are checked against the deployment, once.
+ *
+ * Since Stage 5 the one request goes through **Explore** rather than through a fixed control,
+ * because that path proves strictly more: the editor, the wrapping of a hand-written expression,
+ * the CSP, CORS, real Dyalog execution, the parser, installation, and Undo. A second request for
+ * the fixed controls would prove a subset of the same boundary.
  */
 let aplRequests = 0;
 
@@ -145,45 +150,75 @@ if (checkApl) {
 
   const panel = page.getByRole('region', { name: 'Transform with APL' });
   const aplStatus = page.getByRole('status', { name: 'APL transform' });
+  const exploreStatus = page.getByRole('status', { name: 'Explore' });
 
   await panel.scrollIntoViewIfNeeded();
-  await panel.getByLabel('Operation').selectOption('reverse');
-  await panel.getByLabel('Target').selectOption('all');
 
-  // Peek first, and read the expression that is about to be sent. Costs nothing.
+  // Peek first, then Explore. Neither may send anything.
   await page.getByRole('button', { name: 'Peek at the APL' }).click();
   const core = (await panel.locator('pre code').first().innerText()).trim();
   console.log(`  Peek shows: ${core}`);
-  if (core !== '⌽m') note(`expected Peek to show ⌽m, found "${core}"`);
-  if (aplRequests !== 0) note(`opening Peek sent ${String(aplRequests)} request(s); it must send none`);
+
+  await page.getByRole('button', { name: 'Edit this APL' }).click();
+  const editor = page.getByRole('textbox', { name: 'Your APL expression' });
+  const opened = (await editor.inputValue()).trim();
+  console.log(`  Explore opens on: ${opened}`);
+  if (opened !== core) note(`the editor opened on "${opened}" but Peek shows "${core}"`);
+  if (aplRequests !== 0) note(`opening Explore sent ${String(aplRequests)} request(s); it must send none`);
+
+  /*
+   * An expression no fixed control could have produced: a rim wherever the kick plays and the
+   * snare does not. It reads two rows and writes a third, which is the whole argument for
+   * Explore existing.
+   */
+  await page.getByLabel('Result goes to').selectOption('7');
+  await editor.fill('m[0;]∧~m[1;]');
+  if (aplRequests !== 0) note(`typing sent ${String(aplRequests)} request(s); it must send none`);
 
   const beforeApl = await gridOf();
-  await page.getByRole('button', { name: 'Apply with APL' }).click();
+  await page.getByRole('button', { name: 'Run this APL' }).click();
 
   try {
-    await aplStatus
-      .filter({ hasText: /Applied|unavailable|too long|unexpected|could not/ })
+    await exploreStatus
+      .filter({ hasText: /Applied|unavailable|too long|unexpected|could not|cannot/ })
       .waitFor({ timeout: 30_000 });
   } catch {
-    note('the transform never reported an outcome within 30s');
+    note('the custom expression never reported an outcome within 30s');
   }
 
-  const said = (await aplStatus.innerText()).trim();
+  const said = (await exploreStatus.innerText()).trim();
   const afterApl = await gridOf();
   console.log(`  live TryAPL requests: ${String(aplRequests)}`);
-  console.log(`  the transform said: ${said}`);
+  console.log(`  Explore said: ${said}`);
 
   if (aplRequests !== 1) note(`expected exactly 1 request, counted ${String(aplRequests)}`);
-  if (said !== 'Applied.') note(`APL did not run from the published origin: "${said}"`);
+  if (said !== 'Applied.') note(`custom APL did not run from the published origin: "${said}"`);
 
-  // ⌽ on the whole matrix: every row reversed, and the grid says so.
-  const expected = [...beforeApl.matchAll(/.{16}/gu)].map((row) => [...row[0]].reverse().join('')).join('');
-  console.log(`  the grid is the reversed bar: ${String(afterApl === expected)}`);
-  if (afterApl !== expected) note('the pattern APL returned is not the reversal of what was sent');
+  // The rim row should now be the kick, minus anything the snare is doing.
+  const rows = [...beforeApl.matchAll(/.{16}/gu)].map((row) => row[0]);
+  const kick = rows[0] ?? '';
+  const snare = rows[1] ?? '';
+  const expectedRim = [...kick]
+    .map((cell, step) => (cell === '1' && snare[step] !== '1' ? '1' : '0'))
+    .join('');
+  const actualRim = afterApl.slice(7 * 16);
+  console.log(`  the rim is the kick without the snare: ${String(actualRim === expectedRim)}`);
+  if (actualRim !== expectedRim) {
+    note(`the rim row is ${actualRim}, expected ${expectedRim}`);
+  }
+  // And nothing else moved.
+  if (afterApl.slice(0, 7 * 16) !== beforeApl.slice(0, 7 * 16)) {
+    note('a custom expression targeting one row changed another');
+  }
 
-  // And Undo puts it back, on the published site as everywhere else.
+  // Undo restores it, on the published site as everywhere else.
   await page.getByRole('button', { name: 'Undo' }).click();
-  if ((await gridOf()) !== beforeApl) note('Undo did not restore the pattern after a transform');
+  if ((await gridOf()) !== beforeApl) note('Undo did not restore the pattern after a custom run');
+
+  // The fixed control is still there and still says nothing it did not do.
+  if ((await aplStatus.innerText()).trim() !== '') {
+    note('the fixed transform reported an outcome it did not produce');
+  }
 }
 
 await browser.close();

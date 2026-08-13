@@ -12,6 +12,16 @@ but the whole idea. A rhythm is a rectangular array, array languages are good at
 arrays — and pressing **Apply with APL** sends that matrix to real
 [Dyalog APL](https://www.dyalog.com/) and plays back the matrix that comes home.
 
+The whole product is three steps, and they are meant to be taken in order:
+
+**Play.** Make a beat. Press Randomise until one of them is yours. Choose a drum machine.
+
+**Peek.** Look at the APL behind the operation you just used. `¯1⌽m[0;]` — that line moved your
+kick, and the rhythm it moved really is an array.
+
+**Explore.** Change the line. Change `¯1` to `¯2` and run it: the kick moves an eighth instead
+of a sixteenth. Then realise the number was never the only thing you could change.
+
 > **What runs where, precisely.** Generation and timing are local TypeScript and Web Audio. The
 > four transformations are executed by Dyalog APL, remotely, via [TryAPL](https://tryapl.org/).
 > There is no local fallback for them: if APL is unavailable the transform does not happen and the
@@ -39,6 +49,7 @@ else: APL sees the same matrix whichever machine is playing it.
 
 - [What it does](#what-it-does)
 - [Transform with APL](#transform-with-apl)
+- [Explore the APL](#explore-the-apl)
 - [The generator](#the-generator)
 - [The four macros](#the-four-macros)
 - [Presets](#presets)
@@ -72,6 +83,8 @@ else: APL sees the same matrix whichever machine is playing it.
   and never the rhythm.
 - **Four transformations, executed in APL.** Rotate, Reverse, Periodic and Euclidean, on one
   track or on the whole matrix — with the expression that ran on show if you want to see it.
+- **And then you can edit that expression.** Write your own APL against the current rhythm and
+  run it. Real Dyalog, real errors, your beat.
 - **Randomise.** A new take on the groove you have, as far away as Variation allows.
 - **New Seed.** A completely new groove, ignoring Variation.
 - **Four macros** — Density, Complexity, Syncopation, Variation — each with a distinct
@@ -274,6 +287,130 @@ and a transform is not the generator: it is you, naming a row and asking for it 
 one case worth knowing about is an operation on the whole matrix, which touches every row
 including a locked one — that is what "All tracks" means, and it is the visitor's choice.
 
+## Explore the APL
+
+Peek shows you the expression. Explore lets you change it.
+
+```
+CORE APL
+
+¯1⌽m[0;]
+
+⌽ rotates an array. A negative amount moves it later…
+
+[ Edit this APL ]
+```
+
+<img src="docs/screenshot-explore.png" alt="APL Beats with the Explore editor open, showing a hand-written APL expression and a glyph strip" width="820" />
+
+Pressing that opens an editor holding **exactly** the expression Peek was displaying — not a
+teaching approximation, not a separate example. Change `¯1` to `¯2`, press **Run this APL**, and
+the kick moves two sixteenths instead of one. That is the entire feature, and everything below is
+detail.
+
+### What you write, and what the application still provides
+
+You write **one expression**. APL Beats writes everything around it:
+
+```apl
+⎕IO←0 ⋄ m←8 16⍴1 0 0 0 … ⋄ m[0;]←(your expression) ⋄ m
+```
+
+- **`m` is the current rhythm** — an 8 × 16 matrix of Booleans, one row per track. You never
+  declare it, and you never paste 128 numbers into anything.
+- **`⎕IO←0`**, so tracks and steps count from zero, exactly as the grid does.
+- **Result goes to** decides where your answer is installed. Choose a track and your expression
+  must return 16 values; choose _All tracks_ and it must return an 8 × 16 matrix.
+
+The parentheses matter more than they look: bracketing your expression means whatever precedence
+you wrote cannot reach the assignment, so almost nothing has to be forbidden.
+
+### It is genuinely your APL that runs
+
+Nothing here is simulated. The expression is wrapped, posted to TryAPL, evaluated by Dyalog, and
+the matrix that comes back becomes the rhythm — the same path the four fixed operations use, in
+the same execution lane, with the same validation. There is no local fallback, and no TypeScript
+quietly standing in for anything.
+
+Which means **the errors are real too**, and Stage 5 shows them. Stage 3 could keep interpreter
+detail off screen because the application wrote its own APL and any error was its own bug; here
+the mistake is yours, and "APL could not run that" without the word `RANK` and a caret pointing
+at the glyph would be useless:
+
+```
+RANK ERROR: Mismatched left and right argument ranks
+      m←(2 3⍴m)
+         ∧
+```
+
+The beat is untouched, your code is untouched, and there is nothing to undo.
+
+### A few things to try
+
+Each of these is one line, and each does something you can hear. The four fixed operations are
+also a source of starting points: change the Operation and the editor follows, until you edit it.
+
+| Expression      | Result goes to | What happens                                            |
+| --------------- | -------------- | ------------------------------------------------------- |
+| `¯2⌽m[0;]`      | Kick           | The kick an eighth later instead of a sixteenth.        |
+| `0=3\|⍳16`      | Closed Hat     | Every third sixteenth: three against four.              |
+| `~m[2;]`        | Open Hat       | The open hat in exactly the gaps the closed hat leaves. |
+| `m[1;]∨2⌽m[1;]` | Clap           | A clap built from the snare, doubled an eighth early.   |
+| `m[0;]∧~m[1;]`  | Rim            | A rim wherever the kick plays and the snare does not.   |
+| `16⍴1 0 0`      | High Perc      | A three-step figure reshaped to fill the bar.           |
+
+There is deliberately **no Examples menu**. The Operation control already loads four real,
+working expressions into the editor, and a second list beside it would be a second thing to
+maintain and a busier panel for no new capability.
+
+### Typing APL without an APL keyboard
+
+A compact strip of the glyphs these rhythms actually need — `¯ ⌽ ⍳ ⍴ ⍉ ↑ ↓ | × = ≠ > ~ ∨ ∧ / ,` —
+inserts at the caret and replaces the selection, exactly as typing would. It is not a virtual
+keyboard, and anyone with a real APL layout can ignore it. Every button is named as well as drawn,
+so it is usable without seeing it.
+
+**Ctrl+Enter** or **Cmd+Enter** runs the expression. Plain Enter does not: this is a box you write
+in, and a stray newline should not spend somebody else's compute.
+
+### What Explore will not do
+
+- **It is one expression, not a workspace.** No `⋄`, no newlines, no comments, no `)` session
+  commands — each of those would change what the statements around your expression mean, and each
+  is refused locally with a sentence saying why, before anything is sent.
+- **It is not a security sandbox, and does not pretend to be one.** TryAPL is the sandbox and
+  refuses what it refuses; a blacklist here would be theatre, and the kind that gets trusted.
+- **The result must still be a rhythm.** Exactly 8 × 16, exactly zeros and ones. Anything else is
+  refused whole — never truncated, never reshaped "helpfully", never coerced.
+- **A generous but finite length**: 320 characters, counted in glyphs.
+
+### Your draft is yours
+
+The editor follows the fixed controls only until you touch it. After that it is a draft, and
+changing the Operation, a parameter or the Target will not overwrite it — only **Load current
+transform**, which says exactly what it does. The draft survives a reload, under its own storage
+key, and **never runs itself on restore**.
+
+### Nothing is sent until you press Run
+
+Opening Peek, opening Explore, typing, deleting, inserting a glyph, changing the target, loading
+the current transform, restoring a draft, playing, pausing — none of these makes a request. One
+press of Run, or one Ctrl+Enter, makes at most one. Holding the shortcut down makes one.
+
+Explore and **Apply with APL** share **one execution lane**: while either is running the other's
+button is disabled, so there is never more than one request in flight from this application.
+
+### A result can never lie about the code that produced it
+
+Two things can move while a request is out, and both are handled the same way — the answer is
+discarded and nothing is claimed:
+
+- **the pattern**, if you edit a cell, press Randomise or undo something;
+- **the code**, if you carry on writing while your last run is still in the air.
+
+Editing during a run is allowed on purpose. The network should not freeze somebody's writing, so
+it is the reply that gets thrown away rather than the keyboard that gets locked.
+
 ## The generator
 
 Every groove is a pure function of its inputs:
@@ -393,11 +530,11 @@ transform is one Undo. There is no Redo yet.
 Named because a README that lists ambitions alongside features cannot be trusted about
 either. None of the following exists:
 
-- **An APL editor.** You cannot type your own expressions. The four operations are built
-  from templates with clamped numbers, and nothing from the interface reaches executable
-  source as text.
+- **A full APL workspace.** Explore runs one expression. No definitions, no multiple
+  statements, no session commands, no files.
 - **APL generation.** The generator is still local TypeScript; only the transformations run
-  in APL.
+  in APL. Moving it is a request-budget problem rather than a translation one — see
+  [Where APL goes next](#where-apl-goes-next).
 - **Offline transforms.** There is no local fallback, on purpose. No APL, no transform.
 - Sharing, WAV export, MIDI, accounts.
 - More than one bar; variable track lengths; song arrangement.
@@ -453,6 +590,7 @@ src/
     wire.ts        the TryAPL Exec format, and the eleven APL error names
     matrix.ts      a pattern → an APL literal, and eight strict lines → a pattern
     operations.ts  the four operations: their APL, their ranges, their explanations
+    custom.ts      wrapping a hand-written expression, and the few inputs that cannot be
     client.ts      the only network request in the application
     transform.ts   the cache, and the staleness rule
     useTransform.ts  when a request may happen. The whole promise lives here
@@ -899,6 +1037,7 @@ npm run review:transforms                  every operation, on the opening groov
 npm run review:transforms -- --generated    and on generated bars from each preset
 npm run review:transforms -- --stagger      the operation that was built and rejected
 npm run review:transforms -- --locks        what a whole-matrix operation touches
+npm run review:transforms -- --explore      hand-written expressions, reviewed the same way
 ```
 
 Beside each grid it prints whether the kick is still on one, how many of the four beats are
@@ -1012,8 +1151,8 @@ description, and it names exactly one external origin.
 ## Testing
 
 ```bash
-npm test          # 436 unit and component tests, in jsdom
-npm run test:e2e  # 174 end-to-end runs across three browser projects
+npm test          # 500 unit and component tests, in jsdom
+npm run test:e2e  # 231 end-to-end runs across three browser projects
 ```
 
 **Not one of them makes a live TryAPL request.** The unit tests inject a fake client; the
@@ -1043,6 +1182,12 @@ superseded request is deliberately silent, so a visitor on Safari whose transfor
 shown nothing at all. The client now keeps its own note of why it aborted, which is both simpler
 and true everywhere.
 
+Stage 5's are mostly about counts too, for a sharper reason: it puts a text box next to a
+promise about network requests, and a box somebody types in is a box that could fire a request per
+keystroke. So the tests type, insert glyphs, change targets, open and close things, hold Ctrl+Enter
+down, and assert zero — plus two staleness cases, because the code can now move under a reply as
+well as the pattern.
+
 Stage 4's tests are mostly about _counts_: how many requests a kit change makes, how many times a
 sample is decoded, and how many parts of the creative state moved when the machine changed. The
 answer to the last is always zero, and it is checked by reading the whole interface — every cell,
@@ -1067,11 +1212,12 @@ deploy step abandons itself if `main` has moved on. The published base path come
 
 ## Where APL goes next
 
-APL now transforms. It does not yet generate, and it never will time.
+APL now transforms, and you can now write the transformation. It does not yet generate, and it
+never will time.
 
 ```
-now:     TypeScript generates  →  APL transforms  →  Web Audio plays
-later:   APL generates         →  APL transforms  →  Web Audio plays
+now:     TypeScript generates  →  APL transforms, yours or ours  →  Web Audio plays
+later:   APL generates         →  APL transforms                 →  Web Audio plays
 never:   APL times anything
 ```
 
