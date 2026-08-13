@@ -230,7 +230,7 @@ if (problems.length > 0) {
 } else {
   console.log(
     checkApl
-      ? `\nThe published site loads clean, opens on its groove, plays, and ran real APL in ${String(aplRequests)} request.`
+      ? `\nThe published site loads clean, opens on its groove, plays, and ran hand-written APL in ${String(aplRequests)} request.`
       : '\nThe published site loads clean, opens on its groove and plays. APL was not checked.',
   );
 }
