@@ -637,7 +637,7 @@ test('an APL error arrives as HTTP 200 and is still a failure', async ({ page })
   const before = await gridOf(page);
   await applyButton(page).click();
 
-  await expect(status(page)).toHaveText('APL could not complete that transform. Your beat was not changed.');
+  await expect(status(page)).toHaveText('APL could not run that. Your beat was not changed.');
   expect(await gridOf(page)).toBe(before);
   await expect(page.getByRole('button', { name: 'Undo' })).toBeDisabled();
 
