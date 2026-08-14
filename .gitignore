@@ -28,3 +28,6 @@ Thumbs.db
 # Scratch
 *.log
 npm-debug.log*
+
+# Vendored upstream sources, downloaded on demand by the render tooling.
+.cache/

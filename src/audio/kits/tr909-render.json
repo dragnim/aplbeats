@@ -1,0 +1,239 @@
+{
+  "upstream": {
+    "name": "andremichelle/tr-909",
+    "url": "https://github.com/andremichelle/tr-909",
+    "commit": "11d423382d6d9705bd37a42b533e3b3c27442be7",
+    "commitDate": "2024-03-11",
+    "licence": "MIT",
+    "copyright": "Copyright (c) 2022 André Michelle"
+  },
+  "rendering": {
+    "sampleRate": 44100,
+    "format": "16-bit PCM WAV, mono",
+    "lossless": false,
+    "lossyStep": "float32 render quantised to 16-bit PCM, rounded, no dither",
+    "stepLevelDb": 0,
+    "stepLevelNote": "upstream's LevelMapping is Linear(-18, 0) dB over how hard a step was struck; 0 dB is the top of that range, applied uniformly to all eight voices",
+    "presetSource": "upstream Preset defaults, unmodified",
+    "panelLevelNote": "each voice's `panelLevelDb` below is the machine's own front-panel level knob for that instrument, left at the preset default. It is a different control from `stepLevelDb` above, which is how hard the step was struck, and the two multiply",
+    "renderedBy": "scripts/render-tr909.mjs"
+  },
+  "voices": {
+    "kick": {
+      "file": "kick.wav",
+      "instrument": "Bass drum",
+      "dsp": "typescript/audio/tr909/dsp/bassdrum.ts",
+      "dspClass": "BassdrumVoice",
+      "resources": ["resources/bassdrum-attack.raw", "resources/bassdrum-cycle.raw"],
+      "settings": {
+        "tune": 0.007,
+        "panelLevelDb": -6,
+        "attack": 0,
+        "decay": 0.034641016151377546
+      },
+      "samples": 15338,
+      "seconds": 0.3478,
+      "peak": 0.50111,
+      "bytes": 30720,
+      "sha256": "e817d9d983cb71477df74eee2fe2abffe8579419f3c3b8dc235e5d2f726ff71c"
+    },
+    "snare": {
+      "file": "snare.wav",
+      "instrument": "Snare drum",
+      "dsp": "typescript/audio/tr909/dsp/snaredrum.ts",
+      "dspClass": "SnaredrumVoice",
+      "resources": ["resources/snare-tone.raw", "resources/snare-noise.raw"],
+      "settings": {
+        "tune": 0,
+        "panelLevelDb": -6,
+        "tone": 0.2,
+        "snappy": 0
+      },
+      "samples": 13960,
+      "seconds": 0.3166,
+      "peak": 0.45433,
+      "bytes": 27964,
+      "sha256": "949dd5224ce3ba9a7ed3825fc3902335e178e679f082bb883625c4eb07c8f4cf"
+    },
+    "closedHat": {
+      "file": "closed-hat.wav",
+      "instrument": "Closed hi-hat",
+      "dsp": "typescript/audio/tr909/dsp/basic-voice.ts",
+      "dspClass": "BasicTuneDecayVoice",
+      "resources": ["resources/closed-hihat.raw"],
+      "releaseStartTime": 0.006,
+      "settings": {
+        "panelLevelDb": -6,
+        "decay": 0.008
+      },
+      "samples": 3450,
+      "seconds": 0.0782,
+      "peak": 0.19122,
+      "bytes": 6944,
+      "sha256": "ce9f696f79939f20b688210dd46d8ab3aaa84c7c43b68e0e734421708974fd1f"
+    },
+    "openHat": {
+      "file": "open-hat.wav",
+      "instrument": "Open hi-hat",
+      "dsp": "typescript/audio/tr909/dsp/basic-voice.ts",
+      "dspClass": "BasicTuneDecayVoice",
+      "resources": ["resources/opened-hihat.raw"],
+      "releaseStartTime": 0.012,
+      "settings": {
+        "panelLevelDb": -6,
+        "decay": 0.06928203230275508
+      },
+      "samples": 22085,
+      "seconds": 0.5008,
+      "peak": 0.20011,
+      "bytes": 44214,
+      "sha256": "cb19ddcfdd007a553d0cc6381fc6af4b7bed50fe1931f4d4d6fd480de160354b"
+    },
+    "clap": {
+      "file": "clap.wav",
+      "instrument": "Hand clap",
+      "dsp": "typescript/audio/tr909/dsp/basic-voice.ts",
+      "dspClass": "BasicTuneDecayVoice",
+      "resources": ["resources/clap.raw"],
+      "releaseStartTime": 0,
+      "settings": {
+        "panelLevelDb": -6
+      },
+      "samples": 19673,
+      "seconds": 0.4461,
+      "peak": 0.34116,
+      "bytes": 39390,
+      "sha256": "5c1b531e02e4b99e5d9b279079073bc6121fa4cad3df7f056797ddc1939f919f"
+    },
+    "lowPerc": {
+      "file": "low-perc.wav",
+      "instrument": "Low tom",
+      "dsp": "typescript/audio/tr909/dsp/basic-voice.ts",
+      "dspClass": "BasicTuneDecayVoice",
+      "resources": ["resources/tom-low.raw"],
+      "releaseStartTime": 0.03,
+      "settings": {
+        "tune": 0,
+        "panelLevelDb": -6,
+        "decay": 0.15
+      },
+      "samples": 33222,
+      "seconds": 0.7533,
+      "peak": 0.26977,
+      "bytes": 66488,
+      "sha256": "55205440f0efc6a49835fda207ffaa45eddee136a97b87364d0edafe80f1c273"
+    },
+    "highPerc": {
+      "file": "high-perc.wav",
+      "instrument": "High tom",
+      "dsp": "typescript/audio/tr909/dsp/basic-voice.ts",
+      "dspClass": "BasicTuneDecayVoice",
+      "resources": ["resources/tom-hi.raw"],
+      "releaseStartTime": 0.03,
+      "settings": {
+        "tune": 0,
+        "panelLevelDb": -6,
+        "decay": 0.15
+      },
+      "samples": 18873,
+      "seconds": 0.428,
+      "peak": 0.2474,
+      "bytes": 37790,
+      "sha256": "c4438cf653b765e848f5ab207196e208a73d1797df1e5c2713841377b2f541be"
+    },
+    "rim": {
+      "file": "rim.wav",
+      "instrument": "Rim shot",
+      "dsp": "typescript/audio/tr909/dsp/basic-voice.ts",
+      "dspClass": "BasicTuneDecayVoice",
+      "resources": ["resources/rim.raw"],
+      "releaseStartTime": 0,
+      "settings": {
+        "panelLevelDb": -6
+      },
+      "samples": 2246,
+      "seconds": 0.0509,
+      "peak": 0.13516,
+      "bytes": 4536,
+      "sha256": "9fb25f396610bb927e5ad9b087ee2f01fb7b22ada329fb8b83628da66c7d8f17"
+    }
+  },
+  "upstreamFiles": {
+    "bin/audio/common.js": {
+      "bytes": 5185,
+      "sha256": "c9929af167545f976dfab7b11676758e5e89f724dba9863c1c6dc46e39ea5d76"
+    },
+    "bin/audio/tr909/preset.js": {
+      "bytes": 7935,
+      "sha256": "e22cefc6898d1d8dac81b3f8f01995a55e34aebdd023672fca6f9be44f9d87b7"
+    },
+    "bin/audio/tr909/resources.js": {
+      "bytes": 2815,
+      "sha256": "dac6ff0f2ab485639706c712bf0c06614e1cf10a2da2a6498174e2703713caba"
+    },
+    "bin/audio/tr909/dsp/voice.js": {
+      "bytes": 427,
+      "sha256": "a4b624c36c05a96749dc335f66c4310d3a5c8beac3424752c8d730acc4979387"
+    },
+    "bin/audio/tr909/dsp/basic-voice.js": {
+      "bytes": 1945,
+      "sha256": "ab9af598b4acc763d96174ab241d8921ecd076237aaa6d1002f6812381537de3"
+    },
+    "bin/audio/tr909/dsp/bassdrum.js": {
+      "bytes": 2833,
+      "sha256": "51d98d2b2ebf6142af03242fb97bb0695502e354727127f17555170ec09d98d6"
+    },
+    "bin/audio/tr909/dsp/snaredrum.js": {
+      "bytes": 2236,
+      "sha256": "04b7e1331e921f582f823096360dae378497520a2718d69a8ef1db45ffd3cc83"
+    },
+    "bin/lib/common.js": {
+      "bytes": 13052,
+      "sha256": "dd9032cd7d15135dec36a43099f52f2b8bcaeb967be7a2665b40a18006ad5fec"
+    },
+    "bin/lib/mapping.js": {
+      "bytes": 3690,
+      "sha256": "556f7e7815d77316b53dd72cf6bf005db13ff826f18f3dcbb976292b58d01e15"
+    },
+    "resources/bassdrum-attack.raw": {
+      "bytes": 860,
+      "sha256": "3eb9c3704779579bf8ceb0b33d640df45d3ba4a2125817c44f4308eaf16e1778"
+    },
+    "resources/bassdrum-cycle.raw": {
+      "bytes": 4096,
+      "sha256": "c130fa185b40707e337b4141115e3a010622bb592c9eebd4015b14f1c89676ec"
+    },
+    "resources/snare-tone.raw": {
+      "bytes": 32320,
+      "sha256": "0fee7945b17857d72adf489577c0ac5d84b03300616901fe096c30e23e285259"
+    },
+    "resources/snare-noise.raw": {
+      "bytes": 55844,
+      "sha256": "305905b982fdfb56489610a5d84fc7ea173ff0541fbf7e69b821eb772d39952b"
+    },
+    "resources/tom-low.raw": {
+      "bytes": 132904,
+      "sha256": "3a2211dfbc001d503d4ee85a1f09574497d9f25274d769380903dfad50c161c0"
+    },
+    "resources/tom-hi.raw": {
+      "bytes": 75496,
+      "sha256": "ecfd3e4b6c3082f28bb9eecb8ca74f35399c3c5ec4d42643b312b4c3708974d7"
+    },
+    "resources/rim.raw": {
+      "bytes": 8988,
+      "sha256": "822c285b92f58cb6883c95a2ffbfe20a62d7ac5d3f5b35361e7eb2eed59b3115"
+    },
+    "resources/clap.raw": {
+      "bytes": 78696,
+      "sha256": "c492e8220125e4c7cd46c7fff2f6ccf0813a46ab78145e13811235432f0c88a0"
+    },
+    "resources/closed-hihat.raw": {
+      "bytes": 29472,
+      "sha256": "961c1b4240022ec5f575830c34f07096083c0e76451680d4188a459280ceea55"
+    },
+    "resources/opened-hihat.raw": {
+      "bytes": 88344,
+      "sha256": "7ea72fb7185c9465b49fceb48cf899144b6ea9641c28d132b37546af15c5b186"
+    }
+  }
+}

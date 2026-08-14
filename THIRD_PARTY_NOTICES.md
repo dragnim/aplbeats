@@ -5,7 +5,10 @@ documentation: nothing here is shown inside the application.
 
 ## Audio
 
-Two kinds, and they are quite different in provenance.
+Three kinds, and they are quite different in provenance. One is generated in the browser and
+involves nobody else's work. Nine kits are somebody's **recordings, copied unchanged**. One kit is
+**rendered from somebody's source code** and contains no recording at all. The obligations differ,
+so the three are documented separately rather than under one heading about "samples".
 
 ### The synthesised kit — no third-party audio
 
@@ -68,8 +71,10 @@ Nothing in the collection was excluded on provenance grounds.
 #### Playback processing
 
 The bundled files are unaltered, but they are not played at unity. Each is scaled by a measured
-gain so that at full level it peaks where the corresponding synthesised voice peaks, less 0.6 dB of
-headroom — necessary because several of the lossy upstream files decode above full scale.
+gain so that at full level it peaks where its row is calibrated to peak, less 0.6 dB of headroom —
+necessary because several of the lossy upstream files decode above full scale. The row targets are
+pinned in [`src/audio/kits/calibration.ts`](src/audio/kits/calibration.ts), which explains at
+length why they are recorded as data rather than re-measured from the synthesised kit each time.
 
 Seven rows across four kits are filled by a substitution, because the machine had no instrument
 for that row; of those, **three voices in two kits** are additionally played at a fixed rate other
@@ -217,7 +222,115 @@ Upstream folder: `Casio-SK1`
 | High Perc     | `tom-low.m4a`    | Low tom (226 Hz)  |
 | Rim           | `tom-hi.m4a`     | High tom (905 Hz) |
 
-#### Manufacturer names
+### The rendered kit — andremichelle/tr-909
+
+Stage 5.2 adds one kit that is not a sample pack. **No recording of a TR-909, and no audio file from
+the upstream project, is included.** The eight files were computed here, by running André Michelle's
+open-source reimplementation of the machine's sound engine offline and writing down what came out.
+
+- **Source:** <https://github.com/andremichelle/tr-909>
+- **Author:** André Michelle
+- **Commit:** `11d423382d6d9705bd37a42b533e3b3c27442be7` (11 March 2024)
+- **Licence:** **MIT** — reproduced in full below
+- **Bundled at:** [`public/audio/tr-909/`](public/audio/tr-909/), 252.0 KB across 8 files
+- **Rendered by:** [`scripts/render-tr909.mjs`](scripts/render-tr909.mjs), `npm run render:tr909`
+- **Machine-readable manifest:** [`src/audio/kits/tr909-render.json`](src/audio/kits/tr909-render.json)
+  — per-voice settings, sample counts, peaks and SHA-256 of every rendered file, plus SHA-256 of
+  every upstream file the render read
+
+#### The licence
+
+> MIT License
+>
+> Copyright (c) 2022 André Michelle
+>
+> Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+> associated documentation files (the "Software"), to deal in the Software without restriction,
+> including without limitation the rights to use, copy, modify, merge, publish, distribute,
+> sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+> furnished to do so, subject to the following conditions:
+>
+> The above copyright notice and this permission notice shall be included in all copies or
+> substantial portions of the Software.
+>
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+> NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+> NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+> DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+> OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+#### What the audit established
+
+- The MIT licence is at the repository root and covers the repository. It permits use,
+  modification, redistribution and sale, of the source and of works derived from it, on one
+  condition: that the notice above travels with it. It does, in this file.
+- **One carve-out exists and is not used.** The upstream README credits **Isaac Cotec** for the
+  Roland, TR-909 and Rhythm Composer **logo SVGs**. APL Beats uses no logo, no artwork, no
+  interface asset and no font from the project — only the DSP source and the wavetables it reads.
+  Nothing credited to Isaac Cotec is copied, rendered or referenced.
+- The README also thanks **Sascha Kaltenschnee** for lending a DinSync RE-909 to develop against.
+  Lending hardware to someone writing an emulator is not authorship of that emulator and creates no
+  copyright interest in its output. Checked rather than assumed; there was nothing to clear.
+- The `.raw` files under `resources/` carry no separate licence statement and sit under the
+  repository's MIT licence with everything else. They are **wavetable inputs to the DSP**, not
+  recordings of a machine, and none of them is redistributed here.
+- No Roland trade dress of any kind is reproduced. See **Manufacturer names**, below, which applies
+  to this kit exactly as it does to the sampled ones.
+
+#### How the files were produced
+
+Deterministically, so that the claim can be checked rather than believed.
+
+`npm run render:tr909` downloads the upstream compiled modules and wavetables at the pinned commit
+into a gitignored cache, instantiates each voice exactly as upstream's own `createVoice` does, and
+runs it in the same 128-frame blocks upstream processes in until the voice reports itself finished.
+Every front-panel control is left at the upstream preset default. The one uniform choice is that
+each hit is struck at the top of upstream's step-level range — `Linear(-18, 0)` dB — rather than at
+an ordinary step; that is the same offset for all eight voices, so the machine's own balance between
+them survives, and it keeps a bit and a half of the sixteen available rather than spending it on a
+level APL Beats sets for itself anyway.
+
+Only the tail below −96 dBFS is trimmed, which is quieter than a 16-bit file can represent. There is
+no normalisation, no limiting, no equalisation and no editing.
+
+`npm run render:tr909 -- --check` re-renders and compares against the shipped files. Two independent
+runs produce byte-identical output on all eight.
+
+#### Format, and whether it is lossless
+
+**Not quite, and here is the one place it is not.** The DSP computes in 32-bit float; the files are
+16-bit PCM WAV, mono, 44.1 kHz. That quantisation — rounded, no dither — is the single lossy step in
+the chain, about 96 dB below full scale. The quietest voice, the rim shot, still sits about 79 dB
+above that floor after its playback gain, so it is inaudible; but it is a real step and the manifest
+records `"lossless": false` rather than claiming otherwise.
+
+16-bit PCM was chosen over a lossy encode deliberately. It costs about 250 kB, and it buys a
+byte-for-byte reproducible pipeline — which is what makes `--check` mean anything.
+
+#### Which files are rendered, and from what
+
+Upstream classes and wavetables, all paths relative to the upstream repository root.
+
+| APL Beats row | Instrument    | Upstream class        | Wavetables read                             |
+| ------------- | ------------- | --------------------- | ------------------------------------------- |
+| Kick          | Bass drum     | `BassdrumVoice`       | `bassdrum-attack.raw`, `bassdrum-cycle.raw` |
+| Snare         | Snare drum    | `SnaredrumVoice`      | `snare-tone.raw`, `snare-noise.raw`         |
+| Closed Hat    | Closed hi-hat | `BasicTuneDecayVoice` | `closed-hihat.raw`                          |
+| Open Hat      | Open hi-hat   | `BasicTuneDecayVoice` | `opened-hihat.raw`                          |
+| Clap          | Hand clap     | `BasicTuneDecayVoice` | `clap.raw`                                  |
+| Low Perc      | Low tom       | `BasicTuneDecayVoice` | `tom-low.raw`                               |
+| High Perc     | High tom      | `BasicTuneDecayVoice` | `tom-hi.raw`                                |
+| Rim           | Rim shot      | `BasicTuneDecayVoice` | `rim.raw`                                   |
+
+`BassdrumVoice` and `SnaredrumVoice` live in `typescript/audio/tr909/dsp/bassdrum.ts` and
+`snaredrum.ts`; `BasicTuneDecayVoice` in `typescript/audio/tr909/dsp/basic-voice.ts`.
+
+**There are no substitutions in this kit.** The TR-909 has a real instrument for all eight rows. Its
+mid tom, crash and ride are not used, because APL Beats has eight rows and not eleven.
+
+### Manufacturer names
+
+Applies to every kit above, sampled and rendered alike.
 
 Machine names are used textually, to identify which set of sounds is playing. **APL Beats is an
 independent project and is not affiliated with or endorsed by Roland, Linn, Sequential Circuits,

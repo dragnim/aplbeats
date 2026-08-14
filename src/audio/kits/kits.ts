@@ -8,14 +8,15 @@
  * a component.
  *
  * The gains are measurements, not taste. Every sample is scaled so that at full level it peaks
- * where the synthesised voice for the same row peaks, less six tenths of a decibel of headroom
- * — which is what stops a kit change from being a volume change, and what keeps the worst case
- * of all eight rows at once clear of full scale. Timbre, decay and transient shape are
- * untouched, so an 808 kick still booms and an SK-1 snare is still a toy.
+ * where its row is calibrated to peak, less six tenths of a decibel of headroom — which is what
+ * stops a kit change from being a volume change, and what keeps the worst case of all eight
+ * rows at once clear of full scale. Timbre, decay and transient shape are untouched, so an 808
+ * kick still booms and an SK-1 snare is still a toy.
  *
  * They are generated rather than chosen: `npm run measure:kits -- --gains` prints exactly these
- * numbers, and `npm run measure:kits` checks the result against the reference. Several are well
- * below 1 because the upstream files are lossy encodes that decode above full scale.
+ * numbers, and `npm run measure:kits` checks the result against the row targets in
+ * `calibration.ts`. Several are well below 1 because those upstream files are lossy encodes
+ * that decode above full scale; the TR-909 renders are lossless and quiet, so theirs are above.
  *
  * Two things are true of every kit here and are worth stating once:
  *
@@ -56,6 +57,42 @@ export const KITS: readonly KitDefinition[] = [
       lowPerc: { file: 'low-perc.m4a', gain: 0.487 },
       highPerc: { file: 'high-perc.m4a', gain: 0.459 },
       rim: { file: 'rim.m4a', gain: 0.75 },
+    },
+  },
+  /*
+   * The only kit here that is not a sample pack somebody recorded.
+   *
+   * These eight files were rendered offline from André Michelle's open-source TR-909 DSP at a
+   * pinned commit, by `npm run render:tr909`, with the machine's own front-panel controls left
+   * where the hardware's defaults put them. That makes them derived works of MIT-licensed code
+   * rather than recordings, which is a different provenance story from the other nine kits and
+   * is written down as such in `provenance.ts` and THIRD_PARTY_NOTICES.md.
+   *
+   * Consequences: the renders are lossless 16-bit PCM rather than lossy encodes, so none of
+   * them decodes above full scale and every gain below is a boost rather than a cut; and the
+   * pipeline is deterministic, so `npm run render:tr909 -- --check` can prove the shipped files
+   * are still the ones the pinned source produces.
+   */
+  {
+    id: 'tr-909',
+    name: 'TR-909',
+    blurb: 'Roland TR-909. Punchy synthesised kick, noisy snare, sampled metal on top.',
+    kind: 'sample',
+    directory: 'tr-909',
+    voices: {
+      kick: { file: 'kick.wav', gain: 1.608 },
+      snare: { file: 'snare.wav', gain: 1.396 },
+      closedHat: { file: 'closed-hat.wav', gain: 2.805, chokeGroup: HAT_CHOKE_GROUP },
+      openHat: { file: 'open-hat.wav', gain: 2.26, chokeGroup: HAT_CHOKE_GROUP },
+      clap: { file: 'clap.wav', gain: 1.867 },
+      lowPerc: { file: 'low-perc.wav', gain: 1.991 },
+      highPerc: { file: 'high-perc.wav', gain: 2.052 },
+      /*
+       * The rim shot, and the quietest thing the machine makes — a fiftieth of a second of
+       * click. Boosting it fourfold still leaves about 79 dB of signal above the sixteen-bit
+       * floor, so the headroom is spent where it cannot be heard.
+       */
+      rim: { file: 'rim.wav', gain: 4.043 },
     },
   },
   {

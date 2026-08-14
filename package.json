@@ -27,10 +27,12 @@
     "screenshot": "node scripts/screenshot.mjs",
     "measure:kit": "node scripts/measure-kit.mjs",
     "measure:kits": "node scripts/measure-kits.mjs",
+    "diagnose:reference": "node scripts/diagnose-reference.mjs",
     "verify:deployment": "node scripts/verify-deployment.mjs",
     "verify:apl-live": "tsx scripts/verify-apl-live.ts",
     "verify:credits": "node scripts/verify-credits.mjs",
     "import:samples": "node scripts/import-samples.mjs",
+    "render:tr909": "node scripts/render-tr909.mjs",
     "review:patterns": "tsx scripts/review-patterns.ts",
     "review:transforms": "tsx scripts/review-transforms.ts",
     "measure:generated": "node scripts/measure-generated.mjs"

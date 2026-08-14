@@ -1,5 +1,5 @@
 /*
- * Where every bundled sample came from.
+ * Where every bundled sound came from.
  *
  * This file is the answer to "which exact version of somebody else's work is in this
  * repository, and on what basis". It is authored by hand, it is the input to
@@ -7,7 +7,12 @@
  * from — so a future kit cannot be added without its provenance being written down, because
  * the importer has nowhere to read a download URL from otherwise.
  *
- * The audit behind it is recorded in THIRD_PARTY_NOTICES.md. The short version:
+ * There are two upstreams and they are kept apart on purpose. Nine kits are *copied samples*
+ * from `smpldsnds/drum-machines`, byte-for-byte, and are covered by everything immediately
+ * below. One kit, the TR-909, is *rendered* from MIT-licensed DSP and is covered by a separate
+ * section further down, because a derived render and a copied file need different evidence.
+ *
+ * The audit behind the copied samples is recorded in THIRD_PARTY_NOTICES.md. The short version:
  *
  *   the upstream collection carries no LICENSE file — the only licence statement anywhere in
  *   it is the one line in its README, "A collection of public domain samples of different
@@ -310,6 +315,195 @@ export const KIT_PROVENANCE: readonly KitProvenance[] = [
 ];
 
 /* ------------------------------------------------------------------------- */
+/* Rendered kits: a different upstream, and a different kind of thing.        */
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Everything above this line is somebody's recording, copied unchanged.
+ *
+ * Everything below is not a recording at all. The TR-909 kit was *rendered*: André Michelle's
+ * open-source reimplementation of the machine's DSP was run offline, at a pinned commit, with
+ * the machine's own front-panel defaults, and the eight resulting waveforms were written to
+ * disk. No hardware was recorded and no upstream audio file was copied — the `.raw` wavetables
+ * the DSP reads are inputs to it, not the output.
+ *
+ * The distinction is kept structural rather than explained in a comment somewhere, because the
+ * two carry different obligations. A copied sample needs its source pack and a checksum proving
+ * the bytes are unaltered. A derived render needs the source *code*, its licence, the commit,
+ * the settings and a pipeline that can produce the same bytes again — a checksum against
+ * upstream would be meaningless, since there is nothing upstream to compare to.
+ *
+ * So `bundledFiles()` still means "files copied from smpldsnds", `checksums.json` still means
+ * "and here is the proof they are unaltered", and neither had to be weakened to accommodate a
+ * kit that works differently.
+ */
+
+export const RENDERED_UPSTREAM = {
+  name: 'andremichelle/tr-909',
+  url: 'https://github.com/andremichelle/tr-909',
+  author: 'André Michelle',
+  /**
+   * The exact commit the DSP was run from.
+   *
+   * Pinned for the same reason the sample collection is, and with more at stake: the output is
+   * computed rather than copied, so the code that computes it *is* the source material.
+   */
+  commit: '11d423382d6d9705bd37a42b533e3b3c27442be7',
+  commitDate: '2024-03-11',
+  licence: 'MIT',
+  copyright: 'Copyright (c) 2022 André Michelle',
+  /**
+   * The one thing in that repository which is not the author's to relicense, and is not used.
+   *
+   * Its README credits Isaac Cotec for the Roland, TR-909 and Rhythm Composer logo SVGs. APL
+   * Beats uses no logo, no artwork and no part of the upstream interface — only the DSP and the
+   * wavetables it reads. Recorded here so that "we checked" is a fact rather than a claim.
+   */
+  excludedFromUse: 'The logo SVGs credited to Isaac Cotec. Not copied, not rendered, not used.',
+  /**
+   * Also credited upstream, and creating no interest here.
+   *
+   * The README thanks Sascha Kaltenschnee for lending a DinSync RE-909 to develop against.
+   * Lending hardware to someone writing an emulator is not authorship of the emulator and not
+   * a copyright in its output, so there is nothing to clear — but it was checked rather than
+   * assumed.
+   */
+  acknowledgement: 'Sascha Kaltenschnee, for lending the hardware the emulator was developed against.',
+} as const;
+
+/**
+ * What the renders are, and the one place the chain is not lossless.
+ *
+ * Worth stating plainly rather than claiming lossless and hoping. The DSP computes in float32
+ * and the files are 16-bit PCM, so there is exactly one lossy step: that quantisation, rounded,
+ * with no dither. It is about 96 dB below full scale and the quietest voice still sits 79 dB
+ * above it after the playback gain, so it is inaudible — but it is a real step and it is why
+ * `lossless` is `false` in the render manifest rather than `true` with an asterisk.
+ *
+ * Unlike the sampled kits, there was a choice here, and 16-bit PCM was preferred over lossy
+ * encoding: it keeps the pipeline reproducible byte-for-byte, which is what lets
+ * `npm run render:tr909 -- --check` prove the shipped files are still the ones the pinned
+ * source produces. That check is worth more than the 200 kB an AAC encode would have saved.
+ */
+export const RENDER_FORMAT = {
+  extension: '.wav',
+  codec: '16-bit PCM, mono, 44.1 kHz',
+  lossless: false,
+  lossyStep: 'float32 render quantised to 16-bit PCM, rounded, no dither',
+  processing: 'none beyond that quantisation — no normalisation, no limiting, no editing',
+} as const;
+
+export interface RenderedVoiceProvenance {
+  /** The name this file has in APL Beats. */
+  readonly file: string;
+  /** What the machine calls this sound. */
+  readonly instrument: string;
+  /** The upstream class that computes it. */
+  readonly dspClass: string;
+  /** The upstream source file that class lives in. */
+  readonly dspSource: string;
+  /** The upstream wavetables that class reads, relative to the repository root. */
+  readonly resources: readonly string[];
+}
+
+export interface RenderedKitProvenance {
+  readonly id: KitId;
+  /** The machine, as its manufacturer named it. Text only. */
+  readonly machine: string;
+  /** How these files came to exist, in one paragraph. */
+  readonly renderingNote: string;
+  /** The basis on which the result is redistributed here. */
+  readonly licenceBasis: string;
+  readonly voices: readonly RenderedVoiceProvenance[];
+  /** Rows the machine has that APL Beats does not, and the reverse. */
+  readonly mappingNote: string;
+}
+
+export const RENDERED_KIT_PROVENANCE: readonly RenderedKitProvenance[] = [
+  {
+    id: 'tr-909',
+    machine: 'Roland TR-909 Rhythm Composer',
+    renderingNote:
+      'Rendered offline by `npm run render:tr909` from the upstream DSP at the pinned commit, ' +
+      'at 44.1 kHz, one voice at a time, in the same 128-frame blocks upstream processes in. ' +
+      'Every front-panel control was left at the upstream preset default; the only uniform ' +
+      'change is that each hit is struck at the top of upstream’s step-level range rather than ' +
+      'at an ordinary step, which costs nothing musically and keeps a bit and a half of ' +
+      'sixteen-bit resolution. Each render runs until the voice reports itself finished, and ' +
+      'only the tail below −96 dBFS is trimmed. The pipeline is deterministic: repeated runs ' +
+      'produce byte-identical files, and `--check` verifies the shipped ones still match.',
+    licenceBasis:
+      'MIT. The licence permits use, modification and redistribution of the source and of ' +
+      'works derived from it, requiring only that the copyright notice and licence text travel ' +
+      'with it — which they do, in THIRD_PARTY_NOTICES.md. No logo, artwork, interface asset ' +
+      'or font from the upstream project is used.',
+    mappingNote:
+      'The TR-909 has eleven instruments; APL Beats has eight rows. Bass drum, snare drum, ' +
+      'closed and open hi-hat, hand clap and rim shot map one to one. The low and high toms ' +
+      'take the two percussion rows. The mid tom, crash and ride are not used — nothing here ' +
+      'is a substitution, because the machine has a real instrument for every row.',
+    voices: [
+      {
+        file: 'kick.wav',
+        instrument: 'Bass drum',
+        dspClass: 'BassdrumVoice',
+        dspSource: 'typescript/audio/tr909/dsp/bassdrum.ts',
+        resources: ['resources/bassdrum-attack.raw', 'resources/bassdrum-cycle.raw'],
+      },
+      {
+        file: 'snare.wav',
+        instrument: 'Snare drum',
+        dspClass: 'SnaredrumVoice',
+        dspSource: 'typescript/audio/tr909/dsp/snaredrum.ts',
+        resources: ['resources/snare-tone.raw', 'resources/snare-noise.raw'],
+      },
+      {
+        file: 'closed-hat.wav',
+        instrument: 'Closed hi-hat',
+        dspClass: 'BasicTuneDecayVoice',
+        dspSource: 'typescript/audio/tr909/dsp/basic-voice.ts',
+        resources: ['resources/closed-hihat.raw'],
+      },
+      {
+        file: 'open-hat.wav',
+        instrument: 'Open hi-hat',
+        dspClass: 'BasicTuneDecayVoice',
+        dspSource: 'typescript/audio/tr909/dsp/basic-voice.ts',
+        resources: ['resources/opened-hihat.raw'],
+      },
+      {
+        file: 'clap.wav',
+        instrument: 'Hand clap',
+        dspClass: 'BasicTuneDecayVoice',
+        dspSource: 'typescript/audio/tr909/dsp/basic-voice.ts',
+        resources: ['resources/clap.raw'],
+      },
+      {
+        file: 'low-perc.wav',
+        instrument: 'Low tom',
+        dspClass: 'BasicTuneDecayVoice',
+        dspSource: 'typescript/audio/tr909/dsp/basic-voice.ts',
+        resources: ['resources/tom-low.raw'],
+      },
+      {
+        file: 'high-perc.wav',
+        instrument: 'High tom',
+        dspClass: 'BasicTuneDecayVoice',
+        dspSource: 'typescript/audio/tr909/dsp/basic-voice.ts',
+        resources: ['resources/tom-hi.raw'],
+      },
+      {
+        file: 'rim.wav',
+        instrument: 'Rim shot',
+        dspClass: 'BasicTuneDecayVoice',
+        dspSource: 'typescript/audio/tr909/dsp/basic-voice.ts',
+        resources: ['resources/rim.raw'],
+      },
+    ],
+  },
+];
+
+/* ------------------------------------------------------------------------- */
 
 export interface ExcludedPack {
   readonly upstreamPath: string;
@@ -338,7 +532,12 @@ export const EXCLUDED_PACKS: readonly ExcludedPack[] = [
 
 /* ------------------------------------------------------------------------- */
 
-/** Every bundled sample, as `kitId/file` — the list the importer downloads and tests check. */
+/**
+ * Every copied sample, as `kitId/file` — the list the importer downloads and tests check.
+ *
+ * Copied files only. The rendered kits have no upstream file to download or compare against,
+ * which is exactly why they are not here.
+ */
 export function bundledFiles(): { kitId: KitId; file: string; upstream: string }[] {
   return KIT_PROVENANCE.flatMap((kit) =>
     kit.files.map((entry) => ({
@@ -349,6 +548,27 @@ export function bundledFiles(): { kitId: KitId; file: string; upstream: string }
   );
 }
 
+/** Every rendered file, as `kitId/file`. The other half of what ships under `public/audio`. */
+export function renderedFiles(): { kitId: KitId; file: string }[] {
+  return RENDERED_KIT_PROVENANCE.flatMap((kit) =>
+    kit.voices.map((voice) => ({ kitId: kit.id, file: voice.file })),
+  );
+}
+
+/**
+ * Every bundled audio file, however it got here.
+ *
+ * For the questions that do not care about the difference — does the file exist, is it served,
+ * is it referenced by exactly one kit. The questions that *do* care use the two lists above.
+ */
+export function allAudioFiles(): { kitId: KitId; file: string }[] {
+  return [...bundledFiles().map(({ kitId, file }) => ({ kitId, file })), ...renderedFiles()];
+}
+
 export function provenanceFor(kitId: KitId): KitProvenance | undefined {
   return KIT_PROVENANCE.find((kit) => kit.id === kitId);
+}
+
+export function renderedProvenanceFor(kitId: KitId): RenderedKitProvenance | undefined {
+  return RENDERED_KIT_PROVENANCE.find((kit) => kit.id === kitId);
 }

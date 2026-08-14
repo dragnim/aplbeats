@@ -6,7 +6,9 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'coverage/**', 'playwright-report/**', 'test-results/**', 'public/**'],
+    // `.cache` holds somebody else's compiled JavaScript, downloaded by `render:tr909`. It is
+    // gitignored, it is not ours, and it has no tsconfig to be parsed against.
+    ignores: ['dist/**', 'coverage/**', 'playwright-report/**', 'test-results/**', 'public/**', '.cache/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,

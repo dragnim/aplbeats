@@ -10,14 +10,23 @@
  * the drum machine change the volume?
  *
  * The rule being checked is one sentence. Every sample is scaled so that at full level it peaks
- * where the synthesised voice for the same row peaks. That leaves timbre, decay and transient
- * shape completely alone — so an 808 kick still booms and an SK-1 snare is still a toy — while
- * removing the arbitrary level differences between one stranger's sample pack and another's.
- * Several upstream files decode above full scale, being lossy encodes, so this is not a
- * refinement: without it, choosing a kit would be a way of clipping the master bus.
+ * where its row is calibrated to peak. That leaves timbre, decay and transient shape completely
+ * alone — so an 808 kick still booms and an SK-1 snare is still a toy — while removing the
+ * arbitrary level differences between one stranger's sample pack and another's. Several
+ * upstream files decode above full scale, being lossy encodes, so this is not a refinement:
+ * without it, choosing a kit would be a way of clipping the master bus.
  *
- * Three things are measured: each voice alone, the opening groove through the real master
- * chain, and the worst case of all eight rows on one step with every fader up.
+ * The row targets come from `src/audio/kits/calibration.ts` rather than from rendering the
+ * synthesised kit here. Stage 5.2 found out why that matters: six of the synthesised voices
+ * read the noise buffer at a fractional sample offset, a Chromium update moved where that read
+ * lands, and the reference shifted up to 1.8 dB under code that had not changed — reporting all
+ * nine sampled kits as mis-calibrated by exactly the same amount on exactly the same rows. The
+ * yardstick is pinned now. The synthesised kit is still rendered and still reported, as the
+ * drift table below, which is where that fact belongs.
+ *
+ * Four things are measured: each voice alone, how far the synthesised kit has drifted from the
+ * pinned reference, the opening groove through the real master chain, and the worst case of all
+ * eight rows on one step with every fader up.
  *
  * Advisory rather than a gate, except for clipping and silence, which are failures.
  */
@@ -34,21 +43,6 @@ import { chromium } from '@playwright/test';
 const url = process.env.MEASURE_URL ?? 'http://localhost:5173/aplbeats/';
 const showGains = process.argv.includes('--gains');
 
-/*
- * How far below the synthesised reference a sampled voice is aimed.
- *
- * Matching the synth peak exactly is the obvious rule and it very nearly worked: every kit
- * landed within a decibel, but two of them put a single sample at full scale in the
- * pathological case of all eight rows firing at once with every fader at the top. The
- * synthesised kit itself measures −0.2 dBFS there, so there was never any headroom in that
- * case to give away.
- *
- * Six tenths of a decibel below, then. It is inaudible as a level change — well inside the
- * ±1.5 dB the calibration is checked against — and it is the difference between "no clipped
- * samples" and "one clipped sample", which is worth having as a fact rather than as a nearly.
- */
-const HEADROOM = 0.93;
-
 const browser = await chromium.launch();
 const page = await browser.newPage();
 page.on('pageerror', (error) => {
@@ -63,6 +57,7 @@ const measurements = await page.evaluate(async () => {
   const { KITS, sampleUrl } = await import('./src/audio/kits/kits.ts');
   const { isSampleKit } = await import('./src/audio/kits/types.ts');
   const { createNoiseBuffer, resetNoiseCursor, saturator } = await import('./src/audio/dsp.ts');
+  const { CALIBRATION_REFERENCE, HEADROOM } = await import('./src/audio/kits/calibration.ts');
   const { TRACKS } = await import('./src/pattern/tracks.ts');
   const { createInitialGroove } = await import('./src/pattern/initialGroove.ts');
   const { triggersForStep } = await import('./src/audio/triggers.ts');
@@ -247,18 +242,28 @@ const measurements = await page.evaluate(async () => {
     entry.worst = await renderWorstCase(kit);
   }
 
-  return { synthVoices, synthGroove, synthWorst, perKit };
+  return {
+    synthVoices,
+    synthGroove,
+    synthWorst,
+    perKit,
+    reference: CALIBRATION_REFERENCE,
+    headroom: HEADROOM,
+  };
 });
+
+const { reference, headroom } = measurements;
 
 /* ---- report ---------------------------------------------------------------- */
 
 const dB = (value) => (value <= 0 ? '-inf' : (20 * Math.log10(value)).toFixed(1));
 const ROWS = ['kick', 'snare', 'closedHat', 'openHat', 'clap', 'lowPerc', 'highPerc', 'rim'];
 
-console.log('\nPer-voice peak at full level, dBFS. The synthesised kit is the reference.\n');
+console.log('\nPer-voice peak at full level, dBFS. Every kit aims at the target row.\n');
 const header = `${'kit'.padEnd(17)}${ROWS.map((row) => row.slice(0, 7).padStart(8)).join('')}`;
 console.log(header);
 console.log('-'.repeat(header.length));
+console.log(`${'target'.padEnd(17)}${ROWS.map((row) => dB(reference[row] * headroom).padStart(8)).join('')}`);
 console.log(
   `${'synth'.padEnd(17)}${ROWS.map((row) => dB(measurements.synthVoices[row].peak).padStart(8)).join('')}`,
 );
@@ -266,16 +271,36 @@ for (const kit of measurements.perKit) {
   console.log(`${kit.name.padEnd(17)}${ROWS.map((row) => dB(kit.voices[row].peak).padStart(8)).join('')}`);
 }
 
-console.log('\nDeviation from the synthesised reference, dB. Anything past ±1.5 is a mis-calibration.\n');
+/*
+ * How far the synthesised kit has wandered from the reference recovered out of it.
+ *
+ * Its own line, and not a failure. The sampled kits are files times constants and cannot move;
+ * the synthesised kit is a graph the browser builds, and six of its voices read noise at a
+ * fractional sample offset that the engine is free to resolve differently between versions.
+ * Drift here means the measuring browser has changed, not that anything shipped is wrong.
+ */
+console.log('\nThe synthesised kit against the pinned reference, dB. Engine drift, not a fault.\n');
+console.log(header);
+console.log('-'.repeat(header.length));
+let worstDrift = 0;
+console.log(
+  `${'synth'.padEnd(17)}${ROWS.map((row) => {
+    const drift = 20 * Math.log10(measurements.synthVoices[row].peak / reference[row]);
+    if (Math.abs(drift) > Math.abs(worstDrift)) worstDrift = drift;
+    return (drift >= 0 ? `+${drift.toFixed(1)}` : drift.toFixed(1)).padStart(8);
+  }).join('')}`,
+);
+
+console.log('\nDeviation from the target, dB. Anything past ±1.5 is a mis-calibration.\n');
 console.log(header);
 console.log('-'.repeat(header.length));
 let worstDeviation = 0;
 const offenders = [];
 for (const kit of measurements.perKit) {
   const cells = ROWS.map((row) => {
-    const reference = measurements.synthVoices[row].peak;
+    const target = reference[row] * headroom;
     const measured = kit.voices[row].peak;
-    const delta = 20 * Math.log10(measured / reference);
+    const delta = 20 * Math.log10(measured / target);
     if (Math.abs(delta) > Math.abs(worstDeviation)) worstDeviation = delta;
 
     /*
@@ -321,7 +346,7 @@ if (showGains) {
     for (const row of ROWS) {
       const file = kit.definition.voices[row].file;
       const raw = kit.rawPeaks[file];
-      const target = measurements.synthVoices[row].peak * HEADROOM;
+      const target = reference[row] * headroom;
       const rate = kit.definition.voices[row].playbackRate ?? 1;
       console.log(
         `    ${row.padEnd(10)} gain: ${(target / raw).toFixed(3)}` +
@@ -362,5 +387,9 @@ if (silent.length === 0 && clipping.length === 0) {
     `No clipping anywhere, nothing silent, worst calibration deviation ${worstDeviation.toFixed(1)} dB.`,
   );
 }
+console.log(
+  `Synthesised kit ${Math.abs(worstDrift) < 0.05 ? 'sits on' : `has drifted ${worstDrift.toFixed(1)} dB from`} ` +
+    `the pinned reference on this engine (${browser.version()}).`,
+);
 
 await browser.close();

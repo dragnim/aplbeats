@@ -456,7 +456,10 @@ describe('persistence', () => {
 
   it('falls back to the synthesised kit when the stored identifier is gone', () => {
     // A kit withdrawn in a later release must not break startup or leave a silent instrument.
-    window.localStorage.setItem('aplbeats.kit.v1', JSON.stringify({ schema: 1, kitId: 'tr-909' }));
+    window.localStorage.setItem(
+      'aplbeats.kit.v1',
+      JSON.stringify({ schema: 1, kitId: 'kit-that-was-withdrawn' }),
+    );
 
     render(<App />);
 

@@ -254,7 +254,7 @@ describe('when a kit will not load', () => {
   it('rejects an identifier it does not know', async () => {
     const { loader, urls } = harness();
 
-    await loader.load('tr-909').then(
+    await loader.load('kit-that-was-withdrawn').then(
       () => expect.fail('should have rejected'),
       (error: unknown) => {
         expect(error).toBeInstanceOf(KitLoadError);

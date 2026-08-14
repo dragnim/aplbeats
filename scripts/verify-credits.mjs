@@ -25,7 +25,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const readme = readFileSync('README.md', 'utf8');
@@ -33,6 +33,7 @@ const notices = readFileSync('THIRD_PARTY_NOTICES.md', 'utf8');
 const provenance = readFileSync('src/audio/kits/provenance.ts', 'utf8');
 const kitsSource = readFileSync('src/audio/kits/kits.ts', 'utf8');
 const checksums = JSON.parse(readFileSync('src/audio/kits/checksums.json', 'utf8'));
+const render = JSON.parse(readFileSync('src/audio/kits/tr909-render.json', 'utf8'));
 
 const problems = [];
 const notes = [];
@@ -186,11 +187,19 @@ if (existsSync(noticePath)) {
 /* ---- 6. every mapping row is present and complete -------------------------- */
 
 const ROWS = ['Kick', 'Snare', 'Closed Hat', 'Open Hat', 'Clap', 'Low Perc', 'High Perc', 'Rim'];
-const kitNames = [...kitsSource.matchAll(/id:\s*'([^']+)',\s*\n\s*name:\s*'([^']+)'/gu)]
-  .filter(([, id]) => id !== 'synth')
-  .map(([, , name]) => name);
+const allKits = [...kitsSource.matchAll(/id:\s*'([^']+)',\s*\n\s*name:\s*'([^']+)'/gu)].filter(
+  ([, id]) => id !== 'synth',
+);
 
-check(kitNames.length === 9, 'nine sampled kits in the manifest', String(kitNames.length));
+/*
+ * The copied kits only. TR-909 is documented under its own heading, with a table of upstream
+ * classes rather than upstream files, so folding it in here would look for a mapping table that
+ * does not exist and is not supposed to. It is checked in section 12 instead.
+ */
+const kitNames = allKits.filter(([, id]) => id !== 'tr-909').map(([, , name]) => name);
+
+check(allKits.length === 10, 'ten sampled kits in the manifest', String(allKits.length));
+check(kitNames.length === 9, 'nine of them copied from the sample collection', String(kitNames.length));
 
 for (const document of [
   { name: 'README', text: readme },
@@ -318,12 +327,20 @@ check(
 
 /* ---- 10. stray files, and non-affiliation ---------------------------------- */
 
+/*
+ * Every directory, not just the checksummed ones — a whole unrecorded kit is a worse failure
+ * than a stray file inside a recorded one, and looking only where a manifest points cannot
+ * find it.
+ */
+const renderedNames = new Set(Object.values(render.voices).map((voice) => `tr-909/${voice.file}`));
 let stray = 0;
-for (const kitId of perKit.keys()) {
+for (const kitId of readdirSync('public/audio')) {
+  if (!statSync(join('public/audio', kitId)).isDirectory()) continue;
   for (const name of readdirSync(join('public/audio', kitId))) {
-    if (!checksums.files[`${kitId}/${name}`]) {
+    const key = `${kitId}/${name}`;
+    if (!checksums.files[key] && !renderedNames.has(key)) {
       stray += 1;
-      problems.push(`  FAIL  unaccounted file on disk: ${kitId}/${name}`);
+      problems.push(`  FAIL  unaccounted file on disk: ${key}`);
     }
   }
 }
@@ -352,6 +369,152 @@ for (const [label, pattern] of claims) {
   check(pattern.test(readme), `README states: ${label}`);
   check(pattern.test(notices), `notices state: ${label}`);
 }
+
+/* ---- 12. the rendered kit, against its own upstream ------------------------ */
+
+/*
+ * A different upstream and a different obligation. MIT asks that the notice travel with the
+ * work, so the licence text is checked word-for-word against the file it was copied from rather
+ * than eyeballed — a licence quoted approximately is not a licence quoted.
+ */
+
+const TR909_SHA = '11d423382d6d9705bd37a42b533e3b3c27442be7';
+const TR909_RAW = `https://raw.githubusercontent.com/andremichelle/tr-909/${TR909_SHA}`;
+
+check(render.upstream.commit === TR909_SHA, 'render manifest pins the expected commit');
+check(provenance.includes(TR909_SHA), 'provenance.ts pins the same commit');
+check(notices.includes(TR909_SHA), 'notices quote the full TR-909 SHA');
+check(readme.includes(TR909_SHA), 'README links the full TR-909 SHA');
+
+const tr909Tree = await fetch(
+  `https://api.github.com/repos/andremichelle/tr-909/git/trees/${TR909_SHA}?recursive=1`,
+)
+  .then((r) => (r.ok ? r.json() : null))
+  .catch(() => null);
+
+if (tr909Tree === null) {
+  problems.push('  FAIL  could not fetch the TR-909 upstream tree to verify against');
+} else {
+  const paths = tr909Tree.tree.filter((entry) => entry.type === 'blob').map((entry) => entry.path);
+
+  check(
+    paths.some((p) => /^LICEN[CS]E/iu.test(p)),
+    'upstream really does have a root LICENSE file',
+  );
+
+  // Every file the render claims to have read must still be there, at that commit.
+  const missing = Object.keys(render.upstreamFiles).filter((p) => !paths.includes(p));
+  check(missing.length === 0, 'every file the render read still exists upstream', missing.join(', '));
+
+  /*
+   * The carve-out, checked as a negative. Nothing from upstream's `logos` or image directories
+   * may appear in the render's input list, however the audit paragraph is worded.
+   */
+  const logoish = Object.keys(render.upstreamFiles).filter((p) =>
+    /logo|\.svg$|\.png$|\.jpe?g$|\.woff2?$/iu.test(p),
+  );
+  check(logoish.length === 0, 'no logo, image or font from upstream was read', logoish.join(', '));
+}
+
+const upstreamLicence = await fetch(`${TR909_RAW}/LICENSE`)
+  .then((r) => (r.ok ? r.text() : null))
+  .catch(() => null);
+
+if (upstreamLicence === null) {
+  problems.push('  FAIL  could not fetch the upstream LICENSE to compare against');
+} else {
+  // Compared as words, because the notices reflow it into a blockquote and line breaks differ.
+  const words = (text) => text.replaceAll(/[>\s]+/gu, ' ').trim();
+  check(
+    words(notices).includes(words(upstreamLicence)),
+    'notices reproduce the MIT licence word-for-word, as MIT requires',
+  );
+  check(
+    upstreamLicence.includes(render.upstream.copyright),
+    'the copyright line in the manifest is upstream’s own',
+    render.upstream.copyright,
+  );
+  check(readme.includes('André Michelle'), 'README names the copyright holder');
+  check(notices.includes('André Michelle'), 'notices name the copyright holder');
+}
+
+const upstreamTr909Readme = await fetch(`${TR909_RAW}/README.md`)
+  .then((r) => (r.ok ? r.text() : null))
+  .catch(() => null);
+
+if (upstreamTr909Readme === null) {
+  problems.push('  FAIL  could not fetch the upstream README to verify the credits against');
+} else {
+  /*
+   * The two people upstream credits. Both are named in the notices — one because their work is
+   * deliberately not used, the other because thanking someone for lending hardware is the sort
+   * of thing an audit should record having read rather than skipped.
+   */
+  for (const person of ['Isaac Cotec', 'Sascha Kaltenschnee']) {
+    check(
+      upstreamTr909Readme.includes(person),
+      `upstream really does credit ${person}`,
+      'the audit paragraph would need rewriting',
+    );
+    check(notices.includes(person), `notices account for ${person}`);
+  }
+}
+
+/* ---- 13. the rendered files match the manifest, and the docs match both ---- */
+
+let renderMismatch = 0;
+let renderedBytes = 0;
+for (const [row, voice] of Object.entries(render.voices)) {
+  const path = join('public/audio/tr-909', voice.file);
+  if (!existsSync(path)) {
+    renderMismatch += 1;
+    problems.push(`  FAIL  rendered file missing: ${path}`);
+    continue;
+  }
+  const bytes = readFileSync(path);
+  renderedBytes += bytes.length;
+  const sha = createHash('sha256').update(bytes).digest('hex');
+  if (sha !== voice.sha256 || bytes.length !== voice.bytes) {
+    renderMismatch += 1;
+    problems.push(`  FAIL  ${row}: ${voice.file} does not match the render manifest`);
+  }
+}
+check(renderMismatch === 0, 'every rendered file matches its recorded checksum');
+check(Object.keys(render.voices).length === 8, 'all eight rows are rendered');
+
+const renderedKb = (renderedBytes / 1024).toFixed(1);
+check(readme.includes(`${renderedKb} KB`), `README states the TR-909 at ${renderedKb} KB`);
+check(notices.includes(`${renderedKb} KB`), `notices state the TR-909 at ${renderedKb} KB`);
+
+const totalKbAll = ((renderedBytes + totalBytes) / 1024).toFixed(1);
+check(readme.includes(`${totalKbAll} KB`), `README states the combined total, ${totalKbAll} KB`);
+
+/*
+ * The honesty checks. Every one of these is a claim it would be easy and tempting to round off
+ * in the wrong direction, so each is asserted rather than left to prose review.
+ */
+check(render.rendering.lossless === false, 'the manifest does not claim the renders are lossless');
+check(
+  /not quite lossless|`"lossless": false`/u.test(readme),
+  'README says plainly that the renders are not quite lossless',
+);
+check(
+  /is not quite lossless|`"lossless": false`|Not quite/u.test(notices),
+  'notices say plainly that the renders are not quite lossless',
+);
+check(
+  /no recording|contains no recording|not a recording/iu.test(readme),
+  'README says no TR-909 was recorded',
+);
+check(/No recording of a TR-909/u.test(notices), 'notices say no TR-909 was recorded');
+check(
+  /no substitution/iu.test(readme) && /no substitution/iu.test(notices),
+  'both documents state the TR-909 needs no substitution',
+);
+check(
+  provenance.includes('Isaac Cotec') && provenance.includes('Sascha Kaltenschnee'),
+  'the machine-readable manifest records both upstream credits',
+);
 
 /* ---- report ---------------------------------------------------------------- */
 

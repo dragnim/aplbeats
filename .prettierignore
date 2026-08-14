@@ -3,3 +3,6 @@ coverage/
 playwright-report/
 test-results/
 package-lock.json
+
+# Somebody else's compiled JavaScript, downloaded by render:tr909.
+.cache/

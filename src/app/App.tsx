@@ -294,12 +294,20 @@ export function App(): React.JSX.Element {
         </p>
 
         {/*
-          The sample credit, in the interface rather than only in the repository.
+          The audio credits, in the interface rather than only in the repository.
 
-          "Selected" because nine of the ten packs upstream are included and one is not, so
-          "samples from" on its own would overstate what is here. `rel="noreferrer noopener"`
-          on an external link as everywhere else, and the sentence is careful to credit the
-          collection without implying that its author had anything to do with APL Beats.
+          Two sources, and the sentence keeps them apart, because they are owed different
+          things. "Selected" for the collection, because nine of its ten packs are included and
+          one is not, so "samples from" on its own would overstate what is here. André Michelle
+          is named rather than only his repository, because MIT asks for the copyright holder
+          and a person who wrote a drum machine deserves better than a URL.
+
+          "Rendered from" rather than "samples from" for the TR-909, since no recording of one
+          is involved and saying otherwise in the one place most visitors will read would be
+          the wrong thing to be loose about.
+
+          `rel="noreferrer noopener"` on external links as everywhere else, and neither
+          sentence implies that either author had anything to do with APL Beats.
         */}
         <p className={styles.note}>
           Selected drum machine samples from{' '}
@@ -311,8 +319,17 @@ export function App(): React.JSX.Element {
           >
             smpldsnds/drum-machines
           </a>
-          , a public-domain collection. APL Beats is an independent project and is not affiliated with or
-          endorsed by the manufacturers of the drum machines named in it.
+          , a public-domain collection. The TR-909 is rendered from{' '}
+          <a
+            className={styles.link}
+            href="https://github.com/andremichelle/tr-909"
+            rel="noreferrer noopener"
+            target="_blank"
+          >
+            andremichelle/tr-909
+          </a>
+          , © 2022 André Michelle, MIT licensed. APL Beats is an independent project and is not affiliated
+          with or endorsed by the manufacturers of the drum machines named in it.
         </p>
 
         <a

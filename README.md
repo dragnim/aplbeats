@@ -79,9 +79,9 @@ else: APL sees the same matrix whichever machine is playing it.
 
 - **Eight tracks, sixteen steps.** Kick, Snare, Closed Hat, Open Hat, Clap, Low Perc, High
   Perc and Rim, across one bar of four-four in sixteenth notes.
-- **Nine drum machines, plus the synthesised kit.** TR-808, LinnDrum LM-2, CR-8000, Drumtraks,
-  Casio RZ-1, MFB-512, Yamaha MR10, 808 Mini and Casio SK-1 — changing machine changes the sound
-  and never the rhythm.
+- **Ten drum machines, plus the synthesised kit.** TR-808, TR-909, LinnDrum LM-2, CR-8000,
+  Drumtraks, Casio RZ-1, MFB-512, Yamaha MR10, 808 Mini and Casio SK-1 — changing machine changes
+  the sound and never the rhythm.
 - **Four transformations, executed in APL.** Rotate, Reverse, Periodic and Euclidean, on one
   track or on the whole matrix — with the expression that ran on show if you want to see it.
 - **And then you can edit that expression.** Write your own APL against the current rhythm and
@@ -575,6 +575,8 @@ npm run dev
 | `npm run measure:kit`       | Render every synthesised voice and report its level and length (needs `npm run dev`) |
 | `npm run measure:kits`      | Measure every drum machine and check the calibration (needs `npm run dev`)           |
 | `npm run import:samples`    | Re-fetch the samples from the pinned upstream commit and checksum them               |
+| `npm run render:tr909`      | Re-render the TR-909 from the pinned upstream DSP; `-- --check` verifies only        |
+| `npm run verify:credits`    | Check every attribution claim against the live upstream repositories                 |
 | `npm run measure:generated` | Render generated bars through the real master chain and check for clipping           |
 | `npm run verify:deployment` | Load the published site and check it works. **One real TryAPL request**              |
 
@@ -694,8 +696,8 @@ swap is audible within about a sixteenth anyway.
 ## Drum machines
 
 The selector sits in the transport bar, next to Play and the tempo, because that is what it is: an
-instrument control rather than a preference. Ten options — the synthesised kit APL Beats has always
-had, and nine sampled machines.
+instrument control rather than a preference. Eleven options — the synthesised kit APL Beats has
+always had, nine machines from a sample collection, and one rendered from open-source DSP.
 
 **Changing drum machine changes the sound, not the rhythm.** The pattern, the seed, the preset, all
 four macros, the locks, the APL transform settings, the tempo, the swing, the mutes and the faders
@@ -743,22 +745,86 @@ reload.
 
 ## Drum machine samples and credits
 
-APL Beats uses selected samples from **[smpldsnds/drum-machines](https://github.com/smpldsnds/drum-machines)**,
-a public-domain collection of drum machine recordings. Nine of its ten packs are included here.
+The bundled audio comes from **two unrelated sources**, and they are different kinds of thing.
+
+**Nine kits are recordings**, copied byte-for-byte from
+**[smpldsnds/drum-machines](https://github.com/smpldsnds/drum-machines)**, a public-domain
+collection. Nine of its ten packs are included.
 
 - Upstream: <https://github.com/smpldsnds/drum-machines>
 - Commit used: [`a894cb8`](https://github.com/smpldsnds/drum-machines/tree/a894cb8c72abe15b05e7b4fd4b8ee561c0f9e960) (11 April 2024)
 - Bundled locally, unaltered. Nothing is fetched from GitHub at runtime.
 - Machine-readable manifest: [`src/audio/kits/provenance.ts`](src/audio/kits/provenance.ts)
 - Checksums for every bundled file: [`src/audio/kits/checksums.json`](src/audio/kits/checksums.json)
-- Full notices: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+
+**One kit contains no recording at all.** The TR-909 was rendered here from
+**[andremichelle/tr-909](https://github.com/andremichelle/tr-909)**, an MIT-licensed open-source
+reimplementation of the machine's sound engine by **André Michelle**.
+
+- Upstream: <https://github.com/andremichelle/tr-909> — © 2022 André Michelle, MIT
+- Commit used: [`11d4233`](https://github.com/andremichelle/tr-909/tree/11d423382d6d9705bd37a42b533e3b3c27442be7) (11 March 2024)
+- Rendered offline by [`npm run render:tr909`](scripts/render-tr909.mjs). Nothing is fetched from
+  GitHub at runtime, and no upstream audio file is redistributed.
+- Machine-readable manifest: [`src/audio/kits/tr909-render.json`](src/audio/kits/tr909-render.json)
+
+Full notices for both, including the MIT licence in full:
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 APL Beats is an independent project and is **not affiliated with or endorsed by** Roland, Linn,
 Sequential Circuits, Casio, Yamaha, MFB or any other manufacturer named here. Machine names are
 used textually, to identify which set of sounds you are listening to. No logos or product artwork
 appear anywhere in this repository.
 
+### The TR-909, which was computed rather than recorded
+
+Sampling a drum machine and reimplementing one are different acts with different provenance, so
+this kit is documented apart from the nine above rather than folded in with them.
+
+André Michelle's project is a reimplementation of the TR-909's sound engine in TypeScript, MIT
+licensed. `npm run render:tr909` downloads that code and its wavetables at the pinned commit, builds
+each of the eight voices exactly as upstream's own code does, and renders them offline — one voice
+at a time, at 44.1 kHz, in the same 128-frame blocks upstream processes in, running until the voice
+reports itself finished.
+
+Every front-panel control is left where the upstream preset defaults put it. The one uniform choice
+is that each hit is struck at the top of upstream's step-level range rather than at an ordinary
+step. That is the same offset for all eight voices, so the machine's own balance between them
+survives untouched; what it buys is a bit and a half of sixteen-bit resolution that would otherwise
+be spent representing a level APL Beats sets for itself anyway.
+
+**The pipeline is deterministic.** `npm run render:tr909 -- --check` re-renders and compares against
+the shipped files; two independent runs produce byte-identical output on all eight.
+
+**The files are 16-bit PCM WAV, and that is not quite lossless.** The DSP computes in 32-bit float,
+so quantising to 16-bit is one lossy step, about 96 dB down — and it is the only one. There is no
+normalisation, limiting, equalisation or editing; only the tail below −96 dBFS is trimmed, which is
+quieter than a 16-bit file can represent anyway. The manifest records `"lossless": false` rather
+than claiming otherwise. PCM was preferred over a lossy encode because reproducibility is worth more
+here than the 200 kB an AAC encode would have saved — without it, `--check` would mean nothing.
+
+**There are no substitutions.** The TR-909 has a real instrument for all eight rows. Its mid tom,
+crash and ride are not used, because APL Beats has eight rows and not eleven.
+
+| APL Beats row | Instrument    | Upstream class        | Wavetables read                             |
+| ------------- | ------------- | --------------------- | ------------------------------------------- |
+| Kick          | Bass drum     | `BassdrumVoice`       | `bassdrum-attack.raw`, `bassdrum-cycle.raw` |
+| Snare         | Snare drum    | `SnaredrumVoice`      | `snare-tone.raw`, `snare-noise.raw`         |
+| Closed Hat    | Closed hi-hat | `BasicTuneDecayVoice` | `closed-hihat.raw`                          |
+| Open Hat      | Open hi-hat   | `BasicTuneDecayVoice` | `opened-hihat.raw`                          |
+| Clap          | Hand clap     | `BasicTuneDecayVoice` | `clap.raw`                                  |
+| Low Perc      | Low tom       | `BasicTuneDecayVoice` | `tom-low.raw`                               |
+| High Perc     | High tom      | `BasicTuneDecayVoice` | `tom-hi.raw`                                |
+| Rim           | Rim shot      | `BasicTuneDecayVoice` | `rim.raw`                                   |
+
+The audit of that project found one carve-out, and it is not used: its README credits **Isaac
+Cotec** for the Roland, TR-909 and Rhythm Composer **logo SVGs**. APL Beats uses no logo, artwork,
+interface asset or font from it — only the DSP and the wavetables the DSP reads. The README also
+thanks **Sascha Kaltenschnee** for lending the hardware it was developed against, which creates no
+copyright interest in the output; that was checked rather than assumed.
+
 ### What the audit found
+
+The rest of this section is about the nine sampled kits.
 
 The collection was read before any audio was copied, and three things about it are worth stating
 plainly because they differ from what you might assume.
@@ -796,22 +862,29 @@ provenance grounds, because nothing in it carried a restriction that would have 
 
 Every included kit is bundled in full, but only its eight selected voices — not the hundred-odd
 knob-position variations some packs contain. The TR-808 pack alone has 116 samples upstream; eight
-of them are here, plus its notice.
+of them are here, plus its notice. The TR-909 renders eight of the machine's eleven instruments,
+for the same reason: there are eight rows.
 
-| Kit           | Files  | Size         |
-| ------------- | ------ | ------------ |
-| TR-808        | 9      | 105.9 KB     |
-| LinnDrum LM-2 | 8      | 40.6 KB      |
-| CR-8000       | 8      | 41.5 KB      |
-| Drumtraks     | 8      | 64.1 KB      |
-| Casio RZ-1    | 8      | 39.3 KB      |
-| MFB-512       | 8      | 57.6 KB      |
-| Yamaha MR10   | 8      | 39.4 KB      |
-| 808 Mini      | 8      | 67.5 KB      |
-| Casio SK-1    | 6      | 17.4 KB      |
-| **Total**     | **71** | **473.4 KB** |
+| Kit                | Files  | Size         | Format          |
+| ------------------ | ------ | ------------ | --------------- |
+| TR-808             | 9      | 105.9 KB     | `.m4a` + notice |
+| LinnDrum LM-2      | 8      | 40.6 KB      | `.m4a`          |
+| CR-8000            | 8      | 41.5 KB      | `.m4a`          |
+| Drumtraks          | 8      | 64.1 KB      | `.m4a`          |
+| Casio RZ-1         | 8      | 39.3 KB      | `.m4a`          |
+| MFB-512            | 8      | 57.6 KB      | `.m4a`          |
+| Yamaha MR10        | 8      | 39.4 KB      | `.m4a`          |
+| 808 Mini           | 8      | 67.5 KB      | `.m4a`          |
+| Casio SK-1         | 6      | 17.4 KB      | `.m4a`          |
+| _Sampled subtotal_ | _71_   | _473.4 KB_   |                 |
+| TR-909             | 8      | 252.0 KB     | `.wav`          |
+| **Total**          | **79** | **725.4 KB** |                 |
 
-Largest single file: `tr-808/clap.m4a` at 31.5 KB
+Largest single file: `tr-909/low-perc.wav` at 64.9 KB; largest sampled, `tr-808/clap.m4a` at 31.5 KB.
+
+The TR-909 is over half the total on its own, from a third as many kits, because it is the only one
+stored losslessly. That is the price of a render you can check byte-for-byte, and it is still a kit
+nobody downloads unless they choose it.
 
 ### The mapping onto eight rows
 
@@ -986,16 +1059,50 @@ Kits recorded by different people at different times arrive at wildly different 
 several of the upstream files decode **above** full scale, being lossy encodes. Left alone,
 choosing a kit would have been a way of clipping the master bus.
 
-So every sample is scaled by a measured gain: at full level it peaks where the _synthesised_ voice
-for the same row peaks, less 0.6 dB of headroom. That removes the arbitrary loudness differences
-between one stranger's sample pack and another's while leaving timbre, decay and transient shape
-completely alone — an 808 kick still booms, an SK-1 snare is still a toy.
+So every sample is scaled by a measured gain: at full level it peaks where its row is calibrated to
+peak, less 0.6 dB of headroom. That removes the arbitrary loudness differences between one
+stranger's sample pack and another's while leaving timbre, decay and transient shape completely
+alone — an 808 kick still booms, an SK-1 snare is still a toy.
 
 The numbers are generated, not chosen: `npm run measure:kits -- --gains` prints exactly the gains
 in [`src/audio/kits/kits.ts`](src/audio/kits/kits.ts), and `npm run measure:kits` checks the
 result. Every voice on every kit lands within 0.6 dB of target, and **no kit produces a clipped
 sample** — not on the opening groove, and not on the pathological case of all eight rows firing at
 once with every fader at the top.
+
+#### The reference is pinned, and it was not always
+
+Those row targets used to be taken by rendering the synthesised kit fresh on each measurement run.
+Stage 5.2 found that this did not mean the same thing twice.
+
+Six of the synthesised voices read a slice of the shared noise buffer, and `nextNoiseOffset` asks
+for a position **64628.55 samples** in — a fraction of a sample. How a buffer source resolves a
+sub-sample start offset is left to the implementation, so a Chromium update is free to land the
+read a sample or two further along, and it did. The same unchanged code rendered the same unchanged
+voices up to **1.8 dB apart** between two browser versions. Kick and low percussion, the two voices
+whose peak is set by an oscillator rather than by noise, did not move at all; shifting the noise
+slice by a single sample reproduces the rest exactly.
+
+Nothing shipped had changed. The sampled kits are fixed files times fixed gains and render
+bit-identically today to the day they were calibrated. Only the yardstick had moved — and it
+reported all nine kits as mis-calibrated by exactly the same amount on exactly the same four rows,
+which is not nine faults.
+
+The targets now live as data in [`src/audio/kits/calibration.ts`](src/audio/kits/calibration.ts).
+They were **recovered rather than chosen**: each shipped gain was set so that
+`filePeak × gain = target × 0.93`, so nine kits independently imply the same eight numbers, and
+they agree to within 0.021 dB. Every kit added since — the TR-909 first — aims at those, which is
+what keeps a new machine in step with the ones already shipped.
+
+`npm run measure:kits` still renders the synthesised kit, and now reports its drift from the pinned
+reference as its own line: a real fact about that kit on the measuring browser, rather than an
+accusation against the sampled ones. `npm run diagnose:reference` shows the whole investigation —
+repeatability, sample-rate sensitivity, the sub-sample offset, and the recovery.
+
+One thing is deliberately **not** fixed here. Quantising `nextNoiseOffset` to a whole sample would
+make the synthesised kit reproducible across engines for good, and it should probably happen — but
+it would move that kit's own sound a third time. That is a deliberate change to shipped audio and
+belongs in a stage that says so, not in a footnote to a kit addition.
 
 ### Sample tails and choking
 

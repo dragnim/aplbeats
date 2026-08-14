@@ -412,19 +412,129 @@ test('a browser with no Web Audio says so, and downloads nothing', async ({ page
   expect(problems.filter((problem) => problem.startsWith('page:'))).toEqual([]);
 });
 
-test('the footer credits the sample collection, and links it', async ({ page }) => {
+test('the footer credits both audio sources, and links them', async ({ page }) => {
   const problems = watchForProblems(page);
   await freshVisit(page);
 
-  const credit = page.getByRole('link', { name: 'smpldsnds/drum-machines' });
-  await expect(credit).toBeVisible();
-  await expect(credit).toHaveAttribute('href', 'https://github.com/smpldsnds/drum-machines');
-  await expect(credit).toHaveAttribute('rel', /noopener/u);
-  await expect(credit).toHaveAttribute('rel', /noreferrer/u);
-  await expect(credit).toHaveAttribute('target', '_blank');
+  const credits = [
+    { name: 'smpldsnds/drum-machines', href: 'https://github.com/smpldsnds/drum-machines' },
+    { name: 'andremichelle/tr-909', href: 'https://github.com/andremichelle/tr-909' },
+  ];
+  for (const { name, href } of credits) {
+    const credit = page.getByRole('link', { name });
+    await expect(credit).toBeVisible();
+    await expect(credit).toHaveAttribute('href', href);
+    await expect(credit).toHaveAttribute('rel', /noopener/u);
+    await expect(credit).toHaveAttribute('rel', /noreferrer/u);
+    await expect(credit).toHaveAttribute('target', '_blank');
+  }
 
+  const footer = page.locator('footer');
+  // MIT asks that the copyright holder travel with the work, including into the interface.
+  await expect(footer).toContainText('André Michelle');
+  // The TR-909 is rendered, not recorded, and the footer must not blur that.
+  await expect(footer).toContainText('rendered from');
   // And the non-affiliation statement, which is the other half of naming a manufacturer.
-  await expect(page.locator('footer')).toContainText('not affiliated with or endorsed by');
+  await expect(footer).toContainText('not affiliated with or endorsed by');
+
+  expect(problems).toEqual([]);
+});
+
+/* ---- the rendered kit ---------------------------------------------------- */
+
+test('the rendered TR-909 decodes, all eight files of it', async ({ page }) => {
+  /*
+   * The question only a browser answers for this kit: whether eight WAVs written by a Node
+   * script decode in a real engine. Every other kit here is AAC, so this is the first time the
+   * loader has been asked for a different container, and "it decoded in Chromium once" is not
+   * the same claim as "it decodes".
+   */
+  const problems = watchForProblems(page);
+  const requests = watchSampleRequests(page);
+  await freshVisit(page);
+  await requireSampleDecoding(page);
+
+  await selector(page).selectOption('tr-909');
+  await expect(kitStatus(page)).toHaveText('', { timeout: 20_000 });
+  await expect(selector(page)).toHaveValue('tr-909');
+
+  // Eight distinct files, no substitutions, so nothing is fetched twice or shared between rows.
+  const names = requests.map((url) => url.split('/').pop());
+  expect(new Set(names).size).toBe(8);
+  for (const url of requests) {
+    expect(url).toContain('/audio/tr-909/');
+    expect(url.endsWith('.wav'), url).toBe(true);
+  }
+
+  expect(problems).toEqual([]);
+});
+
+test('switching to the TR-909 and back changes the sound and nothing else', async ({ page }) => {
+  /*
+   * The whole promise of the stage, walked end to end with the new kit in the middle of it:
+   * synth → TR-909 → TR-808 → TR-909 again, while playing, with the pattern, the transport and
+   * the master volume all expected to come out the far side untouched — and the second visit to
+   * the TR-909 expected to cost nothing, because it is already decoded.
+   */
+  const problems = watchForProblems(page);
+  const requests = watchSampleRequests(page);
+  await freshVisit(page);
+  await requireAudio(page);
+  await requireSampleDecoding(page);
+
+  const master = page.getByRole('slider', { name: 'Master' });
+  await master.fill('64');
+
+  const before = await creativeState(page);
+
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await expect(page.getByRole('status', { name: 'Playback' })).toHaveText('Playing');
+
+  // Somewhere into the bar, so that a reset would be obvious rather than plausible.
+  await page.waitForTimeout(500);
+
+  await selector(page).selectOption('tr-909');
+  await expect(kitStatus(page)).toHaveText('', { timeout: 20_000 });
+  const afterFirst = requests.length;
+  expect(afterFirst).toBe(8);
+
+  await selector(page).selectOption('tr-808');
+  await expect(kitStatus(page)).toHaveText('', { timeout: 20_000 });
+  expect(requests.length).toBeGreaterThan(afterFirst);
+  const afterSecond = requests.length;
+
+  // Back to the TR-909, which is decoded already: not one further request.
+  await selector(page).selectOption('tr-909');
+  await expect(selector(page)).toHaveValue('tr-909');
+  await expect(kitStatus(page)).toHaveText('');
+  expect(requests).toHaveLength(afterSecond);
+
+  // Still playing, through all three changes.
+  await expect(page.getByRole('status', { name: 'Playback' })).toHaveText('Playing');
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+
+  // And nothing a visitor would be sorry to lose has moved, master volume included.
+  expect(await creativeState(page)).toEqual(before);
+  await expect(master).toHaveValue('64');
+
+  await page.getByRole('button', { name: 'Pause' }).click();
+  expect(problems).toEqual([]);
+});
+
+test('the TR-909 is remembered, and comes back without a download it already made', async ({ page }) => {
+  const problems = watchForProblems(page);
+  await freshVisit(page);
+  await requireSampleDecoding(page);
+
+  await selector(page).selectOption('tr-909');
+  await expect(kitStatus(page)).toHaveText('', { timeout: 20_000 });
+
+  await page.reload();
+  await expect(page.locator(CELL).first()).toBeVisible();
+  await expect(selector(page)).toHaveValue('tr-909');
+
+  // Remembered, and not playing: choosing an instrument is not a decision to make noise.
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
 
   expect(problems).toEqual([]);
 });
