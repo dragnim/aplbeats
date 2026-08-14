@@ -502,11 +502,48 @@ check(
   /is not quite lossless|`"lossless": false`|Not quite/u.test(notices),
   'notices say plainly that the renders are not quite lossless',
 );
-check(
-  /no recording|contains no recording|not a recording/iu.test(readme),
-  'README says no TR-909 was recorded',
-);
-check(/No recording of a TR-909/u.test(notices), 'notices say no TR-909 was recorded');
+/*
+ * What the documents may and may not say about the upstream resources.
+ *
+ * Both halves are checked, because both are ways of getting this wrong. The claim that has to be
+ * present is the one that can be substantiated — the `.raw` files are not redistributed, only the
+ * render is. The claims that must be absent are the ones that cannot: upstream does not document
+ * where those waveforms came from, and its history includes commits replacing them wholesale, so
+ * "no recording is involved" was an inference stated as a finding. Asserted here rather than left
+ * to prose review, because it is exactly the sort of tidy sentence that grows back.
+ */
+/*
+ * Prose is reflowed by Prettier, so a phrase that reads as one sentence is often two lines in the
+ * file. Every check below matches against the text with its whitespace collapsed, or it would be
+ * testing the line width rather than the claim.
+ */
+const flowed = (text) => text.replaceAll(/\s+/gu, ' ');
+
+for (const document of [
+  { name: 'README', text: flowed(readme) },
+  { name: 'notices', text: flowed(notices) },
+]) {
+  check(
+    /does not redistribute/u.test(document.text) && /rendered WAV files?/u.test(document.text),
+    `${document.name} states that only the rendered WAV files are redistributed`,
+  );
+  check(
+    /not copied from a set of finished drum-machine samples/u.test(document.text),
+    `${document.name} distinguishes the rendered kit from the sampled ones factually`,
+  );
+
+  const overclaims = [
+    [/contains no recording/iu, 'claims the kit contains no recording'],
+    [/no recording of a TR-909/iu, 'claims no TR-909 was recorded'],
+    [/not recordings of a machine/iu, 'claims the resources are not recordings'],
+    [/wavetable inputs/iu, 'characterises the resources as wavetables'],
+    [/creates no copyright interest/iu, 'draws a legal conclusion about the hardware loan'],
+  ];
+  for (const [pattern, what] of overclaims) {
+    check(!pattern.test(document.text), `${document.name} does not overclaim: ${what}`);
+  }
+}
+
 check(
   /no substitution/iu.test(readme) && /no substitution/iu.test(notices),
   'both documents state the TR-909 needs no substitution',
@@ -514,6 +551,16 @@ check(
 check(
   provenance.includes('Isaac Cotec') && provenance.includes('Sascha Kaltenschnee'),
   'the machine-readable manifest records both upstream credits',
+);
+check(
+  !/creates no copyright interest|not recordings of a machine/iu.test(provenance),
+  'the machine-readable manifest does not overclaim either',
+);
+check(
+  [readme, notices, provenance]
+    .map(flowed)
+    .every((text) => /makes no separate authorship or licensing claim/u.test(text)),
+  'all three record the Kaltenschnee credit as what upstream states, and nothing further',
 );
 
 /* ---- report ---------------------------------------------------------------- */

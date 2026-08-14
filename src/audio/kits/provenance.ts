@@ -319,19 +319,25 @@ export const KIT_PROVENANCE: readonly KitProvenance[] = [
 /* ------------------------------------------------------------------------- */
 
 /*
- * Everything above this line is somebody's recording, copied unchanged.
+ * Everything above this line is a finished drum-machine sample, copied unchanged.
  *
- * Everything below is not a recording at all. The TR-909 kit was *rendered*: André Michelle's
- * open-source reimplementation of the machine's DSP was run offline, at a pinned commit, with
- * the machine's own front-panel defaults, and the eight resulting waveforms were written to
- * disk. No hardware was recorded and no upstream audio file was copied — the `.raw` wavetables
- * the DSP reads are inputs to it, not the output.
+ * Everything below is not. The TR-909 kit is *rendered* offline from André Michelle's
+ * MIT-licensed TR-909 DSP implementation and its bundled audio resources: the DSP was run at a
+ * pinned commit, with the machine's own front-panel defaults, and the eight resulting waveforms
+ * were written to disk. APL Beats does not redistribute the upstream `.raw` resources
+ * themselves; it distributes only the rendered WAV output.
  *
- * The distinction is kept structural rather than explained in a comment somewhere, because the
- * two carry different obligations. A copied sample needs its source pack and a checksum proving
- * the bytes are unaltered. A derived render needs the source *code*, its licence, the commit,
- * the settings and a pipeline that can produce the same bytes again — a checksum against
- * upstream would be meaningless, since there is nothing upstream to compare to.
+ * What those `.raw` resources physically are is deliberately not asserted here. Upstream does
+ * not document their origin, and its history includes commits replacing them wholesale, so any
+ * claim about how they were produced would be a guess dressed as a finding. What can be said is
+ * what is said: they are read by the renderer as inputs, they sit under the repository's MIT
+ * licence, and none of them ships.
+ *
+ * The distinction between the two kinds is kept structural rather than explained in a comment
+ * somewhere, because they carry different obligations. A copied sample needs its source pack and
+ * a checksum proving the bytes are unaltered. A render needs the source *code*, its licence, the
+ * commit, the settings and a pipeline that can produce the same bytes again — a checksum against
+ * upstream would be meaningless, since there is no upstream file to compare the output to.
  *
  * So `bundledFiles()` still means "files copied from smpldsnds", `checksums.json` still means
  * "and here is the proof they are unaltered", and neither had to be weakened to accommodate a
@@ -357,18 +363,19 @@ export const RENDERED_UPSTREAM = {
    *
    * Its README credits Isaac Cotec for the Roland, TR-909 and Rhythm Composer logo SVGs. APL
    * Beats uses no logo, no artwork and no part of the upstream interface — only the DSP and the
-   * wavetables it reads. Recorded here so that "we checked" is a fact rather than a claim.
+   * audio resources it reads. Recorded here so that "we checked" is a fact rather than a claim.
    */
   excludedFromUse: 'The logo SVGs credited to Isaac Cotec. Not copied, not rendered, not used.',
   /**
-   * Also credited upstream, and creating no interest here.
+   * The other name the upstream README credits.
    *
-   * The README thanks Sascha Kaltenschnee for lending a DinSync RE-909 to develop against.
-   * Lending hardware to someone writing an emulator is not authorship of the emulator and not
-   * a copyright in its output, so there is nothing to clear — but it was checked rather than
-   * assumed.
+   * Recorded because an audit that reads a credits section and then writes down only half of it
+   * is not much of an audit. No conclusion is drawn from it beyond what upstream states: the
+   * README makes no separate authorship or licensing claim for the resources APL Beats uses.
    */
-  acknowledgement: 'Sascha Kaltenschnee, for lending the hardware the emulator was developed against.',
+  acknowledgement:
+    'Sascha Kaltenschnee, credited upstream for lending the hardware used during development. ' +
+    'Upstream makes no separate authorship or licensing claim for the resources used here.',
 } as const;
 
 /**
@@ -402,7 +409,12 @@ export interface RenderedVoiceProvenance {
   readonly dspClass: string;
   /** The upstream source file that class lives in. */
   readonly dspSource: string;
-  /** The upstream wavetables that class reads, relative to the repository root. */
+  /**
+   * The upstream audio resources that class reads, relative to the repository root.
+   *
+   * Inputs to the render, not files that ship. What they physically are is upstream's business
+   * and is not documented there, so it is not asserted here either.
+   */
   readonly resources: readonly string[];
 }
 
@@ -424,8 +436,10 @@ export const RENDERED_KIT_PROVENANCE: readonly RenderedKitProvenance[] = [
     id: 'tr-909',
     machine: 'Roland TR-909 Rhythm Composer',
     renderingNote:
-      'Rendered offline by `npm run render:tr909` from the upstream DSP at the pinned commit, ' +
-      'at 44.1 kHz, one voice at a time, in the same 128-frame blocks upstream processes in. ' +
+      'Rendered offline by `npm run render:tr909` from the upstream DSP implementation and its ' +
+      'bundled audio resources, at the pinned commit — 44.1 kHz, one voice at a time, in the ' +
+      'same 128-frame blocks upstream processes in. Only the rendered WAV output ships; the ' +
+      'upstream `.raw` resources are read as inputs and are not redistributed. ' +
       'Every front-panel control was left at the upstream preset default; the only uniform ' +
       'change is that each hit is struck at the top of upstream’s step-level range rather than ' +
       'at an ordinary step, which costs nothing musically and keeps a bit and a half of ' +

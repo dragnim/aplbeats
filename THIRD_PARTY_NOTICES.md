@@ -7,8 +7,9 @@ documentation: nothing here is shown inside the application.
 
 Three kinds, and they are quite different in provenance. One is generated in the browser and
 involves nobody else's work. Nine kits are somebody's **recordings, copied unchanged**. One kit is
-**rendered from somebody's source code** and contains no recording at all. The obligations differ,
-so the three are documented separately rather than under one heading about "samples".
+**rendered from somebody's DSP implementation and its audio resources**, and ships only the render.
+The obligations differ, so the three are documented separately rather than under one heading about
+"samples".
 
 ### The synthesised kit — no third-party audio
 
@@ -224,9 +225,14 @@ Upstream folder: `Casio-SK1`
 
 ### The rendered kit — andremichelle/tr-909
 
-Stage 5.2 adds one kit that is not a sample pack. **No recording of a TR-909, and no audio file from
-the upstream project, is included.** The eight files were computed here, by running André Michelle's
-open-source reimplementation of the machine's sound engine offline and writing down what came out.
+Stage 5.2 adds one kit that is not a sample pack. **The TR-909 kit is rendered offline from André
+Michelle's MIT-licensed TR-909 DSP implementation and its bundled audio resources. APL Beats does
+not redistribute the upstream `.raw` resources themselves; it distributes only the resulting
+rendered WAV files.**
+
+Unlike the nine sampled kits above, this one is not copied from a set of finished drum-machine
+samples. The eight files were produced here, by running that DSP offline and writing down what came
+out.
 
 - **Source:** <https://github.com/andremichelle/tr-909>
 - **Author:** André Michelle
@@ -266,14 +272,13 @@ open-source reimplementation of the machine's sound engine offline and writing d
   condition: that the notice above travels with it. It does, in this file.
 - **One carve-out exists and is not used.** The upstream README credits **Isaac Cotec** for the
   Roland, TR-909 and Rhythm Composer **logo SVGs**. APL Beats uses no logo, no artwork, no
-  interface asset and no font from the project — only the DSP source and the wavetables it reads.
-  Nothing credited to Isaac Cotec is copied, rendered or referenced.
-- The README also thanks **Sascha Kaltenschnee** for lending a DinSync RE-909 to develop against.
-  Lending hardware to someone writing an emulator is not authorship of that emulator and creates no
-  copyright interest in its output. Checked rather than assumed; there was nothing to clear.
+  interface asset and no font from the project — only the DSP source and the audio resources that
+  DSP reads. Nothing credited to Isaac Cotec is copied, rendered or referenced.
+- The upstream README credits **Sascha Kaltenschnee** for lending the hardware used during
+  development; it makes no separate authorship or licensing claim for the resources APL Beats uses.
 - The `.raw` files under `resources/` carry no separate licence statement and sit under the
-  repository's MIT licence with everything else. They are **wavetable inputs to the DSP**, not
-  recordings of a machine, and none of them is redistributed here.
+  repository's MIT licence with everything else. **None of them is redistributed here.** They are
+  read by the renderer as inputs and do not ship; what ships is the rendered WAV output.
 - No Roland trade dress of any kind is reproduced. See **Manufacturer names**, below, which applies
   to this kit exactly as it does to the sampled ones.
 
@@ -281,7 +286,7 @@ open-source reimplementation of the machine's sound engine offline and writing d
 
 Deterministically, so that the claim can be checked rather than believed.
 
-`npm run render:tr909` downloads the upstream compiled modules and wavetables at the pinned commit
+`npm run render:tr909` downloads the upstream compiled modules and audio resources at the pinned commit
 into a gitignored cache, instantiates each voice exactly as upstream's own `createVoice` does, and
 runs it in the same 128-frame blocks upstream processes in until the voice reports itself finished.
 Every front-panel control is left at the upstream preset default. The one uniform choice is that
@@ -309,9 +314,9 @@ byte-for-byte reproducible pipeline — which is what makes `--check` mean anyth
 
 #### Which files are rendered, and from what
 
-Upstream classes and wavetables, all paths relative to the upstream repository root.
+Upstream classes and audio resources, all paths relative to the upstream repository root.
 
-| APL Beats row | Instrument    | Upstream class        | Wavetables read                             |
+| APL Beats row | Instrument    | Upstream class        | Resources read                              |
 | ------------- | ------------- | --------------------- | ------------------------------------------- |
 | Kick          | Bass drum     | `BassdrumVoice`       | `bassdrum-attack.raw`, `bassdrum-cycle.raw` |
 | Snare         | Snare drum    | `SnaredrumVoice`      | `snare-tone.raw`, `snare-noise.raw`         |

@@ -757,14 +757,16 @@ collection. Nine of its ten packs are included.
 - Machine-readable manifest: [`src/audio/kits/provenance.ts`](src/audio/kits/provenance.ts)
 - Checksums for every bundled file: [`src/audio/kits/checksums.json`](src/audio/kits/checksums.json)
 
-**One kit contains no recording at all.** The TR-909 was rendered here from
-**[andremichelle/tr-909](https://github.com/andremichelle/tr-909)**, an MIT-licensed open-source
-reimplementation of the machine's sound engine by **André Michelle**.
+**One kit is rendered rather than copied.** The TR-909 is rendered offline from
+**[andremichelle/tr-909](https://github.com/andremichelle/tr-909)** — an MIT-licensed open-source
+TR-909 DSP implementation by **André Michelle** — and its bundled audio resources. APL Beats does
+not redistribute those upstream `.raw` resources; it distributes only the resulting rendered WAV
+files.
 
 - Upstream: <https://github.com/andremichelle/tr-909> — © 2022 André Michelle, MIT
 - Commit used: [`11d4233`](https://github.com/andremichelle/tr-909/tree/11d423382d6d9705bd37a42b533e3b3c27442be7) (11 March 2024)
 - Rendered offline by [`npm run render:tr909`](scripts/render-tr909.mjs). Nothing is fetched from
-  GitHub at runtime, and no upstream audio file is redistributed.
+  GitHub at runtime.
 - Machine-readable manifest: [`src/audio/kits/tr909-render.json`](src/audio/kits/tr909-render.json)
 
 Full notices for both, including the MIT licence in full:
@@ -775,16 +777,19 @@ Sequential Circuits, Casio, Yamaha, MFB or any other manufacturer named here. Ma
 used textually, to identify which set of sounds you are listening to. No logos or product artwork
 appear anywhere in this repository.
 
-### The TR-909, which was computed rather than recorded
+### The TR-909, which is rendered rather than copied
 
-Sampling a drum machine and reimplementing one are different acts with different provenance, so
-this kit is documented apart from the nine above rather than folded in with them.
+Unlike the nine sampled kits, the TR-909 kit is not copied from a set of finished drum-machine
+samples. It is rendered from the upstream DSP implementation and its audio resources. Those are
+different acts with different provenance, so this kit is documented apart from the nine above
+rather than folded in with them.
 
-André Michelle's project is a reimplementation of the TR-909's sound engine in TypeScript, MIT
-licensed. `npm run render:tr909` downloads that code and its wavetables at the pinned commit, builds
-each of the eight voices exactly as upstream's own code does, and renders them offline — one voice
-at a time, at 44.1 kHz, in the same 128-frame blocks upstream processes in, running until the voice
-reports itself finished.
+André Michelle's project is a TR-909 DSP implementation in TypeScript, MIT licensed.
+`npm run render:tr909` downloads that code and its bundled audio resources at the pinned commit,
+builds each of the eight voices exactly as upstream's own code does, and renders them offline — one
+voice at a time, at 44.1 kHz, in the same 128-frame blocks upstream processes in, running until the
+voice reports itself finished. The rendered WAV files are what ships; the upstream `.raw` resources
+are not redistributed.
 
 Every front-panel control is left where the upstream preset defaults put it. The one uniform choice
 is that each hit is struck at the top of upstream's step-level range rather than at an ordinary
@@ -805,7 +810,7 @@ here than the 200 kB an AAC encode would have saved — without it, `--check` wo
 **There are no substitutions.** The TR-909 has a real instrument for all eight rows. Its mid tom,
 crash and ride are not used, because APL Beats has eight rows and not eleven.
 
-| APL Beats row | Instrument    | Upstream class        | Wavetables read                             |
+| APL Beats row | Instrument    | Upstream class        | Resources read                              |
 | ------------- | ------------- | --------------------- | ------------------------------------------- |
 | Kick          | Bass drum     | `BassdrumVoice`       | `bassdrum-attack.raw`, `bassdrum-cycle.raw` |
 | Snare         | Snare drum    | `SnaredrumVoice`      | `snare-tone.raw`, `snare-noise.raw`         |
@@ -818,9 +823,9 @@ crash and ride are not used, because APL Beats has eight rows and not eleven.
 
 The audit of that project found one carve-out, and it is not used: its README credits **Isaac
 Cotec** for the Roland, TR-909 and Rhythm Composer **logo SVGs**. APL Beats uses no logo, artwork,
-interface asset or font from it — only the DSP and the wavetables the DSP reads. The README also
-thanks **Sascha Kaltenschnee** for lending the hardware it was developed against, which creates no
-copyright interest in the output; that was checked rather than assumed.
+interface asset or font from it — only the DSP and the audio resources that DSP reads. The upstream
+README also credits **Sascha Kaltenschnee** for lending the hardware used during development; it
+makes no separate authorship or licensing claim for the resources APL Beats uses.
 
 ### What the audit found
 

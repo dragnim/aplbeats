@@ -302,9 +302,10 @@ export function App(): React.JSX.Element {
           is named rather than only his repository, because MIT asks for the copyright holder
           and a person who wrote a drum machine deserves better than a URL.
 
-          "Rendered from" rather than "samples from" for the TR-909, since no recording of one
-          is involved and saying otherwise in the one place most visitors will read would be
-          the wrong thing to be loose about.
+          "Rendered from" rather than "samples from" for the TR-909, because that is what
+          happened: the files here are the output of running his DSP, not a pack of finished
+          samples copied across. It says what was done rather than making a claim about what
+          upstream's own audio resources are, which upstream does not document.
 
           `rel="noreferrer noopener"` on external links as everywhere else, and neither
           sentence implies that either author had anything to do with APL Beats.

@@ -15,13 +15,15 @@
  * Writing a TR-909 emulation of our own and calling it a render would be a much worse kind of
  * borrowing than using his.
  *
- * That matters especially for the bass drum, which is not a sample at all: it is a looped
- * wavetable with a swept pitch envelope, plus a separate attack transient. Reading
- * `bassdrum-cycle.raw` as though it were a finished drum would produce a 23 ms buzz, not a 909
- * kick. The same is true in lesser degrees elsewhere — every voice has an envelope, a tuning and
- * a decay that live in the code rather than in the file.
+ * That matters especially for the bass drum. `bassdrum-cycle.raw` is 23 ms long, and the DSP
+ * loops it under a swept pitch envelope with a separate attack transient on top; playing the file
+ * as though it were a finished drum would produce a short buzz rather than a 909 kick. The same
+ * holds in lesser degrees elsewhere — every voice has an envelope, a tuning and a decay that live
+ * in the code rather than in the file it reads.
  *
- * Everything here runs offline and sample-by-sample. No audio device, no browser, no recording.
+ * Everything here runs offline and sample-by-sample: no audio device and no browser are involved.
+ * The rendered WAV output is what ships. The upstream `.raw` resources are inputs and are not
+ * redistributed; what they physically are is not documented upstream and is not claimed here.
  */
 
 import { createHash } from 'node:crypto';
