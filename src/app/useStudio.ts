@@ -51,7 +51,7 @@ export interface StudioApi {
    *
    * One Undo entry, atomically. Takes a finished matrix rather than an operation because by
    * the time this is called the transform has already happened and been validated — see
-   * `useTransform`.
+   * `useApl`.
    */
   readonly applyTransform: (pattern: Pattern) => void;
   readonly undo: () => void;

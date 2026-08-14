@@ -28,7 +28,7 @@
 import { TryAplClient, AplError } from '@/apl/client';
 import { aplConfig } from '@/apl/config';
 import { parseAplMatrix } from '@/apl/matrix';
-import { buildTransformSource, OPERATIONS, targetName, type Parameters, type Target } from '@/apl/operations';
+import { buildAplSource, OPERATIONS, targetName, type Parameters, type Target } from '@/apl/operations';
 import { applyReferenceTransform } from '@/apl/reference';
 import { createInitialGroove } from '@/pattern/initialGroove';
 import { patternsEqual, type Pattern } from '@/pattern/pattern';
@@ -148,7 +148,7 @@ async function run(): Promise<Result[]> {
       throw new Error(`No such operation: ${check.operationId}`);
     }
 
-    const source = buildTransformSource({
+    const source = buildAplSource({
       operation,
       target: check.target,
       parameters: check.parameters,

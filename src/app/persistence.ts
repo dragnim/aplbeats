@@ -14,6 +14,7 @@
  * nothing has to be regenerated to restore it anyway.
  */
 
+import { APL_GENERATOR_VERSION, isRecipeId, type RecipeId } from '@/apl/generators';
 import type { Target } from '@/apl/operations';
 import { resolveKitId } from '@/audio/kits/kits';
 import { SYNTH_KIT_ID, type KitId } from '@/audio/kits/types';
@@ -61,6 +62,22 @@ const EXPLORE_SCHEMA_VERSION = 1;
  */
 const VOLUME_STORAGE_KEY = 'aplbeats.master-volume.v1';
 const VOLUME_SCHEMA_VERSION = 1;
+
+/*
+ * The Create with APL controls, under their own key for the fifth time.
+ *
+ * Which recipe and which seed somebody was working with is tool state, like the drum machine
+ * and the Explore draft: worth finding again after a refresh, and nothing to do with the local
+ * generator's version, so it must not be discarded when that changes.
+ *
+ * The APL generator's own version *is* stored, and is checked, for the reason the session
+ * checks the local one: recipe plus seed describes a rhythm, so a seed stored under an older
+ * set of recipe expressions would mean a different rhythm than it did. Restoring it is
+ * harmless — nothing is executed on load, ever — but restoring it and implying it would
+ * reproduce what somebody heard last time would not be, so a mismatch falls back to defaults.
+ */
+const CREATE_STORAGE_KEY = 'aplbeats.apl-create.v1';
+const CREATE_SCHEMA_VERSION = 1;
 
 /** How much hand-written APL is worth remembering. Comfortably past the editor's own limit. */
 const MAX_DRAFT_LENGTH = 1000;
@@ -139,6 +156,7 @@ export function clearSession(): void {
     globalThis.localStorage?.removeItem(KIT_STORAGE_KEY);
     globalThis.localStorage?.removeItem(EXPLORE_STORAGE_KEY);
     globalThis.localStorage?.removeItem(VOLUME_STORAGE_KEY);
+    globalThis.localStorage?.removeItem(CREATE_STORAGE_KEY);
   } catch {
     // See above.
   }
@@ -166,9 +184,30 @@ export function loadKitChoice(): KitId {
   }
 }
 
+/**
+ * The execution context a draft needs to mean what it meant.
+ *
+ * Stage 5 drafts had none, and needed none: a transform expression run against the same bar
+ * gives the same answer whenever you run it. A *generator* expression does not — it uses `?`,
+ * and without the seed it ran under it produces a different rhythm every time.
+ *
+ * So an expression loaded from Create carries the seed APL Beats fixed `⎕RL` to, and Explore
+ * runs it under exactly that. Otherwise pressing Run on an unedited generator would give a
+ * different bar than the button that produced it, and Peek would be a lie.
+ *
+ * Optional, and that is the migration. A stored Stage 5 draft has no `context` field at all and
+ * must load exactly as it always did rather than being discarded for missing something that did
+ * not exist when it was written — which is why this did not get a new schema version.
+ */
+export interface ExploreContext {
+  /** The seed `⎕RL` is fixed to. Absent for an expression that does not need one. */
+  readonly randomSeed?: number;
+}
+
 export interface ExploreDraft {
   readonly expression: string;
   readonly target: Target;
+  readonly context?: ExploreContext;
 }
 
 /**
@@ -192,9 +231,23 @@ export function loadExploreDraft(): ExploreDraft | null {
     if (typeof expression !== 'string' || expression.length === 0) return null;
     if (expression.length > MAX_DRAFT_LENGTH) return null;
 
-    if (target === 'all') return { expression, target: 'all' };
+    /*
+     * The context, if there is one.
+     *
+     * Read leniently and validated strictly: an absent field is a Stage 5 draft and perfectly
+     * good, a malformed one is dropped while the expression it accompanied is kept. Losing
+     * somebody's APL because the optional half of the record was corrupt would be the wrong
+     * trade — and the seed goes through `clampSeed`, so nothing outside 1–999999 can reach ⎕RL
+     * by way of storage.
+     */
+    const context = readExploreContext(parsed.context);
+
+    const withContext = (draft: ExploreDraft): ExploreDraft =>
+      context === null ? draft : { ...draft, context };
+
+    if (target === 'all') return withContext({ expression, target: 'all' });
     if (typeof target === 'number' && Number.isInteger(target) && target >= 0 && target < TRACK_COUNT) {
-      return { expression, target };
+      return withContext({ expression, target });
     }
     return null;
   } catch {
@@ -217,6 +270,70 @@ export function saveExploreDraft(draft: ExploreDraft | null): void {
         schema: EXPLORE_SCHEMA_VERSION,
         expression: draft.expression.slice(0, MAX_DRAFT_LENGTH),
         target: draft.target,
+        // Written only when there is one, so a transform draft stays byte-identical to what
+        // Stage 5 wrote and an older build could still read it.
+        ...(draft.context === undefined ? {} : { context: draft.context }),
+      }),
+    );
+  } catch {
+    // See above.
+  }
+}
+
+/** A stored Explore context, validated, or nothing. */
+function readExploreContext(raw: unknown): ExploreContext | null {
+  if (!isRecord(raw)) return null;
+  const { randomSeed } = raw;
+  if (typeof randomSeed !== 'number' || !Number.isFinite(randomSeed)) return null;
+  return { randomSeed: clampSeed(randomSeed) };
+}
+
+/* ------------------------------------------------------------------------- */
+
+export interface CreateSettings {
+  readonly recipeId: RecipeId;
+  readonly seed: number;
+}
+
+/**
+ * The Create with APL controls, or nothing.
+ *
+ * Loading this **never executes anything**. It restores a selector and a number, and that is the
+ * whole of it — there is no code path from here to a request, which is what makes it safe for a
+ * refresh to bring back the recipe and seed somebody was working with.
+ */
+export function loadCreateSettings(): CreateSettings | null {
+  try {
+    const raw = globalThis.localStorage?.getItem(CREATE_STORAGE_KEY) ?? null;
+    if (raw === null) return null;
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return null;
+    if (parsed.schema !== CREATE_SCHEMA_VERSION) return null;
+    // Recipe plus seed describes a rhythm. Under a different set of recipe expressions it would
+    // describe a different one, so the pair is not restored across a version change.
+    if (parsed.aplGeneratorVersion !== APL_GENERATOR_VERSION) return null;
+
+    const { recipeId, seed } = parsed;
+    if (!isRecipeId(recipeId)) return null;
+    if (typeof seed !== 'number' || !Number.isFinite(seed)) return null;
+
+    return { recipeId, seed: clampSeed(seed) };
+  } catch {
+    return null;
+  }
+}
+
+/** Remember the Create controls. Failure is ignored, as everywhere else in this file. */
+export function saveCreateSettings(settings: CreateSettings): void {
+  try {
+    globalThis.localStorage?.setItem(
+      CREATE_STORAGE_KEY,
+      JSON.stringify({
+        schema: CREATE_SCHEMA_VERSION,
+        aplGeneratorVersion: APL_GENERATOR_VERSION,
+        recipeId: settings.recipeId,
+        seed: clampSeed(settings.seed),
       }),
     );
   } catch {

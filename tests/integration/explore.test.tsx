@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AplError, type AplClient, type AplExecution } from '@/apl/client';
-import { useTransform } from '@/apl/useTransform';
+import { useApl } from '@/apl/useApl';
+import { ExploreEditor } from '@/components/ExploreEditor';
 import { TransformPanel } from '@/components/TransformPanel';
 import { createInitialGroove } from '@/pattern/initialGroove';
 import { setCell, type Pattern } from '@/pattern/pattern';
@@ -127,11 +128,26 @@ function reversing(options: { readonly hold?: boolean } = {}): Counting {
 /** A harness that owns the pattern, so running really does change it. */
 function Harness({ client, initial = GROOVE }: { client: AplClient; initial?: Pattern }): React.JSX.Element {
   const [pattern, setPattern] = useState<Pattern>(initial);
-  const transform = useTransform({ pattern, client, onApply: setPattern });
+  const transform = useApl({ pattern, lockedRows: [], client, onApply: setPattern });
+  /*
+   * The editor lives beside the panel rather than inside it, exactly as `App` composes them.
+   * Stage 6 lifted it out so that both APL panels could feed one editor, and a harness that
+   * still nested it would be testing a page this application no longer has.
+   */
+  const [exploreOpen, setExploreOpen] = useState(false);
 
   return (
     <>
-      <TransformPanel transform={transform} pattern={pattern} />
+      <TransformPanel
+        transform={transform}
+        pattern={pattern}
+        exploreOpen={exploreOpen}
+        onEditApl={() => {
+          transform.explore.follow('transform');
+          setExploreOpen(true);
+        }}
+      />
+      {exploreOpen && <ExploreEditor transform={transform} />}
       <div data-testid="bits">
         {pattern.map((row) => row.map((cell) => (cell ? '1' : '0')).join('')).join('')}
       </div>

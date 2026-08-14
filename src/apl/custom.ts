@@ -31,8 +31,9 @@
  * that job would be a worse lie than any of them.
  */
 
+import { clampSeed } from '@/generation/prng';
 import { patternToAplLiteral } from './matrix';
-import { aplNumber, IO_ORIGIN, type Target, type TransformSource } from './operations';
+import { aplNumber, IO_ORIGIN, type Target, type AplSource } from './operations';
 import { STEP_COUNT, TRACK_COUNT, type Pattern } from '@/pattern/pattern';
 import { DIAMOND } from './wire';
 
@@ -111,6 +112,18 @@ export interface CustomSourceRequest {
   /** Where the result is installed: one row, or the whole matrix. */
   readonly target: Target;
   readonly pattern: Pattern;
+  /**
+   * The seed `⎕RL` is fixed to, when the expression needs one.
+   *
+   * Absent for ordinary Explore, which is how it has always been: a transform expression gives
+   * the same answer whenever you run it and has no use for a random source. Present when the
+   * expression came from Create, because a generator uses `?` — and an unedited generator that
+   * gave a different bar than the button which produced it would make Peek a lie.
+   *
+   * APL Beats still owns this. The person edits the expression; the origin, the seed and the
+   * matrix wrapper are the application's, and none of them is editable text.
+   */
+  readonly randomSeed?: number;
 }
 
 /**
@@ -121,11 +134,24 @@ export interface CustomSourceRequest {
  * typed, because the expression shown in the editor and the expression that runs have to be
  * the same thing.
  */
-export function buildCustomSource({ core, target, pattern }: CustomSourceRequest): TransformSource {
+export function buildCustomSource({ core, target, pattern, randomSeed }: CustomSourceRequest): AplSource {
   const trimmed = core.trim();
   const assignment = target === 'all' ? `m←(${trimmed})` : `m[${aplNumber(target)};]←(${trimmed})`;
 
-  const statements = [`⎕IO←${String(IO_ORIGIN)}`, `m←${patternToAplLiteral(pattern)}`, assignment, 'm'];
+  /*
+   * `⎕RL` goes immediately after `⎕IO` and before anything else, so the seed is already fixed
+   * by the time the expression runs — and nowhere else, so an expression that does not use `?`
+   * is sent exactly as Stage 5 sent it.
+   */
+  const random = randomSeed === undefined ? [] : [`⎕RL←${String(clampSeed(randomSeed))} 1`];
+
+  const statements = [
+    `⎕IO←${String(IO_ORIGIN)}`,
+    ...random,
+    `m←${patternToAplLiteral(pattern)}`,
+    assignment,
+    'm',
+  ];
 
   return { core: trimmed, statements, expression: statements.join(` ${DIAMOND} `) };
 }

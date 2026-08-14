@@ -229,7 +229,7 @@ export interface SourceRequest {
   readonly pattern: Pattern;
 }
 
-export interface TransformSource {
+export interface AplSource {
   /**
    * The interesting part, shown in Peek as "Core APL".
    *
@@ -250,12 +250,7 @@ export interface TransformSource {
  * hand the matrix back as the result. Only the third is interesting, which is why Peek shows
  * it on its own and offers the rest separately.
  */
-export function buildTransformSource({
-  operation,
-  target,
-  parameters,
-  pattern,
-}: SourceRequest): TransformSource {
+export function buildAplSource({ operation, target, parameters, pattern }: SourceRequest): AplSource {
   const resolved = resolveParameters(operation, parameters);
   const core = buildCore(operation, target, resolved);
 

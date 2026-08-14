@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTransform } from '@/apl/useTransform';
+import { useApl, type ExploreOrigin } from '@/apl/useApl';
 import { useDrumMachine } from '@/audio/useDrumMachine';
 import { DrumMachineSelect } from '@/components/DrumMachineSelect';
 import { GeneratorPanel } from '@/components/GeneratorPanel';
+import { CreatePanel } from '@/components/CreatePanel';
+import { ExploreEditor } from '@/components/ExploreEditor';
 import { TransformPanel } from '@/components/TransformPanel';
 import { Logo } from '@/components/Logo';
 import { Sequencer } from '@/components/Sequencer';
@@ -64,6 +66,15 @@ export function App(): React.JSX.Element {
    */
   const [masterVolume, setMasterVolume] = useState(() => loadMasterVolume());
 
+  /*
+   * Whether the one Explore editor is open.
+   *
+   * Open once, open until the tab closes. Collapsing a Peek to look at the grid is not a request
+   * to throw an expression away, and an editor that emptied itself would feel like losing work
+   * even though the draft is stored.
+   */
+  const [exploreOpen, setExploreOpen] = useState(false);
+
   const isVisible = usePageVisibility();
   const { pattern, locks } = studio.state;
 
@@ -92,9 +103,34 @@ export function App(): React.JSX.Element {
    *
    * The only part of the application that touches the network, and it is reached from one
    * button. Nothing here runs on a timer, on playback, or as a control moves — see
-   * `useTransform` for the rules and why they are all in one file.
+   * `useApl` for the rules and why they are all in one file.
    */
-  const transform = useTransform({ pattern, onApply: studio.applyTransform });
+  /*
+   * Locks are handed in as row indices, because that is what APL is given.
+   *
+   * They mean "the generator may not change this": Create respects them, the built-in
+   * transforms deliberately ignore them, and that asymmetry is the existing rule rather than a
+   * new one — Rotate refusing to rotate a locked kick would be absurd.
+   */
+  const lockedRows = useMemo(() => locks.flatMap((locked, index) => (locked ? [index] : [])), [locks]);
+
+  const transform = useApl({ pattern, lockedRows, onApply: studio.applyTransform });
+
+  /**
+   * Open the editor, pointed at whichever panel asked.
+   *
+   * `follow` is deliberately non-destructive: it moves the editor onto another source only when
+   * there is nothing to lose. An edited draft stays exactly as it is, and the panel that asked
+   * offers an explicit load instead — because somebody's writing must not vanish because they
+   * opened a Peek.
+   */
+  const openExplore = useCallback(
+    (origin: ExploreOrigin) => {
+      transform.explore.follow(origin);
+      setExploreOpen(true);
+    },
+    [transform.explore],
+  );
 
   /*
    * Which drum machine plays it.
@@ -255,7 +291,37 @@ export function App(): React.JSX.Element {
           onEditGesture={beginEdit}
         />
 
-        <TransformPanel transform={transform} pattern={pattern} />
+        <TransformPanel
+          transform={transform}
+          pattern={pattern}
+          exploreOpen={exploreOpen}
+          onEditApl={() => {
+            openExplore('transform');
+          }}
+        />
+
+        <CreatePanel
+          transform={transform}
+          exploreOpen={exploreOpen}
+          onEditApl={() => {
+            openExplore('create');
+          }}
+        />
+
+        {/*
+          One Explore editor, below both panels that can feed it.
+
+          Stage 5 rendered it inside the Transform Peek, which read well when there was one thing
+          to edit. Stage 6 has two, and two editors would mean two drafts, two ideas of pristine
+          and two ways to lose somebody's work — so it lives here instead, and both "Edit this
+          APL" buttons lead to this one. It stays open once opened: collapsing a Peek to look at
+          the grid is not a request to throw an expression away.
+        */}
+        {exploreOpen && (
+          <section aria-label="Explore the APL" className={styles.explore}>
+            <ExploreEditor transform={transform} />
+          </section>
+        )}
 
         <h2 className="visuallyHidden">Generator</h2>
         <GeneratorPanel

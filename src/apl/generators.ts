@@ -46,7 +46,7 @@
  */
 
 import { patternToAplLiteral } from './matrix';
-import { aplNumber, IO_ORIGIN, type TransformSource } from './operations';
+import { aplNumber, IO_ORIGIN, type AplSource } from './operations';
 import { clampSeed } from '@/generation/prng';
 import { TRACK_COUNT, type Pattern } from '@/pattern/pattern';
 import { DIAMOND } from './wire';
@@ -264,12 +264,7 @@ export interface GenerateSourceRequest {
  * not mention the current rhythm at all, which is both shorter and the reason a cached result
  * can survive the visitor editing a cell.
  */
-export function buildGenerateSource({
-  recipe,
-  seed,
-  pattern,
-  lockedRows,
-}: GenerateSourceRequest): TransformSource {
+export function buildGenerateSource({ recipe, seed, pattern, lockedRows }: GenerateSourceRequest): AplSource {
   const safeSeed = clampSeed(seed);
   const locks = normaliseLockedRows(lockedRows);
 

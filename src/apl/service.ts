@@ -1,36 +1,54 @@
 /*
- * One transform, from a request to a validated pattern.
+ * One APL request, from a question to a validated pattern.
  *
  * The layer between the interface and the network, and the place the request discipline
  * lives. TryAPL is somebody else's infrastructure and this application has promised not to
  * treat it as a clock, so the rules are enforced here rather than hoped for at the call
  * sites:
  *
- *   a transform happens only when this function is called, and it is called only from a
- *   button;
+ *   a request happens only when one of these methods is called, and they are called only from
+ *   buttons;
  *
- *   an identical request — same pattern, same operation, same target, same parameters, same
- *   generator of source — is answered from a small in-memory cache and makes no request at
- *   all;
+ *   an identical question — the same one, however it was asked — is answered from a small
+ *   in-memory cache and makes no request at all;
  *
  *   nothing retries. A failure is a failure, reported once.
  *
- * Everything about *when* to call this belongs to `useTransform`. Everything about what a
+ * Three kinds of question arrive here and they share everything that matters. A *transform*
+ * changes a bar with one of the built-in operations. A *custom* expression is one somebody
+ * typed in Explore. A *generation* asks a recipe for a bar there was not one of before. The
+ * client, the timeout, the cache, the parser and the refusal to accept a partial answer are the
+ * same for all three, and a second service with its own copy of those rules would be a second
+ * set of rules to keep in step — which they would not have stayed.
+ *
+ * That is also why this is `AplService` and not `TransformService`. It stopped being a
+ * transform service the moment it could make a rhythm rather than only change one, and a name
+ * that needs a comment explaining what it really does is a name that should have changed.
+ *
+ * Everything about *when* to call this belongs to `useApl`. Everything about what a
  * valid answer looks like belongs to `matrix.ts`. This is the join.
  */
 
 import { patternsEqual, type Pattern } from '@/pattern/pattern';
 import { AplError, type AplClient } from './client';
 import { buildCustomSource } from './custom';
+import {
+  APL_GENERATOR_VERSION,
+  buildGenerateSource,
+  normaliseLockedRows,
+  type LockedRows,
+  type Recipe,
+} from './generators';
+import { clampSeed } from '@/generation/prng';
 import { parseAplMatrix } from './matrix';
 import {
-  buildTransformSource,
+  buildAplSource,
   isValidTarget,
   resolveParameters,
   type Operation,
   type Parameters,
   type Target,
-  type TransformSource,
+  type AplSource,
 } from './operations';
 
 export interface TransformRequest {
@@ -58,7 +76,7 @@ export interface CustomRequest {
 
 export interface TransformOutcome {
   readonly pattern: Pattern;
-  readonly source: TransformSource;
+  readonly source: AplSource;
   /** Whether this came from the cache rather than from TryAPL. */
   readonly cached: boolean;
   /** Round trip in milliseconds. Zero for a cached answer. */
@@ -109,7 +127,50 @@ export function customCacheKey(request: CustomRequest): string {
   return `custom|${String(request.target)}|${request.core}|${bits}`;
 }
 
-export class TransformService {
+/**
+ * A generation, from a recipe and a seed.
+ *
+ * Unlike the other two this does not need a bar to work on — a recipe makes one. The current
+ * pattern is here only because a *locked* row has to be preserved from it, and that distinction
+ * is what the cache key below is built around.
+ */
+export interface GenerateRequest {
+  readonly recipe: Recipe;
+  /** Clamped to 1–999999 by the source builder before it reaches APL. */
+  readonly seed: number;
+  readonly pattern: Pattern;
+  readonly lockedRows: LockedRows;
+}
+
+/**
+ * The key for a generation, and the one that took the most thought.
+ *
+ * What a generated bar actually depends on is the version, the recipe, the seed, which rows are
+ * locked, and *what is in those locked rows*. It does not depend on the rest of the current
+ * pattern at all, because the recipe never reads it: with nothing locked the request does not
+ * even mention it.
+ *
+ * So the key includes only the locked rows' contents, and that is a real behaviour rather than
+ * a micro-optimisation. Generate with nothing locked, edit a hat, press Generate again — the
+ * answer is the one already in hand and no request is made, which is correct, because the same
+ * recipe under the same seed would have computed exactly that. Lock the kick and change the
+ * kick, and the key moves, because now the answer genuinely would be different.
+ *
+ * Prefixed so it cannot collide with a transform or a custom expression, and versioned so a
+ * future change to a recipe expression cannot be answered out of a cache filled by the old one.
+ */
+export function generateCacheKey(request: GenerateRequest): string {
+  const locks = normaliseLockedRows(request.lockedRows);
+  const lockedBits = locks
+    .map((row) => `${String(row)}:${(request.pattern[row] ?? []).map((cell) => (cell ? '1' : '0')).join('')}`)
+    .join(',');
+
+  return `generate|v${String(APL_GENERATOR_VERSION)}|${request.recipe.id}|${String(
+    clampSeed(request.seed),
+  )}|${lockedBits}`;
+}
+
+export class AplService {
   private readonly client: AplClient;
   private readonly cache = new Map<string, Pattern>();
 
@@ -144,7 +205,7 @@ export class TransformService {
       );
     }
 
-    const source = buildTransformSource({
+    const source = buildAplSource({
       operation: request.operation,
       target: request.target,
       parameters: request.parameters,
@@ -167,17 +228,32 @@ export class TransformService {
   }
 
   /**
+   * Ask a recipe for a rhythm.
+   *
+   * The one method here that can return a bar nobody has heard before, and otherwise identical
+   * to the other two: same client, same cache, same parser, same refusal to accept anything but
+   * a complete 8 × 16 of zeroes and ones. If it fails, the caller leaves the beat exactly as it
+   * was — there is no local generator behind this, and that is the entire point of the feature.
+   */
+  async runGenerate(request: GenerateRequest, signal?: AbortSignal): Promise<TransformOutcome> {
+    const source = buildGenerateSource({
+      recipe: request.recipe,
+      seed: request.seed,
+      pattern: request.pattern,
+      lockedRows: request.lockedRows,
+    });
+
+    return this.execute(generateCacheKey(request), source, signal);
+  }
+
+  /**
    * The lane both of them run in.
    *
    * Cache, execute, parse, remember — in that order, and identically whichever kind of request
    * arrived. There is deliberately no third outcome: no partial result, no best effort, and
    * above all no local computation standing in for a failed request.
    */
-  private async execute(
-    key: string,
-    source: TransformSource,
-    signal?: AbortSignal,
-  ): Promise<TransformOutcome> {
+  private async execute(key: string, source: AplSource, signal?: AbortSignal): Promise<TransformOutcome> {
     const remembered = this.cache.get(key);
     if (remembered !== undefined) {
       // Re-inserted so the most recently useful answer is the last to be dropped.
@@ -200,7 +276,7 @@ export class TransformService {
     /*
      * A transform that changed nothing is still a valid answer, and still worth caching —
      * but it must not become an Undo entry, so it is reported rather than hidden. The caller
-     * decides; see `useTransform`.
+     * decides; see `useApl`.
      */
     this.remember(key, parsed.pattern);
 
@@ -215,6 +291,11 @@ export class TransformService {
   /** The same, for a hand-written expression. */
   hasCustom(request: CustomRequest): boolean {
     return this.cache.has(customCacheKey(request));
+  }
+
+  /** The same, for a generation. Read by tests, and by nothing that makes a request. */
+  hasGenerate(request: GenerateRequest): boolean {
+    return this.cache.has(generateCacheKey(request));
   }
 
   private remember(key: string, pattern: Pattern): void {

@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   aplNumber,
-  buildTransformSource,
+  buildAplSource,
   clampParameter,
   defaultTargetFor,
   isOperationId,
@@ -31,7 +31,7 @@ import { createPattern, setCell, TRACK_COUNT } from '@/pattern/pattern';
 const GROOVE = createInitialGroove();
 
 function sourceFor(operation: Operation, target: Target, parameters = {}) {
-  return buildTransformSource({ operation, target, parameters, pattern: GROOVE });
+  return buildAplSource({ operation, target, parameters, pattern: GROOVE });
 }
 
 describe('the transport statements', () => {
@@ -65,7 +65,7 @@ describe('the transport statements', () => {
 
   it('carry the pattern the visitor actually has, not a placeholder', () => {
     const pattern = setCell(createPattern(), 0, 0, true);
-    const source = buildTransformSource({
+    const source = buildAplSource({
       operation: operationById('reverse'),
       target: 'all',
       parameters: {},
@@ -229,7 +229,7 @@ describe('nothing from the interface reaches the source as text', () => {
       for (const target of targets) {
         for (const extreme of [-1e9, -1, 0, 1, 1e9, Number.NaN]) {
           const parameters = Object.fromEntries(operation.parameters.map((spec) => [spec.key, extreme]));
-          const source = buildTransformSource({ operation, target, parameters, pattern: GROOVE });
+          const source = buildAplSource({ operation, target, parameters, pattern: GROOVE });
 
           for (const needle of forbidden) {
             expect(
@@ -248,8 +248,8 @@ describe('nothing from the interface reaches the source as text', () => {
   it('is deterministic', () => {
     for (const operation of OPERATIONS) {
       const target: Target = operation.allowsAllTracks ? 'all' : 2;
-      const once = buildTransformSource({ operation, target, parameters: {}, pattern: GROOVE });
-      const twice = buildTransformSource({ operation, target, parameters: {}, pattern: GROOVE });
+      const once = buildAplSource({ operation, target, parameters: {}, pattern: GROOVE });
+      const twice = buildAplSource({ operation, target, parameters: {}, pattern: GROOVE });
       expect(twice.expression).toBe(once.expression);
     }
   });

@@ -6,7 +6,7 @@ import {
   everyTarget,
   MAX_CUSTOM_LENGTH,
 } from '@/apl/custom';
-import { customCacheKey } from '@/apl/transform';
+import { customCacheKey } from '@/apl/service';
 import { createInitialGroove } from '@/pattern/initialGroove';
 import { setCell, TRACK_COUNT } from '@/pattern/pattern';
 

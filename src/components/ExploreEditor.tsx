@@ -2,7 +2,7 @@ import { useCallback, useId, useLayoutEffect, useRef } from 'react';
 import { cx } from '@/app/cx';
 import { customContract, everyTarget, MAX_CUSTOM_LENGTH } from '@/apl/custom';
 import { targetName } from '@/apl/operations';
-import type { TransformApi } from '@/apl/useTransform';
+import type { TransformApi } from '@/apl/useApl';
 import styles from './ExploreEditor.module.css';
 
 /*
@@ -57,6 +57,16 @@ const GLYPHS: readonly { readonly glyph: string; readonly name: string }[] = [
   { glyph: '∧', name: 'And' },
   { glyph: '/', name: 'Replicate or reduce' },
   { glyph: ',', name: 'Join' },
+  /*
+   * Added in Stage 6, because the shipped generators use it and an expression somebody cannot
+   * retype is an expression they cannot really edit.
+   *
+   * The strip is a way past not owning an APL keyboard, not a substitute for one — so it grows
+   * only when the built-in APL grows, and `?` is the one glyph Stage 6 made necessary. `∘.` also
+   * appears in three of the four recipes but is two ordinary keyboard characters, so it needs no
+   * button.
+   */
+  { glyph: '?', name: 'Roll or Deal (random)' },
 ];
 
 export function ExploreEditor({ transform }: ExploreEditorProps): React.JSX.Element {
@@ -105,8 +115,16 @@ export function ExploreEditor({ transform }: ExploreEditorProps): React.JSX.Elem
       <div className={styles.intro}>
         <p className={styles.note}>
           <code className={styles.inline}>m</code> is the current {'8 × 16'} rhythm, one row per track. APL
-          Beats sets <code className={styles.inline}>⎕IO←0</code>, so tracks and steps count from zero. Write
-          one expression; everything around it is still provided for you.
+          Beats sets <code className={styles.inline}>⎕IO←0</code>, so tracks and steps count from zero.
+          {explore.randomSeed !== null && (
+            <>
+              {' '}
+              It also fixes <code className={styles.inline}>⎕RL</code> to seed{' '}
+              <code className={styles.inline}>{String(explore.randomSeed)}</code>, so{' '}
+              <code className={styles.inline}>?</code> gives the same answers every time you run this.
+            </>
+          )}{' '}
+          Write one expression; everything around it is still provided for you.
         </p>
       </div>
 
@@ -179,7 +197,7 @@ export function ExploreEditor({ transform }: ExploreEditorProps): React.JSX.Elem
            * and a stray newline should not spend somebody else's compute.
            *
            * Holding the shortcut repeats the keydown, and every repeat calls `run`; the busy
-           * guard in `useTransform` is what stops that becoming a request storm, and there is a
+           * guard in `useApl` is what stops that becoming a request storm, and there is a
            * test that holds the key down and counts.
            */
           if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
@@ -217,14 +235,14 @@ export function ExploreEditor({ transform }: ExploreEditorProps): React.JSX.Elem
           onClick={explore.run}
           disabled={!explore.canRun || status === 'running'}
           aria-label="Run this APL"
-          aria-busy={running}
+          aria-busy={running && mine}
         >
-          {running ? 'Running APL…' : 'Run this APL'}
+          {running && mine ? 'Running APL…' : 'Run this APL'}
         </button>
 
         {!explore.isPristine && (
           <button type="button" className={styles.secondary} onClick={explore.loadCurrent}>
-            Load current transform
+            {explore.origin === 'create' ? 'Load current generator' : 'Load current transform'}
           </button>
         )}
       </div>

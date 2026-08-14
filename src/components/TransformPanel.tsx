@@ -1,12 +1,11 @@
 import { useId, useState } from 'react';
 import { cx } from '@/app/cx';
-import { ExploreEditor } from './ExploreEditor';
-import type { TransformApi } from '@/apl/useTransform';
+import type { TransformApi } from '@/apl/useApl';
 import { rowToAplLiteral } from '@/apl/matrix';
 import { OPERATIONS, targetName, type Target } from '@/apl/operations';
 import { STEP_COUNT, type Pattern } from '@/pattern/pattern';
 import { TRACKS } from '@/pattern/tracks';
-import styles from './TransformPanel.module.css';
+import styles from './AplPanel.module.css';
 
 /*
  * Transform with APL.
@@ -24,21 +23,21 @@ export interface TransformPanelProps {
   readonly transform: TransformApi;
   /** The bar the APL would operate on, for Peek's array view. */
   readonly pattern: Pattern;
+  /** Whether the one shared Explore editor is open. */
+  readonly exploreOpen: boolean;
+  /** Open that editor, pointing it at this panel's APL if it is free to do so. */
+  readonly onEditApl: () => void;
 }
 
-export function TransformPanel({ transform, pattern }: TransformPanelProps): React.JSX.Element {
+export function TransformPanel({
+  transform,
+  pattern,
+  exploreOpen,
+  onEditApl,
+}: TransformPanelProps): React.JSX.Element {
   const ids = useId();
   const [peekOpen, setPeekOpen] = useState(false);
-  /*
-   * Explore, opened from inside Peek and kept open once it is.
-   *
-   * Not reset when Peek closes: somebody who collapses Peek to see the grid and reopens it has
-   * not asked to throw their expression away, and the editor coming back empty would feel like
-   * losing work even though the draft is stored.
-   */
-  const [exploreOpen, setExploreOpen] = useState(false);
-
-  const { operation, target, parameters, status, error, source, canApply, lastWasCached, lastRun } =
+  const { operation, target, parameters, status, error, source, canApply, lastWasCached, lastRun, explore } =
     transform;
   const running = status === 'running';
   /*
@@ -49,6 +48,9 @@ export function TransformPanel({ transform, pattern }: TransformPanelProps): Rea
    * button would be the interface claiming something it did not do.
    */
   const fixedRun = lastRun === 'fixed';
+
+  /* Whether the shared editor is currently mirroring this panel's APL. */
+  const exploreIsShowingThis = explore.origin === 'transform' && explore.isPristine;
 
   /**
    * Which targets this operation will accept.
@@ -151,9 +153,9 @@ export function TransformPanel({ transform, pattern }: TransformPanelProps): Rea
           onClick={transform.apply}
           disabled={!canApply || running}
           aria-label="Apply with APL"
-          aria-busy={running}
+          aria-busy={running && fixedRun}
         >
-          {running ? 'Running APL…' : 'Apply with APL'}
+          {running && fixedRun ? 'Running APL…' : 'Apply with APL'}
         </button>
       </div>
 
@@ -211,28 +213,42 @@ export function TransformPanel({ transform, pattern }: TransformPanelProps): Rea
               </ul>
 
               {/*
-                Peek leads into Explore, right here, under the expression it is about to let
-                somebody edit. A separate panel elsewhere would break the thread: the whole
-                argument of the feature is "that line you are reading — you can change it".
+                Peek leads into Explore. The editor itself now lives below both APL panels rather
+                than inside this one, because Stage 6 added a second thing that can be edited and
+                there must still be exactly one editor — two textareas, two drafts and two ideas
+                of what is pristine would be a far worse feature than one.
               */}
               {!exploreOpen && (
-                <button
-                  type="button"
-                  className={styles.editToggle}
-                  onClick={() => {
-                    setExploreOpen(true);
-                  }}
-                  aria-expanded={false}
-                  aria-controls={`${ids}-explore`}
-                >
+                <button type="button" className={styles.editToggle} onClick={onEditApl}>
                   Edit this APL
                 </button>
               )}
 
-              {exploreOpen && (
-                <div id={`${ids}-explore`}>
-                  <ExploreEditor transform={transform} />
-                </div>
+              {exploreOpen && exploreIsShowingThis && (
+                <p className={styles.note}>This expression is open in Explore, below.</p>
+              )}
+
+              {/*
+                The editor is busy with somebody's own APL. It is not replaced because a Peek was
+                opened — that is work, and work does not disappear on a click that never said it
+                would. The explicit load is offered instead.
+              */}
+              {exploreOpen && !explore.isPristine && (
+                <>
+                  <p className={styles.note}>
+                    Explore is holding APL you wrote, so it has been left alone. Loading this transform would
+                    replace it.
+                  </p>
+                  <button
+                    type="button"
+                    className={styles.editToggle}
+                    onClick={() => {
+                      explore.loadFrom('transform');
+                    }}
+                  >
+                    Load this transform into Explore
+                  </button>
+                </>
               )}
             </div>
 

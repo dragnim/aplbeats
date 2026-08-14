@@ -32,7 +32,7 @@ export type RequestPayload = readonly [state: string, sequence: number, reserved
  * The payload for one expression.
  *
  * TryAPL evaluates exactly one expression per request, so a transform's several statements
- * are joined with `⋄` before they get here. See `buildTransformSource`.
+ * are joined with `⋄` before they get here. See `buildAplSource`.
  */
 export function buildRequestPayload(expression: string): RequestPayload {
   return [FRESH_STATE, 0, '', expression];

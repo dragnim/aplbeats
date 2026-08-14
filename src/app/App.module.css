@@ -105,3 +105,14 @@
     gap: var(--space-4);
   }
 }
+
+/*
+ * Where the one Explore editor sits.
+ *
+ * Below both APL panels rather than inside either, because both can feed it and there is only
+ * ever one. Full width on every size — an editor squeezed into a column is an editor nobody
+ * writes anything in.
+ */
+.explore {
+  display: block;
+}

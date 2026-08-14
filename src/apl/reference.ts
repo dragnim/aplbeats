@@ -46,7 +46,7 @@ export function euclideanVector(pulses: number, steps = STEP_COUNT): boolean[] {
 /**
  * The whole transform, as the APL would perform it.
  *
- * Mirrors `buildTransformSource` statement for statement: resolve the parameters, compute the
+ * Mirrors `buildAplSource` statement for statement: resolve the parameters, compute the
  * core expression, then either replace one row or the whole matrix.
  */
 export function applyReferenceTransform(

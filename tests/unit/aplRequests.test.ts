@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AplError, TryAplClient, type AplClient, type AplExecution } from '@/apl/client';
 import { patternToAplLiteral } from '@/apl/matrix';
 import { operationById } from '@/apl/operations';
-import { CACHE_LIMIT, cacheKey, isStillApplicable, TransformService } from '@/apl/transform';
+import { CACHE_LIMIT, cacheKey, isStillApplicable, AplService } from '@/apl/service';
 import { createInitialGroove } from '@/pattern/initialGroove';
 import { createPattern, setCell, STEP_COUNT, TRACK_COUNT, type Pattern } from '@/pattern/pattern';
 
@@ -41,7 +41,7 @@ function fakeClient(answer: (expression: string) => string[] | Error) {
 describe('one transform, one request', () => {
   it('asks once', async () => {
     const { client, calls } = fakeClient(() => reply(GROOVE));
-    const service = new TransformService(client);
+    const service = new AplService(client);
 
     await service.run({
       operation: operationById('reverse'),
@@ -60,7 +60,7 @@ describe('one transform, one request', () => {
      * the source builder never had access to any of it.
      */
     const { client, calls } = fakeClient(() => reply(GROOVE));
-    const service = new TransformService(client);
+    const service = new AplService(client);
 
     await service.run({
       operation: operationById('rotate'),
@@ -76,13 +76,13 @@ describe('one transform, one request', () => {
 });
 
 describe('the cache', () => {
-  let service: TransformService;
+  let service: AplService;
   let calls: string[];
 
   beforeEach(() => {
     const fake = fakeClient(() => reply(GROOVE));
     calls = fake.calls;
-    service = new TransformService(fake.client);
+    service = new AplService(fake.client);
   });
 
   const request = {
@@ -169,7 +169,7 @@ describe('the cache', () => {
 
   it('remembers a failure not at all', async () => {
     const fake = fakeClient(() => new AplError('unavailable', 'nope'));
-    const failing = new TransformService(fake.client);
+    const failing = new AplService(fake.client);
 
     await expect(failing.run(request)).rejects.toBeInstanceOf(AplError);
     await expect(failing.run(request)).rejects.toBeInstanceOf(AplError);
@@ -190,7 +190,7 @@ describe('a malformed reply', () => {
 
   it('is rejected, and nothing is cached', async () => {
     const fake = fakeClient(() => ['1 1 1']);
-    const service = new TransformService(fake.client);
+    const service = new AplService(fake.client);
 
     await expect(service.run(request)).rejects.toBeInstanceOf(AplError);
     expect(service.cacheSize).toBe(0);
@@ -199,7 +199,7 @@ describe('a malformed reply', () => {
   it('carries the reason as detail rather than in the message', async () => {
     // The visitor gets one sentence; the console gets the diagnosis.
     const fake = fakeClient(() => ['1 1 1']);
-    const service = new TransformService(fake.client);
+    const service = new AplService(fake.client);
 
     await service.run(request).then(
       () => expect.fail('should have rejected'),
@@ -217,7 +217,7 @@ describe('a malformed reply', () => {
 describe('an impossible request', () => {
   it('never reaches the network', async () => {
     const fake = fakeClient(() => reply(GROOVE));
-    const service = new TransformService(fake.client);
+    const service = new AplService(fake.client);
 
     // Euclidean replaces a row, so "all tracks" is refused before a request is built.
     await expect(

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AplError, type AplClient, type AplExecution } from '@/apl/client';
-import { useTransform } from '@/apl/useTransform';
+import { useApl } from '@/apl/useApl';
 import { TransformPanel } from '@/components/TransformPanel';
 import { applyReferenceTransform } from '@/apl/reference';
 import { operationById } from '@/apl/operations';
@@ -90,8 +90,9 @@ function Harness({
   initial?: Pattern;
 }): React.JSX.Element {
   const [pattern, setPattern] = useState<Pattern>(initial);
-  const transform = useTransform({
+  const transform = useApl({
     pattern,
+    lockedRows: [],
     client,
     onApply: (next) => {
       setPattern(next);
@@ -101,7 +102,7 @@ function Harness({
 
   return (
     <>
-      <TransformPanel transform={transform} pattern={pattern} />
+      <TransformPanel transform={transform} pattern={pattern} exploreOpen onEditApl={() => undefined} />
       {/*
         A compact rendering of the current bar, so a test can see it change.
 
@@ -351,8 +352,9 @@ describe('a stale reply', () => {
 
     function Racing(): React.JSX.Element {
       const [pattern, setPattern] = useState<Pattern>(GROOVE);
-      const transform = useTransform({
+      const transform = useApl({
         pattern,
+        lockedRows: [],
         client,
         onApply: (next) => {
           setPattern(next);
@@ -362,7 +364,7 @@ describe('a stale reply', () => {
 
       return (
         <>
-          <TransformPanel transform={transform} pattern={pattern} />
+          <TransformPanel transform={transform} pattern={pattern} exploreOpen onEditApl={() => undefined} />
           <button
             type="button"
             onClick={() => {
