@@ -117,9 +117,17 @@ export function CreatePanel({ transform, exploreOpen, onEditApl }: CreatePanelPr
           type="button"
           className={styles.secondary}
           onClick={create.newSeed}
-          title="Choose another seed. Makes no request."
+          title="Choose another APL seed. Makes no request."
         >
-          New seed
+          {/*
+            "New APL seed", not "New seed".
+
+            The local generator has its own New Seed button, and two controls whose accessible
+            names differ only in capitalisation are two controls a screen reader cannot tell
+            apart. They are also genuinely different seeds — changing one must not regenerate the
+            other system's bar — so naming them apart is honest as well as necessary.
+          */}
+          New APL seed
         </button>
         {/*
           A stable accessible name, with `aria-busy` for the progress — the same treatment Apply

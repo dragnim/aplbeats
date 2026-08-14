@@ -162,7 +162,7 @@ describe('what costs a request, and what does not', () => {
     await user.selectOptions(screen.getByLabelText('Recipe'), RECIPES[1]!.id);
     await user.clear(screen.getByLabelText('Seed'));
     await user.type(screen.getByLabelText('Seed'), '1234');
-    await user.click(screen.getByRole('button', { name: 'New seed' }));
+    await user.click(screen.getByRole('button', { name: 'New APL seed' }));
 
     // Peek is a local template, so opening it is free too.
     await user.click(screen.getByRole('button', { name: 'Peek at the APL' }));
@@ -355,7 +355,7 @@ describe('a reply that is no longer wanted', () => {
     render(<Harness client={client} />);
 
     await user.click(generateButton());
-    await user.click(screen.getByRole('button', { name: 'New seed' }));
+    await user.click(screen.getByRole('button', { name: 'New APL seed' }));
 
     act(() => {
       pending[0]?.settle(reply(GENERATED));

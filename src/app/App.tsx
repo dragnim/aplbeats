@@ -355,8 +355,8 @@ export function App(): React.JSX.Element {
       <footer className={styles.footer}>
         <p className={styles.note}>
           Eight tracks, sixteen steps, and an <span className={styles.emphasis}>{TRACKS.length} × 16</span>{' '}
-          Boolean matrix underneath. The generator and the timing are local; the transformations are executed
-          by Dyalog APL, through TryAPL, one whole pattern at a time.
+          Boolean matrix underneath. The instant generator and the timing are local; the APL tools create and
+          transform rhythms in Dyalog APL, through TryAPL, one whole pattern at a time and only when you ask.
         </p>
 
         {/*

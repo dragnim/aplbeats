@@ -136,10 +136,15 @@ if (presets !== 8) note(`expected 8 presets, found ${String(presets)}`);
  * TryAPL's CORS headers and on the Content-Security-Policy as actually served. Those are
  * properties of the deployment, so they are checked against the deployment, once.
  *
- * Since Stage 5 the one request goes through **Explore** rather than through a fixed control,
- * because that path proves strictly more: the editor, the wrapping of a hand-written expression,
- * the CSP, CORS, real Dyalog execution, the parser, installation, and Undo. A second request for
- * the fixed controls would prove a subset of the same boundary.
+ * Since Stage 6 that one request is a **generation**, not a transform and not a hand-written
+ * expression. All three cross the same boundary — CSP, CORS, real Dyalog, the parser,
+ * installation, Undo — so proving it three times would be three requests to learn one thing.
+ * Generation is the one worth spending it on: it is what this stage shipped, and it is the only
+ * path that also proves a seeded `⎕RL` survives the round trip from the published origin.
+ *
+ * There are four recipes. This makes one request, not four. Whether Cross runs given that Four on
+ * Floor does is a question about Dyalog, not about the deployment, and `verify:apl-generators-live`
+ * is where it is asked.
  */
 let aplRequests = 0;
 
@@ -148,76 +153,90 @@ if (checkApl) {
     if (request.url().startsWith('https://tryapl.org')) aplRequests += 1;
   });
 
-  const panel = page.getByRole('region', { name: 'Transform with APL' });
+  const panel = page.getByRole('region', { name: 'Create with APL' });
+  const createStatus = page.getByRole('status', { name: 'APL generation' });
   const aplStatus = page.getByRole('status', { name: 'APL transform' });
-  const exploreStatus = page.getByRole('status', { name: 'Explore' });
 
   await panel.scrollIntoViewIfNeeded();
 
-  // Peek first, then Explore. Neither may send anything.
-  await page.getByRole('button', { name: 'Peek at the APL' }).click();
+  /* ---- everything except the button, which must cost nothing ---- */
+
+  const SEED = '47291';
+  await panel.getByLabel('Recipe').selectOption('broken');
+  await panel.getByLabel('Seed').fill(SEED);
+  await panel.getByRole('button', { name: 'New APL seed' }).click();
+  await panel.getByLabel('Seed').fill(SEED);
+  await panel.getByRole('button', { name: 'Peek at the APL' }).click();
+
   const core = (await panel.locator('pre code').first().innerText()).trim();
   console.log(`  Peek shows: ${core}`);
+  if (aplRequests !== 0) {
+    note(`the Create controls sent ${String(aplRequests)} request(s); they must send none`);
+  }
 
-  await page.getByRole('button', { name: 'Edit this APL' }).click();
-  const editor = page.getByRole('textbox', { name: 'Your APL expression' });
-  const opened = (await editor.inputValue()).trim();
-  console.log(`  Explore opens on: ${opened}`);
-  if (opened !== core) note(`the editor opened on "${opened}" but Peek shows "${core}"`);
-  if (aplRequests !== 0) note(`opening Explore sent ${String(aplRequests)} request(s); it must send none`);
+  // Peek must show the seed. It is most of the reason the result can be reproduced.
+  const request = (await panel.locator('pre code').nth(1).innerText()).trim();
+  if (!request.includes(`⎕RL←${SEED} 1`)) {
+    note(`Peek's full request does not fix ⎕RL to the seed: ${request.replaceAll('\n', ' ⋄ ')}`);
+  }
 
-  /*
-   * An expression no fixed control could have produced: a rim wherever the kick plays and the
-   * snare does not. It reads two rows and writes a third, which is the whole argument for
-   * Explore existing.
-   */
-  await page.getByLabel('Result goes to').selectOption('7');
-  await editor.fill('m[0;]∧~m[1;]');
-  if (aplRequests !== 0) note(`typing sent ${String(aplRequests)} request(s); it must send none`);
+  /* ---- the one request ---- */
 
   const beforeApl = await gridOf();
-  await page.getByRole('button', { name: 'Run this APL' }).click();
+  const playingBefore = (await page.getByRole('status', { name: 'Playback' }).innerText()).trim();
+  const tempoBefore = await page.getByRole('slider', { name: 'Tempo' }).inputValue();
+  const swingBefore = await page.getByRole('slider', { name: 'Swing' }).inputValue();
+  const masterBefore = await page.getByRole('slider', { name: 'Master' }).inputValue();
+
+  await page.getByRole('button', { name: 'Generate with APL' }).click();
 
   try {
-    await exploreStatus
-      .filter({ hasText: /Applied|unavailable|too long|unexpected|could not|cannot/ })
+    await createStatus
+      .filter({ hasText: /Generated|unavailable|too long|unexpected|could not|cannot|no difference/ })
       .waitFor({ timeout: 30_000 });
   } catch {
-    note('the custom expression never reported an outcome within 30s');
+    note('the generation never reported an outcome within 30s');
   }
 
-  const said = (await exploreStatus.innerText()).trim();
+  const said = (await createStatus.innerText()).trim();
   const afterApl = await gridOf();
   console.log(`  live TryAPL requests: ${String(aplRequests)}`);
-  console.log(`  Explore said: ${said}`);
+  console.log(`  Create said: ${said}`);
 
   if (aplRequests !== 1) note(`expected exactly 1 request, counted ${String(aplRequests)}`);
-  if (said !== 'Applied.') note(`custom APL did not run from the published origin: "${said}"`);
+  if (said !== 'Generated.') note(`APL did not generate from the published origin: "${said}"`);
 
-  // The rim row should now be the kick, minus anything the snare is doing.
-  const rows = [...beforeApl.matchAll(/.{16}/gu)].map((row) => row[0]);
-  const kick = rows[0] ?? '';
-  const snare = rows[1] ?? '';
-  const expectedRim = [...kick]
-    .map((cell, step) => (cell === '1' && snare[step] !== '1' ? '1' : '0'))
-    .join('');
-  const actualRim = afterApl.slice(7 * 16);
-  console.log(`  the rim is the kick without the snare: ${String(actualRim === expectedRim)}`);
-  if (actualRim !== expectedRim) {
-    note(`the rim row is ${actualRim}, expected ${expectedRim}`);
+  /* ---- what came back, and what did not move ---- */
+
+  const hits = [...afterApl].filter((cell) => cell === '1').length;
+  console.log(`  the generated bar has ${String(hits)} hits`);
+  if (afterApl.length !== 128) note(`the installed bar is ${String(afterApl.length)} cells, expected 128`);
+  if (afterApl === beforeApl) note('the generated bar is identical to the one that was there');
+  if (hits === 0) note('the generated bar is empty');
+
+  // A generation replaces the rhythm and nothing else.
+  const playingAfter = (await page.getByRole('status', { name: 'Playback' }).innerText()).trim();
+  if (playingAfter !== playingBefore)
+    note(`the transport moved from "${playingBefore}" to "${playingAfter}"`);
+  if ((await page.getByRole('slider', { name: 'Tempo' }).inputValue()) !== tempoBefore) {
+    note('generating changed the tempo');
   }
-  // And nothing else moved.
-  if (afterApl.slice(0, 7 * 16) !== beforeApl.slice(0, 7 * 16)) {
-    note('a custom expression targeting one row changed another');
+  if ((await page.getByRole('slider', { name: 'Swing' }).inputValue()) !== swingBefore) {
+    note('generating changed the swing');
+  }
+  if ((await page.getByRole('slider', { name: 'Master' }).inputValue()) !== masterBefore) {
+    note('generating changed the master volume');
   }
 
-  // Undo restores it, on the published site as everywhere else.
+  /* ---- one Undo, and no second request ---- */
+
   await page.getByRole('button', { name: 'Undo' }).click();
-  if ((await gridOf()) !== beforeApl) note('Undo did not restore the pattern after a custom run');
+  if ((await gridOf()) !== beforeApl) note('Undo did not restore the pattern after a generation');
+  if (aplRequests !== 1) note(`Undo cost a request; the count is now ${String(aplRequests)}`);
 
-  // The fixed control is still there and still says nothing it did not do.
+  // The transform panel is still there and still says nothing it did not do.
   if ((await aplStatus.innerText()).trim() !== '') {
-    note('the fixed transform reported an outcome it did not produce');
+    note('the transform panel reported an outcome it did not produce');
   }
 }
 
@@ -230,7 +249,7 @@ if (problems.length > 0) {
 } else {
   console.log(
     checkApl
-      ? `\nThe published site loads clean, opens on its groove, plays, and ran hand-written APL in ${String(aplRequests)} request.`
+      ? `\nThe published site loads clean, opens on its groove, plays, and generated a rhythm in real Dyalog APL in ${String(aplRequests)} request.`
       : '\nThe published site loads clean, opens on its groove and plays. APL was not checked.',
   );
 }
