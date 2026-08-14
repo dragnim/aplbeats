@@ -30,11 +30,14 @@
     "diagnose:reference": "node scripts/diagnose-reference.mjs",
     "verify:deployment": "node scripts/verify-deployment.mjs",
     "verify:apl-live": "tsx scripts/verify-apl-live.ts",
+    "verify:apl-generators-live": "tsx scripts/verify-apl-generators-live.ts",
+    "spike:apl-rl": "tsx scripts/spike-rl-live.ts",
     "verify:credits": "node scripts/verify-credits.mjs",
     "import:samples": "node scripts/import-samples.mjs",
     "render:tr909": "node scripts/render-tr909.mjs",
     "review:patterns": "tsx scripts/review-patterns.ts",
     "review:transforms": "tsx scripts/review-transforms.ts",
+    "review:apl-generators": "tsx scripts/review-apl-generators.ts",
     "measure:generated": "node scripts/measure-generated.mjs"
   },
   "dependencies": {
