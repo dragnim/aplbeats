@@ -4,6 +4,15 @@ import { applyReferenceTransform } from '@/apl/reference';
 import { createInitialGroove } from '@/pattern/initialGroove';
 import type { Pattern } from '@/pattern/pattern';
 
+/**
+ * The Transform panel, as a scope for locators.
+ *
+ * Stage 6 added a second APL panel with its own "Peek at the APL" and "Edit this APL", so an
+ * unscoped locator for either is now ambiguous — and ambiguous to a person reading the page, not
+ * only to Playwright. Scoping says which panel is meant.
+ */
+const transformPanel = (page: Page) => page.getByRole('region', { name: 'Transform with APL' });
+
 /*
  * Transform with APL, end to end, against a mocked TryAPL.
  *
@@ -319,7 +328,7 @@ test('the whole flow: choose, peek, apply, undo', async ({ page }) => {
    * The point of the feature is that the code on screen is the code that runs, so the
    * expression is read here and compared with what actually goes over the wire below.
    */
-  await page.getByRole('button', { name: 'Peek at the APL' }).click();
+  await transformPanel(page).getByRole('button', { name: 'Peek at the APL' }).click();
   await expect(panel(page).getByText('Core APL')).toBeVisible();
   const core = (await panel(page).locator('pre code').first().innerText()).trim();
   expect(core).toBe('¯1⌽m[0;]');
@@ -481,7 +490,7 @@ test('Peek shows the whole request, and nothing widens the page', async ({ page 
   const mock = await mockApl(page);
   await freshVisit(page);
 
-  await page.getByRole('button', { name: 'Peek at the APL' }).click();
+  await transformPanel(page).getByRole('button', { name: 'Peek at the APL' }).click();
   await expect(panel(page).getByText('Core APL')).toBeVisible();
 
   const blocks = await page.evaluate(() =>
@@ -531,7 +540,7 @@ test('nothing but Apply sends anything', async ({ page }) => {
   for (const shift of ['1', '2', '3']) {
     await panel(page).getByLabel('Shift').fill(shift);
   }
-  await page.getByRole('button', { name: 'Peek at the APL' }).click();
+  await transformPanel(page).getByRole('button', { name: 'Peek at the APL' }).click();
   await panel(page).getByLabel('Operation').selectOption('rotate');
   await panel(page).getByLabel('Target').selectOption('all');
 

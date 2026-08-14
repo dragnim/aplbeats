@@ -2,6 +2,15 @@ import { expect, test, type Page, type Route } from '@playwright/test';
 import { createInitialGroove } from '@/pattern/initialGroove';
 import type { Pattern } from '@/pattern/pattern';
 
+/**
+ * The Transform panel, as a scope for locators.
+ *
+ * Stage 6 added a second APL panel with its own "Peek at the APL" and "Edit this APL", so an
+ * unscoped locator for either is now ambiguous — and ambiguous to a person reading the page, not
+ * only to Playwright. Scoping says which panel is meant.
+ */
+const transformPanel = (page: Page) => page.getByRole('region', { name: 'Transform with APL' });
+
 /*
  * Explore, end to end, against a mocked TryAPL.
  *
@@ -227,8 +236,8 @@ async function freshVisit(page: Page): Promise<void> {
 
 /** Play, Peek, Explore. */
 async function openExplore(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Peek at the APL' }).click();
-  await page.getByRole('button', { name: 'Edit this APL' }).click();
+  await transformPanel(page).getByRole('button', { name: 'Peek at the APL' }).click();
+  await transformPanel(page).getByRole('button', { name: 'Edit this APL' }).click();
   await expect(editor(page)).toBeVisible();
 }
 

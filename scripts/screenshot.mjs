@@ -18,6 +18,15 @@
 import { mkdirSync } from 'node:fs';
 import { chromium, devices } from '@playwright/test';
 
+/**
+ * The Transform panel, as a scope for locators.
+ *
+ * Stage 6 added a second APL panel with its own "Peek at the APL", so an unscoped locator is now
+ * ambiguous. Scoping says which panel is meant.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-return -- Playwright's page is untyped here.
+const transformPanel = (page) => page.getByRole('region', { name: 'Transform with APL' });
+
 const outputDirectory = process.argv[2] ?? 'docs';
 const url = process.env.SCREENSHOT_URL ?? 'http://localhost:4173/aplbeats/';
 
@@ -44,7 +53,7 @@ async function capture(
      * so this makes no request — which matters here as much as anywhere: taking a screenshot
      * must not become a reason to call TryAPL.
      */
-    await page.getByRole('button', { name: 'Peek at the APL' }).click();
+    await transformPanel(page).getByRole('button', { name: 'Peek at the APL' }).click();
     await page.getByText('Core APL').waitFor();
   }
 
@@ -53,8 +62,8 @@ async function capture(
      * Opened, not run. Explore builds its request in the browser, so showing the editor costs
      * nothing — and a screenshot must never become a reason to call TryAPL.
      */
-    await page.getByRole('button', { name: 'Peek at the APL' }).click();
-    await page.getByRole('button', { name: 'Edit this APL' }).click();
+    await transformPanel(page).getByRole('button', { name: 'Peek at the APL' }).click();
+    await transformPanel(page).getByRole('button', { name: 'Edit this APL' }).click();
     const editor = page.getByRole('textbox', { name: 'Your APL expression' });
     await editor.waitFor();
     await editor.fill('m[1;]∨2⌽m[1;]');

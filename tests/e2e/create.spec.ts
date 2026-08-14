@@ -93,6 +93,7 @@ async function gridOf(page: Page): Promise<string> {
   );
 }
 
+const createPanel = (page: Page) => page.getByRole('region', { name: 'Create with APL' });
 const generate = (page: Page) => page.getByRole('button', { name: 'Generate with APL' });
 const createStatus = (page: Page) => page.getByRole('status', { name: 'APL generation' });
 const recipe = (page: Page) => page.getByLabel('Recipe');
@@ -112,7 +113,7 @@ test('the panel is there, and its controls cost nothing', async ({ page }) => {
   await recipe(page).selectOption('broken');
   await seed(page).fill('47291');
   await page.getByRole('button', { name: 'New APL seed' }).click();
-  await page.getByRole('button', { name: 'Peek at the APL' }).nth(1).click();
+  await createPanel(page).getByRole('button', { name: 'Peek at the APL' }).click();
 
   expect(mock.expressions, 'the Create controls must send nothing').toEqual([]);
 });
@@ -316,9 +317,9 @@ test('Peek shows the real expression and the seed, and costs nothing', async ({ 
 
   await seed(page).fill('47291');
   await recipe(page).selectOption('cross');
-  await page.getByRole('button', { name: 'Peek at the APL' }).nth(1).click();
+  await createPanel(page).getByRole('button', { name: 'Peek at the APL' }).click();
 
-  const panel = page.getByRole('region', { name: 'Create with APL' });
+  const panel = createPanel(page);
   await expect(panel.getByText('Core APL')).toBeVisible();
   // The seed is deliberately not hidden from Peek — it is most of why the result repeats.
   await expect(panel.getByText('⎕RL←47291 1').first()).toBeVisible();
@@ -330,8 +331,8 @@ test('Edit this APL loads the generator into the one Explore editor', async ({ p
   const mock = await mockApl(page);
   await freshVisit(page);
 
-  await page.getByRole('button', { name: 'Peek at the APL' }).nth(1).click();
-  const panel = page.getByRole('region', { name: 'Create with APL' });
+  await createPanel(page).getByRole('button', { name: 'Peek at the APL' }).click();
+  const panel = createPanel(page);
   await panel.getByRole('button', { name: 'Edit this APL' }).click();
 
   const editor = page.getByLabel('Your APL expression');

@@ -1,5 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
 
+/**
+ * The Transform panel, as a scope for locators.
+ *
+ * Stage 6 added a second APL panel with its own "Peek at the APL" and "Edit this APL", so an
+ * unscoped locator for either is now ambiguous — and ambiguous to a person reading the page, not
+ * only to Playwright. Scoping says which panel is meant.
+ */
+const transformPanel = (page: Page) => page.getByRole('region', { name: 'Transform with APL' });
+
 /*
  * Master volume, in a real browser.
  *
@@ -167,8 +176,8 @@ test('survives discarding an Explore draft', async ({ page }) => {
   await freshVisit(page);
 
   await master(page).fill('37');
-  await page.getByRole('button', { name: 'Peek at the APL' }).click();
-  await page.getByRole('button', { name: 'Edit this APL' }).click();
+  await transformPanel(page).getByRole('button', { name: 'Peek at the APL' }).click();
+  await transformPanel(page).getByRole('button', { name: 'Edit this APL' }).click();
 
   const editor = page.getByRole('textbox', { name: 'Your APL expression' });
   await editor.fill('~m[2;]');
@@ -183,8 +192,8 @@ test('survives discarding an Explore draft', async ({ page }) => {
 
   // The draft is gone, as asked. The volume is not.
   await expect(master(page)).toHaveValue('37');
-  await page.getByRole('button', { name: 'Peek at the APL' }).click();
-  await page.getByRole('button', { name: 'Edit this APL' }).click();
+  await transformPanel(page).getByRole('button', { name: 'Peek at the APL' }).click();
+  await transformPanel(page).getByRole('button', { name: 'Edit this APL' }).click();
   await expect(page.getByRole('textbox', { name: 'Your APL expression' })).toHaveValue('¯1⌽m');
 
   expect(problems).toEqual([]);
