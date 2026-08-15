@@ -35,6 +35,7 @@
     "verify:credits": "node scripts/verify-credits.mjs",
     "import:samples": "node scripts/import-samples.mjs",
     "render:tr909": "node scripts/render-tr909.mjs",
+    "prepare:jupiter4": "node scripts/prepare-jupiter4.mjs",
     "review:patterns": "tsx scripts/review-patterns.ts",
     "review:transforms": "tsx scripts/review-transforms.ts",
     "review:apl-generators": "tsx scripts/review-apl-generators.ts",

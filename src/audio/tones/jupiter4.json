@@ -1,0 +1,615 @@
+{
+  "upstream": {
+    "name": "publicsamples/Roland-Jupiter-4",
+    "url": "https://github.com/publicsamples/Roland-Jupiter-4",
+    "commit": "64377f813341a10a57d26df9e10f548d43f166cd",
+    "releaseTag": "1.0",
+    "releaseName": "Roland Jupiter 4 Audio",
+    "releasePublished": "2021-10-03",
+    "licence": "Public domain dedication",
+    "licenceFile": "LICENSE"
+  },
+  "preparation": {
+    "sampleRate": 44100,
+    "format": "16-bit PCM WAV, mono",
+    "lossless": false,
+    "lossyStep": "source 24-bit stereo AIFF averaged to mono and quantised to 16-bit, rounded, no dither",
+    "trimFrames": 52920,
+    "trimSeconds": 1.2,
+    "trimNote": "a Tone note occupies one sequencer step — 134 ms at the opening tempo, 250 ms at the slowest — so 1.2 s covers any note plus its release and the audition preview",
+    "fadeFrames": 1764,
+    "fadeNote": "a 40 ms fade at the trim boundary, so nothing outliving the buffer can click",
+    "processing": "none beyond that: no normalisation, equalisation, retuning or editing",
+    "loopsUsed": false,
+    "loopNote": "loop points are recorded below where upstream provides them, and are not used: every one begins later than any note this instrument can play",
+    "playableRange": {
+      "min": 48,
+      "max": 84
+    },
+    "roots": [48, 54, 60, 66, 72, 78, 84],
+    "preparedBy": "scripts/prepare-jupiter4.mjs"
+  },
+  "sounds": {
+    "bass": {
+      "name": "Bass",
+      "preset": "4 Bass",
+      "upstreamFolder": "4Bass",
+      "because": "58 ms attack and a level sustain, bright enough to be heard under a kick without competing with it. The one bass preset here with genuine loop metadata in both its SFZ mapping and its AIFF chunks.",
+      "samples": [
+        {
+          "file": "bass-48.wav",
+          "rootMidi": 48,
+          "servesMidi": [45, 51],
+          "upstreamPath": "Bass/Audio/4Bass/4 Bass-48-127-QR7S.aif",
+          "upstreamSha256": "cf54fbaba5436801157117490b1bf9547adb70128bda7f1e348dda00226a3897",
+          "upstreamBytes": 969988,
+          "sourceChannels": 2,
+          "sourceBits": 24,
+          "sourceFrames": 160755,
+          "loop": {
+            "start": 13277,
+            "end": 56222
+          },
+          "frames": 52920,
+          "peak": 0.21205,
+          "bytes": 105884,
+          "sha256": "b4b171cf2a64eacd1900546862903ddeb34ff4fd8e1d6903079130d2e0be0279"
+        },
+        {
+          "file": "bass-54.wav",
+          "rootMidi": 54,
+          "servesMidi": [51, 57],
+          "upstreamPath": "Bass/Audio/4Bass/4 Bass-54-127-0GSS.aif",
+          "upstreamSha256": "8b68869c214a4746909e70b0accdc1ff4c02c5a2f9908564e78e61e5c506db1e",
+          "upstreamBytes": 1025482,
+          "sourceChannels": 2,
+          "sourceBits": 24,
+          "sourceFrames": 170216,
+          "loop": {
+            "start": 69982,
+            "end": 109926
+          },
+          "frames": 52920,
+          "peak": 0.21718,
+          "bytes": 105884,
+          "sha256": "e3dcb2d8524adfd2be11b27d0224ace94c6354ac7931781354aea596b900475a"
+        },
+        {
+          "file": "bass-60.wav",
+          "rootMidi": 59,
+          "servesMidi": [57, 63],
+          "upstreamPath": "Bass/Audio/4Bass/4 Bass-59-127-FC3O.aif",
+          "upstreamSha256": "a4188fda83dc74825c704c80f4a4cd8af2b287bc77fdba693c5672a4a4276c06",
+          "upstreamBytes": 1259794,
+          "sourceChannels": 2,
+          "sourceBits": 24,
+          "sourceFrames": 209268,
+          "loop": {
+            "start": 84138,
+            "end": 132666
+          },
+          "frames": 52920,
+          "peak": 0.2323,
+          "bytes": 105884,
+          "sha256": "06b9a2a3aad6085e6402023f1a394c46706f3fdff0dad1f5308610a166787532"
+        },
+        {
+          "file": "bass-66.wav",
+          "rootMidi": 66,
+          "servesMidi": [63, 69],
+          "upstreamPath": "Bass/Audio/4Bass/4 Bass-66-127-OMT6.aif",
+          "upstreamSha256": "812dce7c0a0d6943daf5e36a9d2e861edfe6b709e6b4c5a536138989d0c657ca",
+          "upstreamBytes": 964528,
+          "sourceChannels": 2,
+          "sourceBits": 24,
+          "sourceFrames": 160057,
+          "loop": {
+            "start": 55560,
+            "end": 97446
+          },
+          "frames": 52920,
+          "peak": 0.24322,
+          "bytes": 105884,
+          "sha256": "467464d8def7d46148e895963e9b03435bec3d45c5ce1b2c9cc2c94157d5d16e"
+        },
+        {
+          "file": "bass-72.wav",
+          "rootMidi": 72,
+          "servesMidi": [69, 75],
+          "upstreamPath": "Bass/Audio/4Bass/4 Bass-72-127-A1KJ.aif",
+          "upstreamSha256": "380abff96d90b4b7d41c2f3fcfb4434c74b99f5d6537231698b03bf94b3644a3",
+          "upstreamBytes": 1066678,
+          "sourceChannels": 2,
+          "sourceBits": 24,
+          "sourceFrames": 177082,
+          "loop": {
+            "start": 113404,
+            "end": 143030
+          },
+          "frames": 52920,
+          "peak": 0.25808,
+          "bytes": 105884,
+          "sha256": "2f33756bb63ae5c990e5748d775096c241c59ac5736ea08c8a8d485799faff56"
+        },
+        {
+          "file": "bass-78.wav",
+          "rootMidi": 77,
+          "servesMidi": [75, 81],
+          "upstreamPath": "Bass/Audio/4Bass/4 Bass-77-127-Z9MO.aif",
+          "upstreamSha256": "fc423ada2b6e63b528eaff7de1eae8aedbcc1abb0a8fa62d31d61e6fcb8fdd9b",
+          "upstreamBytes": 937990,
+          "sourceChannels": 2,
+          "sourceBits": 24,
+          "sourceFrames": 155634,
+          "loop": {
+            "start": 89434,
+            "end": 125340
+          },
+          "frames": 52920,
+          "peak": 0.24859,
+          "bytes": 105884,
+          "sha256": "1b30d4baa5e9863dd43f5c05e22a5ce9c0b65621884383b666220f5444c09bdb"
+        },
+        {
+          "file": "bass-84.wav",
+          "rootMidi": 84,
+          "servesMidi": [81, 87],
+          "upstreamPath": "Bass/Audio/4Bass/4 Bass-84-127-HTVQ.aif",
+          "upstreamSha256": "a4cbdec931d6ead4a19edab90f87025c84e0c100c4da015f00a95449cbdb1641",
+          "upstreamBytes": 1289212,
+          "sourceChannels": 2,
+          "sourceBits": 24,
+          "sourceFrames": 214171,
+          "loop": {
+            "start": 106782,
+            "end": 136741
+          },
+          "frames": 52920,
+          "peak": 0.26088,
+          "bytes": 105884,
+          "sha256": "4e7161fae41bb6c4949930835f65432d6bb720713e33bc36479769518d2c3220"
+        }
+      ]
+    },
+    "keys": {
+      "name": "Keys",
+      "preset": "Petals Piano",
+      "upstreamFolder": "Petals Piano-SAMPLES",
+      "because": "6 ms attack at full scale, decaying to about a third — percussive enough to articulate sixteenths where the organs, at 6% of full scale and a flat sustain, would have washed.",
+      "samples": [
+        {
+          "file": "keys-48.wav",
+          "rootMidi": 48,
+          "servesMidi": [45, 51],
+          "upstreamPath": "Keys/Audio/Petals Piano-SAMPLES/Petals Piano-48-127-E21P.aif",
+          "upstreamSha256": "b84fa31ff7fac9f6f347dd912375ae8c4ad51e64379334de3b5f872dab8f71ce",
+          "upstreamBytes": 846208,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 280674,
+          "loop": {
+            "start": 142896,
+            "end": 164223
+          },
+          "frames": 52920,
+          "peak": 0.99989,
+          "bytes": 105884,
+          "sha256": "022ae86f22eb8c259f3395716bd44197712df24e888da5b40081aa55097f7447"
+        },
+        {
+          "file": "keys-54.wav",
+          "rootMidi": 54,
+          "servesMidi": [51, 57],
+          "upstreamPath": "Keys/Audio/Petals Piano-SAMPLES/Petals Piano-54-127-72VQ.aif",
+          "upstreamSha256": "6d420ecb6f8fc35a34f58c8256ba01b2982f5fe968663ca8153f5a4d6389bcf6",
+          "upstreamBytes": 849056,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 280886,
+          "loop": {
+            "start": 168706,
+            "end": 239770
+          },
+          "frames": 52920,
+          "peak": 0.99988,
+          "bytes": 105884,
+          "sha256": "d09041363c91e6f50c95739ba398c806d9279e522f0b078c75ef6f40b41eea1c"
+        },
+        {
+          "file": "keys-60.wav",
+          "rootMidi": 60,
+          "servesMidi": [57, 63],
+          "upstreamPath": "Keys/Audio/Petals Piano-SAMPLES/Petals Piano-60-127-MBI2.aif",
+          "upstreamSha256": "255b3175d112597e94baf1d075bae017307e067e4917b73a85bf3506c92805f0",
+          "upstreamBytes": 813392,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 269735,
+          "loop": {
+            "start": 187537,
+            "end": 237890
+          },
+          "frames": 52920,
+          "peak": 0.99988,
+          "bytes": 105884,
+          "sha256": "bb1226ca4c588339768b2b167ed094449e4309a5a466819566a13bd9510a36c4"
+        },
+        {
+          "file": "keys-66.wav",
+          "rootMidi": 66,
+          "servesMidi": [63, 69],
+          "upstreamPath": "Keys/Audio/Petals Piano-SAMPLES/Petals Piano-66-127-QEK9.aif",
+          "upstreamSha256": "2856d447313272731901b48d7eb6084fa2fd56167fb27e7c06a5f037976deded",
+          "upstreamBytes": 845668,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 279760,
+          "loop": {
+            "start": 205648,
+            "end": 240028
+          },
+          "frames": 52920,
+          "peak": 0.99988,
+          "bytes": 105884,
+          "sha256": "9616a9607fea1b3b8f8d5a5e2d51974070d23619df720e58d1875a7cad43a4a1"
+        },
+        {
+          "file": "keys-72.wav",
+          "rootMidi": 72,
+          "servesMidi": [69, 75],
+          "upstreamPath": "Keys/Audio/Petals Piano-SAMPLES/Petals Piano-72-127-Y9LA.aif",
+          "upstreamSha256": "644a1bdfce865a973c542f3dbfd90dec3a47e43fff906e26908918aa789cdbe4",
+          "upstreamBytes": 844520,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 279378,
+          "loop": {
+            "start": 153622,
+            "end": 233612
+          },
+          "frames": 52920,
+          "peak": 0.99988,
+          "bytes": 105884,
+          "sha256": "ac89de91dc348fdbb390364bbc632b58961ec10a4c4ea8f54824f1ab002ffdc9"
+        },
+        {
+          "file": "keys-78.wav",
+          "rootMidi": 78,
+          "servesMidi": [75, 81],
+          "upstreamPath": "Keys/Audio/Petals Piano-SAMPLES/Petals Piano-78-127-OKN8.aif",
+          "upstreamSha256": "ba2b92c3e3c5d6f4df9d3d119811da462feb4ea894264a077f875a540638f20d",
+          "upstreamBytes": 845170,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 279594,
+          "loop": {
+            "start": 198383,
+            "end": 220168
+          },
+          "frames": 52920,
+          "peak": 0.99988,
+          "bytes": 105884,
+          "sha256": "270222a3b739cd2c19454aa92245f1edf35332418f8149e355412f69631e5a84"
+        },
+        {
+          "file": "keys-84.wav",
+          "rootMidi": 83,
+          "servesMidi": [81, 87],
+          "upstreamPath": "Keys/Audio/Petals Piano-SAMPLES/Petals Piano-83-127-IY0C.aif",
+          "upstreamSha256": "935c640b693727543c26f8d6720bf2b9744914021b9cfb5f54e2493fdedac295",
+          "upstreamBytes": 845314,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 279642,
+          "loop": {
+            "start": 199303,
+            "end": 235619
+          },
+          "frames": 52920,
+          "peak": 0.99988,
+          "bytes": 105884,
+          "sha256": "6826af0a5992e620eb4d5ac1d7f5230960e2813fae916505eeb5995fc2b57189"
+        }
+      ]
+    },
+    "lead": {
+      "name": "Lead",
+      "preset": "Blip Lead",
+      "upstreamFolder": "Blip Lead-SAMPLES",
+      "because": "The brightest candidate by a factor of four and the only one at full scale with a 13 ms attack. A lead has to cut through a drum kit, and the alternatives peaked at 4% of scale.",
+      "samples": [
+        {
+          "file": "lead-48.wav",
+          "rootMidi": 48,
+          "servesMidi": [45, 51],
+          "upstreamPath": "Lead/Audio/Blip Lead-SAMPLES/Blip Lead-48-127.aif",
+          "upstreamSha256": "f9baa3e3ed8ef4ff6dce55abc724fd6c9ee3fc69e04d4ed9201d11f2a9c5ef0e",
+          "upstreamBytes": 1431040,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 475648,
+          "loop": null,
+          "frames": 52920,
+          "peak": 0.99988,
+          "bytes": 105884,
+          "sha256": "2c6a47424a7b89588cf4bf3e83018a1361d5045af72768b30ecc60ea57280cf5"
+        },
+        {
+          "file": "lead-54.wav",
+          "rootMidi": 54,
+          "servesMidi": [51, 57],
+          "upstreamPath": "Lead/Audio/Blip Lead-SAMPLES/Blip Lead-54-127.aif",
+          "upstreamSha256": "4702d0dae078af2289a7660c8ce95dc5bc0b7e9e939fc359f35bd1a2802734ad",
+          "upstreamBytes": 1432576,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 476160,
+          "loop": null,
+          "frames": 52920,
+          "peak": 0.99988,
+          "bytes": 105884,
+          "sha256": "b4fd6ea6e59b5e2a4b0060ca7d49a821a606592e51f1db48c3cc4a3412a74b92"
+        },
+        {
+          "file": "lead-60.wav",
+          "rootMidi": 60,
+          "servesMidi": [57, 63],
+          "upstreamPath": "Lead/Audio/Blip Lead-SAMPLES/Blip Lead-60-127.aif",
+          "upstreamSha256": "39ab2963ffe19dfce956992858abbec6b34595a07c32c08bf11d0d8a4af03888",
+          "upstreamBytes": 1429504,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 475136,
+          "loop": null,
+          "frames": 52920,
+          "peak": 0.99988,
+          "bytes": 105884,
+          "sha256": "8ff96bb841b66b5f4f658e029b7414688de1f58d135aa056d1b45ad2ca1d2042"
+        },
+        {
+          "file": "lead-66.wav",
+          "rootMidi": 66,
+          "servesMidi": [63, 69],
+          "upstreamPath": "Lead/Audio/Blip Lead-SAMPLES/Blip Lead-66-127.aif",
+          "upstreamSha256": "3e0f1be2fc9cdb305b29d9e0c6bd7349cb84aaffac7d65d451e9295f2d035344",
+          "upstreamBytes": 1434112,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 476672,
+          "loop": null,
+          "frames": 52920,
+          "peak": 0.99988,
+          "bytes": 105884,
+          "sha256": "4142d9154b24dd1669860a3cc97cac1f109283a6593e4092ef37af6ec08edb9f"
+        },
+        {
+          "file": "lead-72.wav",
+          "rootMidi": 72,
+          "servesMidi": [69, 75],
+          "upstreamPath": "Lead/Audio/Blip Lead-SAMPLES/Blip Lead-72-127.aif",
+          "upstreamSha256": "5b63aa21c30b0039e27276cee4c7ec6471b1844e0bf6ce561a1495973a7c53bd",
+          "upstreamBytes": 1435648,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 477184,
+          "loop": null,
+          "frames": 52920,
+          "peak": 0.99988,
+          "bytes": 105884,
+          "sha256": "33eccad9c544e767fbb37a7a5cb562d939a8a1c536d017483b7567a8ad21c823"
+        },
+        {
+          "file": "lead-78.wav",
+          "rootMidi": 78,
+          "servesMidi": [75, 81],
+          "upstreamPath": "Lead/Audio/Blip Lead-SAMPLES/Blip Lead-78-127.aif",
+          "upstreamSha256": "9962775f28e407203aaedb736c2925e12c0cbd710e4d45aac922d07485e02569",
+          "upstreamBytes": 1432576,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 476160,
+          "loop": null,
+          "frames": 52920,
+          "peak": 0.99988,
+          "bytes": 105884,
+          "sha256": "26a130327e48dd3461804de1be36ee919669b64ed8834b7915f6b66a2746b513"
+        },
+        {
+          "file": "lead-84.wav",
+          "rootMidi": 84,
+          "servesMidi": [81, 87],
+          "upstreamPath": "Lead/Audio/Blip Lead-SAMPLES/Blip Lead-84-127.aif",
+          "upstreamSha256": "919653d20526b5bd8998a0cb2a66535ae10ad72c46e56ad1470e5c8ea3ba5595",
+          "upstreamBytes": 1434112,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 476672,
+          "loop": null,
+          "frames": 52920,
+          "peak": 0.99988,
+          "bytes": 105884,
+          "sha256": "86ba78aa72aa52f110b5235f3ff055f95edb6732d67ec347e3f8f1550a1b5132"
+        }
+      ]
+    },
+    "pad": {
+      "name": "Pad",
+      "preset": "jp4 - Shimmer",
+      "upstreamFolder": "jp4 - Shimmer-SAMPLES",
+      "because": "The fastest-attacking pad with a real sustain: 78 ms, holding at 95%. The swelling pads take 300–400 ms to arrive, which is longer than a sixteenth at any tempo this plays.",
+      "samples": [
+        {
+          "file": "pad-48.wav",
+          "rootMidi": 48,
+          "servesMidi": [45, 51],
+          "upstreamPath": "Pads/Audio/jp4 - Shimmer-SAMPLES/jp4 - Shimmer-48-127-1PSI.aif",
+          "upstreamSha256": "b783a72ea3da4c86050d28094b239892e596bf5943c4f1078375030a6255ba57",
+          "upstreamBytes": 1615130,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 536981,
+          "loop": {
+            "start": 288484,
+            "end": 393805
+          },
+          "frames": 52920,
+          "peak": 0.06526,
+          "bytes": 105884,
+          "sha256": "3d948fd03cfb8009d32f3ecf879de59a860ee70b49d363a44ea7a7dfab8b254a"
+        },
+        {
+          "file": "pad-54.wav",
+          "rootMidi": 54,
+          "servesMidi": [51, 57],
+          "upstreamPath": "Pads/Audio/jp4 - Shimmer-SAMPLES/jp4 - Shimmer-54-127-W5Y2.aif",
+          "upstreamSha256": "395407e59e9a0f095016185695729a68b58c4fc3a656ca53f5dda7ce6763bfcf",
+          "upstreamBytes": 1637006,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 544273,
+          "loop": {
+            "start": 265325,
+            "end": 395448
+          },
+          "frames": 52920,
+          "peak": 0.06514,
+          "bytes": 105884,
+          "sha256": "4f0650210d5f170e7f11dcd3a3d5f83756a8819333d780380c33b3909110f231"
+        },
+        {
+          "file": "pad-60.wav",
+          "rootMidi": 60,
+          "servesMidi": [57, 63],
+          "upstreamPath": "Pads/Audio/jp4 - Shimmer-SAMPLES/jp4 - Shimmer-60-127-Z6H8.aif",
+          "upstreamSha256": "e2d2eca3b505b9e91186ba1e0dd8023bbb1562b52d5da85787620dd59f27f3f3",
+          "upstreamBytes": 1622014,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 539276,
+          "loop": {
+            "start": 352880,
+            "end": 396197
+          },
+          "frames": 52920,
+          "peak": 0.06596,
+          "bytes": 105884,
+          "sha256": "bdc0802e024a319b90e8bd9430bdca77cdc493eae88fc6eed852aa1d07c0bc86"
+        },
+        {
+          "file": "pad-66.wav",
+          "rootMidi": 66,
+          "servesMidi": [63, 69],
+          "upstreamPath": "Pads/Audio/jp4 - Shimmer-SAMPLES/jp4 - Shimmer-66-127-HFIS.aif",
+          "upstreamSha256": "8915106d3cb729dfa086b052f7ea9b48846e3c455ee4021c7dded17a5c54b300",
+          "upstreamBytes": 1601252,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 532355,
+          "loop": {
+            "start": 340020,
+            "end": 383291
+          },
+          "frames": 52920,
+          "peak": 0.06266,
+          "bytes": 105884,
+          "sha256": "fa9402b8bb4a0cacc6490d951a950e4116bae85ed6fc42bd3bc5a332efe36677"
+        },
+        {
+          "file": "pad-72.wav",
+          "rootMidi": 72,
+          "servesMidi": [69, 75],
+          "upstreamPath": "Pads/Audio/jp4 - Shimmer-SAMPLES/jp4 - Shimmer-72-127-6R7J.aif",
+          "upstreamSha256": "c5f58758b269d17c77f6c9d5b8c6563a72b0f45338dd13f959c6bd373a4fc6d0",
+          "upstreamBytes": 1615760,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 537191,
+          "loop": {
+            "start": 276663,
+            "end": 394335
+          },
+          "frames": 52920,
+          "peak": 0.06227,
+          "bytes": 105884,
+          "sha256": "398153d4593c4cd9aa5cc8864bd0867eaea8eb3def07b0742e14cd79b9ee9791"
+        },
+        {
+          "file": "pad-78.wav",
+          "rootMidi": 78,
+          "servesMidi": [75, 81],
+          "upstreamPath": "Pads/Audio/jp4 - Shimmer-SAMPLES/jp4 - Shimmer-78-127-QWD3.aif",
+          "upstreamSha256": "84b5072a796199e10247f1524ee17e3ecaced5d5a802dd2ab8f28aad82e8ec53",
+          "upstreamBytes": 1651442,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 549085,
+          "loop": {
+            "start": 273266,
+            "end": 397030
+          },
+          "frames": 52920,
+          "peak": 0.05801,
+          "bytes": 105884,
+          "sha256": "0b7762a25e3729561de8d490976a28f0af27d4d08ad2c7b1281ce37144c19aa5"
+        },
+        {
+          "file": "pad-84.wav",
+          "rootMidi": 84,
+          "servesMidi": [81, 87],
+          "upstreamPath": "Pads/Audio/jp4 - Shimmer-SAMPLES/jp4 - Shimmer-84-127-56Z1.aif",
+          "upstreamSha256": "6ee10273de9c5d75eeb289ea74039c5a4cb040ddedb782028fb7a1c8eceba450",
+          "upstreamBytes": 1652548,
+          "sourceChannels": 1,
+          "sourceBits": 24,
+          "sourceFrames": 549454,
+          "loop": {
+            "start": 335584,
+            "end": 378960
+          },
+          "frames": 52920,
+          "peak": 0.05464,
+          "bytes": 105884,
+          "sha256": "8594d47a6030e9a907fe68e0ae14c5313b716c9769010469fd24c0b8fdeaaf83"
+        }
+      ]
+    }
+  },
+  "sourceArchives": {
+    "Bass.zip": {
+      "bytes": 657270387,
+      "downloadUrl": "https://github.com/publicsamples/Roland-Jupiter-4/releases/download/1.0/Bass.zip"
+    },
+    "Keys.zip.001": {
+      "bytes": 1000000000,
+      "downloadUrl": "https://github.com/publicsamples/Roland-Jupiter-4/releases/download/1.0/Keys.zip.001"
+    },
+    "Keys.zip.002": {
+      "bytes": 788988894,
+      "downloadUrl": "https://github.com/publicsamples/Roland-Jupiter-4/releases/download/1.0/Keys.zip.002"
+    },
+    "Lead.zip.001": {
+      "bytes": 1000000000,
+      "downloadUrl": "https://github.com/publicsamples/Roland-Jupiter-4/releases/download/1.0/Lead.zip.001"
+    },
+    "Lead.zip.002": {
+      "bytes": 809393740,
+      "downloadUrl": "https://github.com/publicsamples/Roland-Jupiter-4/releases/download/1.0/Lead.zip.002"
+    },
+    "Pads.zip.001": {
+      "bytes": 1000000000,
+      "downloadUrl": "https://github.com/publicsamples/Roland-Jupiter-4/releases/download/1.0/Pads.zip.001"
+    },
+    "Pads.zip.002": {
+      "bytes": 1000000000,
+      "downloadUrl": "https://github.com/publicsamples/Roland-Jupiter-4/releases/download/1.0/Pads.zip.002"
+    },
+    "Pads.zip.003": {
+      "bytes": 1000000000,
+      "downloadUrl": "https://github.com/publicsamples/Roland-Jupiter-4/releases/download/1.0/Pads.zip.003"
+    },
+    "Pads.zip.004": {
+      "bytes": 385960488,
+      "downloadUrl": "https://github.com/publicsamples/Roland-Jupiter-4/releases/download/1.0/Pads.zip.004"
+    }
+  }
+}
