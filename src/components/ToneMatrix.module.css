@@ -35,6 +35,14 @@
   /* Vertical panning still belongs to the page; only sideways is ours. */
   touch-action: pan-x pan-y;
   scroll-snap-type: x proximity;
+  /*
+   * Snap to the edge of the *visible* area, not the edge of the box.
+   *
+   * The note names are sticky, so the leftmost 2.25rem is permanently covered. Without this the
+   * browser snaps step 1 to x=0 and puts it straight underneath them — which is what a phone did
+   * on first load, before anybody had scrolled anything.
+   */
+  scroll-padding-inline-start: 2.25rem;
   overscroll-behavior-x: contain;
   padding-bottom: var(--space-1);
 }
@@ -55,7 +63,34 @@
   align-items: center;
 }
 
+/*
+ * The note names, pinned to the left edge.
+ *
+ * Sticky rather than merely first, and for two reasons that turned out to be the same reason. A
+ * grid that scrolls sideways is a grid whose rows stop being identifiable the moment it does —
+ * "which row is this?" is unanswerable at step 10 if the names have scrolled away, and unlike the
+ * drum grid's track names there are twelve of them and they are the whole vertical axis.
+ *
+ * It also fixes something the first build got wrong on a phone. `scroll-snap-align` sits on the
+ * cells and not on this column, so the nearest snap point is step 1 — and proximity snapping
+ * quietly ate the 28px of labels before anybody had scrolled anything. Sticky makes the question
+ * moot: the names are at the left edge whatever the scroll position is.
+ *
+ * The background is what stops the cells showing through underneath, so it has to be the surface
+ * this sits on rather than transparent.
+ */
 .rowLabel {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+  /*
+   * Full row height, or the cells scroll through the gaps above and below the text. The grid
+   * centres its items, so the label has to opt out of that and centre its own text instead.
+   */
+  align-self: stretch;
+  display: grid;
+  place-items: center end;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
@@ -266,6 +301,11 @@
   .row,
   .stepNumbers {
     grid-template-columns: 1.75rem repeat(16, minmax(var(--cell-min), 1fr));
+  }
+
+  /* Narrower names, so the snap has to clear a narrower sticky column. */
+  .scroller {
+    scroll-padding-inline-start: 1.75rem;
   }
 
   .cell {
