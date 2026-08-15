@@ -62,7 +62,9 @@ test('the four workspaces are real tabs, and one is selected', async ({ page }) 
 
   const list = page.getByRole('tablist', { name: 'Workspace' });
   await expect(list).toBeVisible();
-  await expect(page.getByRole('tab')).toHaveCount(4);
+  // Four, inside the Workspace list. There are two more above it since Stage 8 — the Beats and
+  // Tones layer tabs — which are a different tablist and are tested in `tones.spec.ts`.
+  await expect(list.getByRole('tab')).toHaveCount(4);
 
   // Play first, because that is what somebody is here for.
   await expect(tab(page, 'Play')).toHaveAttribute('aria-selected', 'true');
@@ -191,20 +193,29 @@ test('every workspace wears the same card', async ({ page }) => {
 
   const surfaceOf = async (name: string): Promise<Record<string, string>> => {
     await tab(page, name).click();
-    return page
-      .getByRole('tabpanel')
-      .locator('section, > div')
-      .first()
-      .evaluate((element) => {
-        const style = getComputedStyle(element);
-        return {
-          background: style.backgroundColor,
-          radius: style.borderTopLeftRadius,
-          border: `${style.borderTopWidth} ${style.borderTopStyle} ${style.borderTopColor}`,
-          padding: style.paddingTop,
-          shadow: style.boxShadow,
-        };
-      });
+    return (
+      page
+        /*
+         * The *workspace* panel, not the layer one.
+         *
+         * Stage 8 put a second tablist above this one, so there are two tab panels on the page:
+         * the layer panel wraps the whole workspace and is transparent by design, and the APL
+         * column inside it is the card being compared. The layer panel's id carries `domain`.
+         */
+        .locator('[role="tabpanel"]:not([id*="domain"])')
+        .locator('section, > div')
+        .first()
+        .evaluate((element) => {
+          const style = getComputedStyle(element);
+          return {
+            background: style.backgroundColor,
+            radius: style.borderTopLeftRadius,
+            border: `${style.borderTopWidth} ${style.borderTopStyle} ${style.borderTopColor}`,
+            padding: style.paddingTop,
+            shadow: style.boxShadow,
+          };
+        })
+    );
   };
 
   const reference = await surfaceOf('Transform');

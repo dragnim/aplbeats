@@ -114,7 +114,17 @@ export function TonePanel({ tones, phrase }: TonePanelProps): React.JSX.Element 
           The melody, as APL holds it — a numeric vector <code className={styles.variable}>n</code>, where 0
           is a rest.
         </p>
-        <output className={styles.vectorValue}>{phraseToAplLiteral(phrase)}</output>
+        {/*
+          A `pre`, not an `output`.
+
+          `<output>` carries an implicit live region, which would be exactly wrong here: this
+          changes on every note somebody edits, so a screen reader would read sixteen numbers
+          aloud after every arrow-key press. The pads themselves announce their own pitches, which
+          is the right granularity. This is for looking at.
+        */}
+        <pre className={styles.vectorValue}>
+          <code>{phraseToAplLiteral(phrase)}</code>
+        </pre>
       </div>
     </section>
   );
