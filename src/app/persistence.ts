@@ -23,6 +23,13 @@ import { isPresetId, type PresetId } from '@/generation/presets';
 import { clampSeed } from '@/generation/prng';
 import { createMixer, clampVolume, type Mixer } from '@/pattern/mixer';
 import { fromBits, toBits, TRACK_COUNT, type Pattern } from '@/pattern/pattern';
+import {
+  DEFAULT_TONE_SOUND,
+  DEFAULT_TONE_VOLUME,
+  isToneSoundId,
+  type ToneSoundId,
+} from '@/audio/tones/sounds';
+import { isPhrase, type Phrase } from '@/tones/phrase';
 import { clampBpm, clampSwing } from '@/transport/timing';
 import { clampMacro, noLocks, type CreativeState } from './studio';
 
@@ -79,11 +86,48 @@ const VOLUME_SCHEMA_VERSION = 1;
 const CREATE_STORAGE_KEY = 'aplbeats.apl-create.v1';
 const CREATE_SCHEMA_VERSION = 1;
 
+/*
+ * The Tone layer, under its own key.
+ *
+ * The melody could have gone inside the session record next to the pattern — it is creative state,
+ * it is in the same Undo history, and one key would have been less code. It is separate because of
+ * what the session key means: a session is discarded outright whenever `GENERATOR_VERSION` changes,
+ * since a stored *seed* describes a different rhythm under a different generator. A melody is
+ * sixteen stored numbers that describe themselves. Tuning the drum generator has nothing to say
+ * about somebody's tune, and throwing it away because an unrelated version number moved would be
+ * losing work for no reason at all.
+ *
+ * The consequence is worth stating plainly: after a generator bump the drums restart from the
+ * opening groove and the melody is exactly where it was left. That is the intended behaviour, and
+ * `tests/unit/persistence.test.ts` holds it in place.
+ */
+const TONES_STORAGE_KEY = 'aplbeats.tones.v1';
+const TONES_SCHEMA_VERSION = 1;
+
+/*
+ * How loud the melody is, under its own key, exactly as the master level is.
+ *
+ * The balance between the drums and the tune is a listening decision about a room and a pair of
+ * speakers. Not creative state, not in Undo, and not the session's business.
+ */
+const TONE_VOLUME_STORAGE_KEY = 'aplbeats.tone-volume.v1';
+const TONE_VOLUME_SCHEMA_VERSION = 1;
+
 /** How much hand-written APL is worth remembering. Comfortably past the editor's own limit. */
 const MAX_DRAFT_LENGTH = 1000;
 
+/**
+ * The half of the creative state the session key holds.
+ *
+ * Everything except the melody, which lives under `aplbeats.tones.v1` and outlives a generator
+ * bump — see `TONES_STORAGE_KEY`. Spelled as an omission rather than as its own interface so that
+ * a field added to `CreativeState` is a compile error here until somebody decides which key it
+ * belongs under, rather than quietly going unsaved.
+ */
+export type StoredCreative = Omit<CreativeState, 'phrase'>;
+
 export interface Session {
-  readonly creative: CreativeState;
+  readonly creative: StoredCreative;
   readonly bpm: number;
   readonly swing: number;
   readonly mixer: Mixer;
@@ -157,6 +201,8 @@ export function clearSession(): void {
     globalThis.localStorage?.removeItem(EXPLORE_STORAGE_KEY);
     globalThis.localStorage?.removeItem(VOLUME_STORAGE_KEY);
     globalThis.localStorage?.removeItem(CREATE_STORAGE_KEY);
+    globalThis.localStorage?.removeItem(TONES_STORAGE_KEY);
+    globalThis.localStorage?.removeItem(TONE_VOLUME_STORAGE_KEY);
   } catch {
     // See above.
   }
@@ -378,6 +424,102 @@ export function saveMasterVolume(volume: number): void {
   }
 }
 
+/* ------------------------------------------------------------------------- */
+
+export interface StoredTones {
+  readonly phrase: Phrase;
+  readonly soundId: ToneSoundId;
+}
+
+/**
+ * The melody and the instrument it was played on, or nothing.
+ *
+ * `isPhrase` does the validating, and it is strict: sixteen values, each a rest or a pitch this
+ * instrument can actually play. A stored phrase that fails any part of that is discarded whole
+ * rather than repaired, because a repaired melody is not the melody anybody wrote — and because
+ * `localStorage` is editable by anyone with the developer tools open, so a pitch of 4000 reaching
+ * the sampler must be impossible rather than merely unlikely.
+ *
+ * The sound is carried in the same record rather than under a sixth key. Unlike the drum machine,
+ * whose choice is independent of the pattern, a phrase written for a bass often makes no sense on
+ * a lead — so the two are stored together and restored together.
+ */
+export function loadTones(): StoredTones | null {
+  try {
+    const raw = globalThis.localStorage?.getItem(TONES_STORAGE_KEY) ?? null;
+    if (raw === null) return null;
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return null;
+    if (parsed.schema !== TONES_SCHEMA_VERSION) return null;
+    if (!isPhrase(parsed.phrase)) return null;
+
+    return {
+      phrase: parsed.phrase,
+      // A withdrawn or misspelt sound falls back rather than failing, exactly as a kit does:
+      // losing a whole melody because its instrument was renamed would be a poor trade.
+      soundId: isToneSoundId(parsed.soundId) ? parsed.soundId : DEFAULT_TONE_SOUND,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Remember the melody and its instrument. Failure is ignored, as everywhere else in this file. */
+export function saveTones(tones: StoredTones): void {
+  try {
+    globalThis.localStorage?.setItem(
+      TONES_STORAGE_KEY,
+      JSON.stringify({
+        schema: TONES_SCHEMA_VERSION,
+        phrase: [...tones.phrase],
+        soundId: tones.soundId,
+      }),
+    );
+  } catch {
+    // See above.
+  }
+}
+
+/**
+ * How loud the melody is, or a sensible default.
+ *
+ * Defaults to 0.7 rather than to 1, which is the one place a Tone control differs from its Beats
+ * counterpart. The master level defaults loud because a silent drum machine is indistinguishable
+ * from a broken one; the Tone level defaults *below* the drums because Stage 8's promise is that
+ * the groove keeps playing underneath, and a melody arriving on top of it at full level the first
+ * time somebody opens Tones would read as the drums having got quieter.
+ */
+export function loadToneVolume(): number {
+  try {
+    const raw = globalThis.localStorage?.getItem(TONE_VOLUME_STORAGE_KEY) ?? null;
+    if (raw === null) return DEFAULT_TONE_VOLUME;
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return DEFAULT_TONE_VOLUME;
+    if (parsed.schema !== TONE_VOLUME_SCHEMA_VERSION) return DEFAULT_TONE_VOLUME;
+
+    const { volume } = parsed;
+    if (typeof volume !== 'number' || !Number.isFinite(volume)) return DEFAULT_TONE_VOLUME;
+    return Math.min(1, Math.max(0, volume));
+  } catch {
+    return DEFAULT_TONE_VOLUME;
+  }
+}
+
+/** Remember how loud the melody is. Failure is ignored, as everywhere else in this file. */
+export function saveToneVolume(volume: number): void {
+  try {
+    const safe = Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : DEFAULT_TONE_VOLUME;
+    globalThis.localStorage?.setItem(
+      TONE_VOLUME_STORAGE_KEY,
+      JSON.stringify({ schema: TONE_VOLUME_SCHEMA_VERSION, volume: safe }),
+    );
+  } catch {
+    // See above.
+  }
+}
+
 /** Remember the drum machine. Failure is ignored, as everywhere else in this file. */
 export function saveKitChoice(kitId: KitId): void {
   try {
@@ -408,7 +550,7 @@ function asNumber(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
-function readCreative(value: unknown): CreativeState | null {
+function readCreative(value: unknown): StoredCreative | null {
   if (!isRecord(value)) return null;
 
   const pattern = readPattern(value.bits);

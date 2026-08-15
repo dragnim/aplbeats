@@ -20,6 +20,8 @@ import {
 import { CALIBRATION_REFERENCE, HEADROOM } from '@/audio/kits/calibration';
 import { isSampleKit, SYNTH_KIT_ID } from '@/audio/kits/types';
 import { TRACK_IDS } from '@/pattern/tracks';
+import { TONE_AUDIO_DIRECTORY } from '@/audio/tones/sounds';
+import toneManifest from '@/audio/tones/jupiter4.json';
 
 /*
  * The manifest, checked against the audio actually in the repository.
@@ -71,6 +73,20 @@ interface RenderManifest {
 }
 
 const renderManifest = JSON.parse(readFileSync(RENDER_MANIFEST, 'utf8')) as RenderManifest;
+
+/**
+ * The Tone samples, which share `public/audio` with the kits without being one.
+ *
+ * Named here so the two audits below can account for them by manifest rather than by ignoring a
+ * directory — a directory ignored is a directory anything could be dropped into.
+ */
+const TONE_DIRECTORY = TONE_AUDIO_DIRECTORY.replace(/^audio\//u, '');
+
+function toneFiles(): string[] {
+  return Object.values(toneManifest.sounds).flatMap((sound) =>
+    sound.samples.map((sample) => sample.file),
+  );
+}
 
 /**
  * Which kits are copied recordings, and which are rendered.
@@ -537,6 +553,8 @@ describe('the bundled audio', () => {
     const recorded = new Set([
       ...Object.keys(checksums.files),
       ...Object.values(renderManifest.voices).map((voice) => `tr-909/${voice.file}`),
+      // Stage 8's Tone samples, held to the same standard by their own manifest.
+      ...toneFiles().map((file) => `${TONE_DIRECTORY}/${file}`),
     ]);
     for (const directory of readdirSync(PUBLIC_AUDIO)) {
       const path = join(PUBLIC_AUDIO, directory);
@@ -548,9 +566,15 @@ describe('the bundled audio', () => {
   });
 
   it('serves a directory for every kit, and a kit for every directory', () => {
+    /*
+     * The Tone samples live under `public/audio` too, and are deliberately excluded here rather
+     * than added to the kit list. They are not a drum machine: no eight voices, no kit
+     * definition, and nothing in the drum selector. The test above is what holds them to
+     * account, file by file, against their own manifest.
+     */
     const shipped = new Set(KITS.filter(isSampleKit).map((kit) => kit.directory));
-    const onDisk = readdirSync(PUBLIC_AUDIO).filter((name) =>
-      statSync(join(PUBLIC_AUDIO, name)).isDirectory(),
+    const onDisk = readdirSync(PUBLIC_AUDIO).filter(
+      (name) => name !== TONE_DIRECTORY && statSync(join(PUBLIC_AUDIO, name)).isDirectory(),
     );
     expect([...onDisk].sort()).toEqual([...shipped].sort());
   });

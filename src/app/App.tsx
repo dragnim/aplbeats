@@ -12,13 +12,25 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { UndoButton } from '@/components/UndoButton';
 import { TransportBar } from '@/components/TransportBar';
 import { WorkspaceRail } from '@/components/WorkspaceRail';
-import type { WorkspaceId } from '@/components/workspaces';
+import { DomainTabs } from '@/components/DomainTabs';
+import { ToneStrip } from '@/components/ToneStrip';
+import { TonePanel } from '@/components/TonePanel';
+import type { Domain, WorkspaceId } from '@/components/workspaces';
 import { INITIAL_BPM, INITIAL_SWING } from '@/pattern/initialGroove';
 import { createMixer, effectiveLevel, setVolume, toggleMute, trackIdFor, type Mixer } from '@/pattern/mixer';
 import { TRACKS } from '@/pattern/tracks';
 import { clampBpm, clampSwing } from '@/transport/timing';
 import { useTransport } from '@/transport/useTransport';
-import { loadMasterVolume, loadSession, saveMasterVolume, saveSession } from './persistence';
+import { useTones } from '@/audio/tones/useTones';
+import {
+  loadMasterVolume,
+  loadSession,
+  loadTones,
+  loadToneVolume,
+  saveMasterVolume,
+  saveSession,
+  saveTones,
+} from './persistence';
 import { INITIAL_CREATIVE_STATE } from './openingState';
 import { usePageVisibility } from './usePageVisibility';
 import { useStudio } from './useStudio';
@@ -58,7 +70,27 @@ export function App(): React.JSX.Element {
    */
   const restored = useMemo(() => loadSession(), []);
 
-  const studio = useStudio(restored?.creative ?? INITIAL_CREATIVE_STATE);
+  /*
+   * The Tone layer, restored from its own key.
+   *
+   * Read separately from the session on purpose, and this is the visible consequence of that
+   * decision: a session discarded because the drum generator's version moved takes the pattern
+   * with it, and leaves the melody exactly where it was. See `persistence.ts`.
+   */
+  const restoredTones = useMemo(() => loadTones(), []);
+  const restoredToneVolume = useMemo(() => loadToneVolume(), []);
+
+  const studio = useStudio(
+    useMemo(
+      () => ({
+        ...(restored?.creative ?? INITIAL_CREATIVE_STATE),
+        phrase: restoredTones?.phrase ?? INITIAL_CREATIVE_STATE.phrase,
+      }),
+      // Both are read once, before the first paint, and neither can change afterwards.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [],
+    ),
+  );
   const [mixer, setMixer] = useState<Mixer>(() => restored?.mixer ?? createMixer());
   const [bpm, setBpm] = useState(() => restored?.bpm ?? INITIAL_BPM);
   const [swing, setSwing] = useState(() => restored?.swing ?? INITIAL_SWING);
@@ -74,18 +106,40 @@ export function App(): React.JSX.Element {
   const theme = useTheme();
 
   /*
-   * Which of the four workspaces is open beside the grid.
+   * Which layer is on screen, and which of the four workspaces is open beside it.
    *
-   * Stage 7's central change. The local generator, Create, Transform and Explore used to be four
-   * cards stacked down a long page, with the APL a scroll away from the beat it changed; now one
-   * of them is open at a time, next to the sequencer. `play` first, because that is what
-   * somebody is here for.
+   * Stage 7 made the workspaces tabs: the local generator, Create, Transform and Explore used to
+   * be four cards stacked down a long page, with the APL a scroll away from the beat it changed;
+   * now one of them is open at a time, next to the sequencer. Stage 8 put a second tablist above
+   * that one, choosing which music those tools act on.
    *
-   * Not persisted, deliberately. Which tool you had open is a fact about the last thirty
-   * seconds, not a preference — and a returning visitor should land on the instrument rather
-   * than wherever they happened to stop.
+   * Two workspace states rather than one, because the tools mean different things on the two
+   * sides: somebody deep in an APL melody transform who glances at the drums and comes back
+   * should find the transform, not be returned to Play. So each domain remembers its own tab.
+   *
+   * `play` first on both, and Beats first of the two, because that is what somebody is here for.
+   * None of the three is persisted, deliberately: which layer and which tool you had open is a
+   * fact about the last thirty seconds, not a preference, and a returning visitor should land on
+   * the instrument rather than wherever they happened to stop.
    */
-  const [workspace, setWorkspace] = useState<WorkspaceId>('play');
+  const [domain, setDomain] = useState<Domain>('beats');
+  /*
+   * Whether the Tone instrument is wanted yet.
+   *
+   * Latched on by the first visit to Tones and never off again. This is the whole of the lazy
+   * loading policy: a visitor who came for the drums and never opened Tones fetches none of its
+   * three megabytes, and one who opened it once does not fetch them a second time for glancing
+   * back at the kick.
+   */
+  const [tonesWanted, setTonesWanted] = useState(false);
+  const selectDomain = useCallback((next: Domain) => {
+    setDomain(next);
+    if (next === 'tones') setTonesWanted(true);
+  }, []);
+  const [beatsWorkspace, setBeatsWorkspace] = useState<WorkspaceId>('play');
+  const [tonesWorkspace, setTonesWorkspace] = useState<WorkspaceId>('play');
+  const workspace = domain === 'tones' ? tonesWorkspace : beatsWorkspace;
+  const setWorkspace = domain === 'tones' ? setTonesWorkspace : setBeatsWorkspace;
   const workspaceIds = useId();
 
   /*
@@ -126,7 +180,7 @@ export function App(): React.JSX.Element {
   }, []);
 
   const isVisible = usePageVisibility();
-  const { pattern, locks } = studio.state;
+  const { pattern, phrase, locks } = studio.state;
 
   /*
    * The transport's window onto the current state.
@@ -137,16 +191,36 @@ export function App(): React.JSX.Element {
    */
   const patternRef = useRef(pattern);
   const mixerRef = useRef(mixer);
+  const phraseRef = useRef(phrase);
 
   useEffect(() => {
     patternRef.current = pattern;
     mixerRef.current = mixer;
-  }, [pattern, mixer]);
+    phraseRef.current = phrase;
+  }, [pattern, mixer, phrase]);
 
   const getPattern = useCallback(() => patternRef.current, []);
   const getMixer = useCallback(() => mixerRef.current, []);
+  const getPhrase = useCallback(() => phraseRef.current, []);
 
-  const transport = useTransport({ getPattern, getMixer, bpm, swing, isVisible });
+  const transport = useTransport({ getPattern, getMixer, getPhrase, bpm, swing, isVisible });
+
+  /*
+   * The Tone instrument.
+   *
+   * `enabled` is what keeps the promise that a visitor who never opens Tones pays nothing for it:
+   * the samples are fetched the first time the Tones tab is opened, and never before. Once opened
+   * it stays enabled, so switching back to Beats does not throw the instrument away — switching
+   * tabs is a change of view and must never touch what is playing.
+   */
+  const tones = useTones({
+    ...(restoredTones === null ? {} : { initialSoundId: restoredTones.soundId }),
+    initialVolume: restoredToneVolume,
+    enabled: tonesWanted,
+    install: transport.setToneSampler,
+    applyVolume: transport.setToneVolume,
+    phrase,
+  });
 
   /*
    * APL transforms.
@@ -179,7 +253,10 @@ export function App(): React.JSX.Element {
       transform.explore.follow(origin);
       setExploreVisited(true);
       // "Edit this APL" now means "show me that, in Explore" — so it moves the workspace too.
-      setWorkspace('explore');
+      // Explicitly the Beats one: this is only ever called from the Beats Create and Transform
+      // panels, and reaching through the domain-dependent setter would make a stable callback
+      // depend on which tab happened to be open.
+      setBeatsWorkspace('explore');
     },
     [transform.explore],
   );
@@ -240,11 +317,14 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     const handle = setTimeout(() => {
       saveSession({ creative: studio.state, bpm, swing, mixer });
+      // Under its own key, on the same debounce. Two writes rather than one, which is the price
+      // of the melody surviving a generator version bump — see `persistence.ts`.
+      saveTones({ phrase, soundId: tones.soundId });
     }, 500);
     return () => {
       clearTimeout(handle);
     };
-  }, [studio.state, bpm, swing, mixer]);
+  }, [studio.state, bpm, swing, mixer, phrase, tones.soundId]);
 
   /*
    * Switching a step on plays it.
@@ -263,6 +343,23 @@ export function App(): React.JSX.Element {
       transport.audition(trackId, effectiveLevel(mixer, track));
     },
     [mixer, studio, transport],
+  );
+
+  /*
+   * Moving a note plays it.
+   *
+   * The Tone counterpart of auditioning a drum step, with one difference: it previews while the
+   * transport is *running* as well as while it is stopped. A drum step you switch on is heard a
+   * fraction of a bar later anyway, but a note moved from G to A♭ might not sound again for
+   * fifteen steps — and choosing a pitch by ear means hearing the pitch when you choose it. The
+   * sampler is monophonic, so the preview simply takes the voice, exactly as the next scheduled
+   * note would.
+   */
+  const handlePreviewTone = useCallback(
+    (midi: number) => {
+      transport.previewTone(midi);
+    },
+    [transport],
   );
 
   const handleAuditionTrack = useCallback(
@@ -339,26 +436,61 @@ export function App(): React.JSX.Element {
         />
       </header>
 
-      <div className={styles.body}>
+      {/*
+        Beats or Tones, above everything the choice governs.
+
+        Switching is visual and nothing else: no request, no fetch, no execution, and above all no
+        transport change. Both layers go on sounding either way — the drums do not pause because
+        somebody went to write a melody. See `DomainTabs`.
+      */}
+      <DomainTabs active={domain} onSelect={selectDomain} panelIds={workspaceIds} />
+
+      <div
+        className={styles.body}
+        role="tabpanel"
+        id={`${workspaceIds}-domain-panel-${domain}`}
+        aria-labelledby={`${workspaceIds}-domain-tab-${domain}`}
+      >
         <div className={styles.railColumn}>
-          <WorkspaceRail active={workspace} onSelect={setWorkspace} panelIds={workspaceIds} />
+          <WorkspaceRail
+            active={workspace}
+            onSelect={setWorkspace}
+            panelIds={workspaceIds}
+            domain={domain}
+          />
         </div>
 
         <main className={styles.main}>
-          <h2 className="visuallyHidden">Pattern</h2>
-          <Sequencer
-            pattern={pattern}
-            mixer={mixer}
-            locks={locks}
-            playheadStep={transport.playheadStep}
-            isPlaying={transport.isPlaying}
-            onSetCell={handleSetCell}
-            onToggleMute={handleToggleMute}
-            onToggleLock={studio.toggleLock}
-            onVolumeChange={handleVolumeChange}
-            onAuditionTrack={handleAuditionTrack}
-            onEditGesture={beginEdit}
-          />
+          {domain === 'beats' ? (
+            <>
+              <h2 className="visuallyHidden">Pattern</h2>
+              <Sequencer
+                pattern={pattern}
+                mixer={mixer}
+                locks={locks}
+                playheadStep={transport.playheadStep}
+                isPlaying={transport.isPlaying}
+                onSetCell={handleSetCell}
+                onToggleMute={handleToggleMute}
+                onToggleLock={studio.toggleLock}
+                onVolumeChange={handleVolumeChange}
+                onAuditionTrack={handleAuditionTrack}
+                onEditGesture={beginEdit}
+              />
+            </>
+          ) : (
+            <>
+              <h2 className="visuallyHidden">Melody</h2>
+              <ToneStrip
+                phrase={phrase}
+                playheadStep={transport.playheadStep}
+                isPlaying={transport.isPlaying}
+                onEditGesture={studio.beginNoteEdit}
+                onSetNote={studio.setNote}
+                onPreview={handlePreviewTone}
+              />
+            </>
+          )}
         </main>
 
         {/*
@@ -380,7 +512,9 @@ export function App(): React.JSX.Element {
             aria-labelledby={`${workspaceIds}-tab-${workspace}`}
             tabIndex={-1}
           >
-            {workspace === 'play' && (
+            {workspace === 'play' && domain === 'tones' && <TonePanel tones={tones} phrase={phrase} />}
+
+            {workspace === 'play' && domain === 'beats' && (
               <GeneratorPanel
                 preset={studio.state.preset}
                 seed={studio.state.seed}
@@ -393,7 +527,7 @@ export function App(): React.JSX.Element {
               />
             )}
 
-            {workspace === 'create' && (
+            {workspace === 'create' && domain === 'beats' && (
               <CreatePanel
                 transform={transform}
                 exploreOpen={exploreVisited}
@@ -403,7 +537,7 @@ export function App(): React.JSX.Element {
               />
             )}
 
-            {workspace === 'transform' && (
+            {workspace === 'transform' && domain === 'beats' && (
               <TransformPanel
                 transform={transform}
                 pattern={pattern}
@@ -414,7 +548,7 @@ export function App(): React.JSX.Element {
               />
             )}
 
-            {workspace === 'explore' && <ExploreEditor transform={transform} />}
+            {workspace === 'explore' && domain === 'beats' && <ExploreEditor transform={transform} />}
           </div>
         </div>
       </div>

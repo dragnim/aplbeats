@@ -17,6 +17,7 @@ import { applyVariation } from '@/generation/mutate';
 import { isPresetId, type PresetId } from '@/generation/presets';
 import { clampSeed } from '@/generation/prng';
 import { patternsEqual, setCell, TRACK_COUNT, type Pattern } from '@/pattern/pattern';
+import { phrasesEqual, setStep, type Phrase } from '@/tones/phrase';
 
 /**
  * How many steps back Undo reaches.
@@ -30,9 +31,22 @@ export type MacroName = 'density' | 'complexity' | 'syncopation' | 'variation';
 
 export const MACRO_NAMES: readonly MacroName[] = ['density', 'complexity', 'syncopation', 'variation'];
 
-/** Everything Undo restores. */
+/**
+ * Everything Undo restores — both layers.
+ *
+ * One state and one history covering Beats *and* Tones, rather than a stack each. Two stacks
+ * would mean the Undo button had to decide which layer you meant, and the honest answer is that
+ * nobody making music thinks in layers while they work: you transpose the melody, you dislike it,
+ * you press Undo. Whichever thing you changed last is the thing that comes back.
+ *
+ * The Tone *sound* is deliberately not here, for the same reason the drum kit is not: choosing an
+ * instrument is a listening decision, like moving a fader, and an Undo that swapped your
+ * instrument back would be undoing something you did not do.
+ */
 export interface CreativeState {
   readonly pattern: Pattern;
+  /** The Tone melody. Sixteen numbers; see `@/tones/phrase`. */
+  readonly phrase: Phrase;
   readonly seed: number;
   readonly preset: PresetId;
   readonly density: number;
@@ -87,6 +101,26 @@ export type StudioAction =
       readonly value: boolean;
       readonly gesture: string;
     }
+  /**
+   * One step of the melody, set by hand.
+   *
+   * The Tone counterpart of `setCell`, coalescing the same way: dragging a note up through five
+   * semitones is one Undo, because it was one gesture.
+   */
+  | {
+      readonly type: 'setNote';
+      readonly step: number;
+      readonly value: number;
+      readonly gesture: string;
+    }
+  /**
+   * A phrase that came back from APL, or from a Tone recipe.
+   *
+   * The Tone counterpart of `applyTransform`, and identical in kind: a finished, validated vector
+   * arrives and is installed atomically, one Undo entry, and a phrase that comes back unchanged —
+   * reversing a palindrome, rotating by sixteen — banks no history.
+   */
+  | { readonly type: 'applyPhrase'; readonly phrase: Phrase }
   | { readonly type: 'undo' };
 
 /* ------------------------------------------------------------------------- */
@@ -268,6 +302,25 @@ export function studioReducer(state: StudioState, action: StudioAction): StudioS
 
       const base = isNewGesture(state, action.gesture) ? remember(state, action.gesture) : state;
       return { ...base, gesture: action.gesture, present: { ...base.present, pattern } };
+    }
+
+    case 'setNote': {
+      const phrase = setStep(state.present.phrase, action.step, action.value);
+      // Unchanged is not an edit — the same reasoning as `setCell`, including why the gesture
+      // must be left alone rather than marked open.
+      if (phrase === state.present.phrase) return state;
+
+      const base = isNewGesture(state, action.gesture) ? remember(state, action.gesture) : state;
+      return { ...base, gesture: action.gesture, present: { ...base.present, phrase } };
+    }
+
+    case 'applyPhrase': {
+      if (phrasesEqual(action.phrase, state.present.phrase)) {
+        return { ...state, gesture: null };
+      }
+
+      const remembered = remember(state, null);
+      return { ...remembered, present: { ...state.present, phrase: action.phrase } };
     }
 
     case 'undo': {

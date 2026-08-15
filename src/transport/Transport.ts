@@ -13,6 +13,8 @@
 
 import { AudioEngine } from '@/audio/AudioEngine';
 import type { Kit } from '@/audio/kit';
+import type { ToneSampler } from '@/audio/tones/ToneSampler';
+import { emptyPhrase, type Phrase } from '@/tones/phrase';
 import type { Mixer } from '@/pattern/mixer';
 import type { Pattern } from '@/pattern/pattern';
 import type { TrackId } from '@/pattern/tracks';
@@ -24,6 +26,15 @@ export interface TransportSources {
   readonly getPattern: () => Pattern;
   /** The mixer as it stands now. */
   readonly getMixer: () => Mixer;
+  /**
+   * The Tone phrase, read at the instant a step is scheduled. Omitted by drum-only callers.
+   *
+   * A getter rather than a value, for the same reason the pattern is one: the scheduler asks what
+   * the phrase is a hundred milliseconds before the step sounds, quite possibly between two React
+   * renders. A phrase replaced by APL takes effect on the next unscheduled step, with nothing
+   * restarting.
+   */
+  readonly getPhrase?: () => Phrase;
 }
 
 export interface TransportOptions extends TransportSources {
@@ -35,11 +46,22 @@ export interface TransportOptions extends TransportSources {
 
 export type TransportState = 'stopped' | 'starting' | 'playing';
 
+/**
+ * What a transport with no Tone layer plays: sixteen rests.
+ *
+ * Built once rather than per step. A drum-only caller — every test written before Stage 8, and the
+ * audio regression suite that proves the kit still sounds exactly as it did — gets a phrase that
+ * schedules nothing, so the Tone layer costs those callers one array lookup and no audio nodes.
+ */
+const SILENCE = emptyPhrase();
+const SILENT_PHRASE = (): Phrase => SILENCE;
+
 export class Transport {
   private readonly engine: AudioEngine;
   private readonly scheduler: Scheduler;
   private readonly getPattern: () => Pattern;
   private readonly getMixer: () => Mixer;
+  private readonly getPhrase: () => Phrase;
 
   private bpm: number;
   private swing: number;
@@ -61,6 +83,7 @@ export class Transport {
     this.engine = options.engine ?? new AudioEngine();
     this.getPattern = options.getPattern;
     this.getMixer = options.getMixer;
+    this.getPhrase = options.getPhrase ?? SILENT_PHRASE;
     this.bpm = clampBpm(options.bpm);
     this.swing = clampSwing(options.swing);
 
@@ -68,7 +91,16 @@ export class Transport {
       clock: () => this.engine.currentTime,
       getTempo: () => ({ bpm: this.bpm, swing: this.swing }),
       onStep: (step, time) => {
+        /*
+         * One callback, one time, both layers.
+         *
+         * This is where "one transport" stops being an intention and becomes a fact. The drums
+         * and the melody are handed the *same* number, which the scheduler has already swung, so
+         * step 3 of the phrase lands on the instant step 3 of the pattern does. Neither layer has
+         * a clock, a timer or a position of its own, so there is nothing that could drift.
+         */
         this.engine.playStep(this.getPattern(), this.getMixer(), step, time);
+        this.engine.playTone(this.getPhrase(), step, time, 1);
       },
       ...(options.setTimer === undefined ? {} : { setTimer: options.setTimer }),
     });
@@ -94,6 +126,31 @@ export class Transport {
     return () => {
       this.listeners.delete(listener);
     };
+  }
+
+  /**
+   * Change how loud the melody is, 0 to 1.
+   *
+   * Its own bus, so this attenuates the Tone layer and leaves the drums exactly where they were.
+   * Like the kit and the master volume, deliberately not a special case for "while playing".
+   */
+  setToneVolume(volume: number): void {
+    this.engine.setToneVolume(volume);
+  }
+
+  /**
+   * Install the Tone sound, once its recordings have decoded.
+   *
+   * One assignment, between scheduler ticks, exactly as the kit is swapped — so switching sound
+   * cannot restart the bar, move the playhead or interrupt the drums.
+   */
+  setToneSampler(sampler: ToneSampler | null): void {
+    this.engine.setToneSampler(sampler);
+  }
+
+  /** Sound one pitch now, for auditioning a step while stopped. */
+  previewTone(midi: number, level = 1): void {
+    this.engine.playTonePreview(midi, level);
   }
 
   /**
@@ -165,6 +222,15 @@ export class Transport {
   pause(): void {
     this.startGeneration += 1;
     this.scheduler.pause();
+    /*
+     * A drum hit is over before the button is released; a Tone note is not.
+     *
+     * The sampler holds one sounding voice which may have up to a second of recording left, and
+     * suspending the context below would freeze it mid-note rather than end it — so pressing Play
+     * again would resume a note from the bar before. Released here, on the ramp, so Stop sounds
+     * like an instrument stopping rather than like a tape being cut.
+     */
+    this.engine.silenceTone();
     this.setState('stopped');
     // Suspending is what makes a stopped transport genuinely idle: no audio thread,
     // no timer, no work. Nothing waits on it, so a rejection is only worth a note.

@@ -1,0 +1,207 @@
+/*
+ * The melody strip.
+ *
+ * Sixteen columns on the same rhythm as the drum grid, so the eye reads the two as one bar — a
+ * note on step 5 sits directly above the snare on step 5, at every width. What differs is the
+ * pad: a drum step is on or off and is drawn as a fill, a melody step has a *value* and is drawn
+ * as a column whose height is the pitch, with the note printed on it.
+ *
+ * Taller than a drum row on purpose. A pad tall enough to show three octaves of difference is a
+ * pad tall enough to read a melody's shape from across a desk, which is most of why the height
+ * mapping is here at all.
+ */
+.strip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.pads {
+  display: grid;
+  grid-template-columns: repeat(16, minmax(var(--cell-min), 1fr));
+  gap: var(--cell-gap);
+  min-width: 0;
+}
+
+.pad {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 5.5rem;
+  min-height: var(--cell-min);
+  padding: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--cell);
+  overflow: hidden;
+  touch-action: pan-x pan-y;
+  transition:
+    background-color var(--motion-fast) var(--ease),
+    border-color var(--motion-fast) var(--ease);
+}
+
+/* Every fourth column is a beat, a shade lighter, exactly as the drum grid marks them. */
+.pad.beatStart {
+  background: var(--cell-beat);
+  border-color: var(--line-strong);
+}
+
+.pad:hover {
+  background: var(--cell-hover);
+}
+
+/*
+ * The pitch, as a column.
+ *
+ * `--pitch` is 0 at the bottom of the instrument's range and 1 at the top, set inline by the
+ * component because it is data rather than styling. A low note is a stub and a high note nearly
+ * fills the pad, so the shape of a melody is visible before a single note name is read.
+ *
+ * A minimum of 12% so that the very lowest note is still plainly a note rather than an empty pad
+ * — the difference between "C3" and "rest" must never come down to a few pixels.
+ */
+.fill {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: calc(12% + 88% * var(--pitch, 0));
+  background: transparent;
+  transition:
+    height var(--motion-fast) var(--ease),
+    background-color var(--motion-fast) var(--ease);
+}
+
+.padSounding {
+  border-color: var(--accent-bright);
+}
+
+.padSounding .fill {
+  background: var(--accent);
+}
+
+.padSounding:hover .fill {
+  background: var(--accent-bright);
+}
+
+/*
+ * The note name, over the column.
+ *
+ * Centred rather than sitting on top of the fill, so it does not move as the pitch changes — a
+ * label that slid up and down while you held Up would be unreadable exactly when you were reading
+ * it. High contrast against both the filled and unfilled parts of the pad.
+ */
+.note {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 45%);
+}
+
+.padSounding .note {
+  color: var(--on-accent);
+}
+
+/* The full name on anything wider than a phone; the pitch class alone below that. */
+.noteShort {
+  display: none;
+}
+
+.underPlayhead {
+  border-color: var(--line-strong);
+}
+
+.playing {
+  border-color: var(--playhead);
+  box-shadow: inset 0 0 0 1px var(--playhead);
+}
+
+/* --- The editor row ------------------------------------------------------- */
+
+.editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+
+.selection {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  min-width: 7.5rem;
+}
+
+.selectionLabel {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.selectionValue {
+  color: var(--accent-bright);
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.button {
+  min-width: var(--tap-target);
+  min-height: var(--tap-target);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  transition:
+    background-color var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease);
+}
+
+.button:hover:not(:disabled) {
+  background: var(--cell-hover);
+  color: var(--accent-bright);
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* The rest toggle is a word rather than a number, so it is not read as another interval. */
+.rest {
+  font-family: inherit;
+  padding: 0 var(--space-4);
+}
+
+@media (max-width: 47.9375rem) {
+  .pad {
+    height: 4.25rem;
+  }
+
+  .noteFull {
+    display: none;
+  }
+
+  .noteShort {
+    display: block;
+  }
+}

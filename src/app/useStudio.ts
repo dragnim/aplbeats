@@ -2,6 +2,7 @@ import { useCallback, useMemo, useReducer, useRef } from 'react';
 import type { PresetId } from '@/generation/presets';
 import { randomSeed } from '@/generation/prng';
 import type { Pattern } from '@/pattern/pattern';
+import type { Phrase } from '@/tones/phrase';
 import {
   canUndo as historyHasSomething,
   createStudio,
@@ -54,6 +55,16 @@ export interface StudioApi {
    * `useApl`.
    */
   readonly applyTransform: (pattern: Pattern) => void;
+  /**
+   * Begin a melody-editing gesture.
+   *
+   * The Tone counterpart of `beginEdit`, and a separate counter: dragging a note up while the
+   * other hand paints drum cells should not merge the two into one Undo.
+   */
+  readonly beginNoteEdit: () => void;
+  readonly setNote: (step: number, value: number) => void;
+  /** Install a phrase that came back from APL. One Undo entry, atomically. */
+  readonly applyPhrase: (phrase: Phrase) => void;
   readonly undo: () => void;
 }
 
@@ -63,12 +74,13 @@ export function useStudio(initial: CreativeState): StudioApi {
   /*
    * Gesture labels, as counters.
    *
-   * Two of them, because a cell drag and a slider drag can be told apart by which
-   * counter moved. Refs rather than state: nothing renders differently because a gesture
+   * Three of them, because a cell drag, a slider drag and a note drag can be told apart by
+   * which counter moved. Refs rather than state: nothing renders differently because a gesture
    * is open, and a re-render per pointer-down would be a re-render for nothing.
    */
   const editGesture = useRef(0);
   const macroGesture = useRef(0);
+  const noteGesture = useRef(0);
   /** Which macro the open gesture belongs to, or null when none is. */
   const openMacro = useRef<MacroName | null>(null);
 
@@ -123,6 +135,18 @@ export function useStudio(initial: CreativeState): StudioApi {
     dispatch({ type: 'applyTransform', pattern });
   }, []);
 
+  const beginNoteEdit = useCallback(() => {
+    noteGesture.current += 1;
+  }, []);
+
+  const setNote = useCallback((step: number, value: number) => {
+    dispatch({ type: 'setNote', step, value, gesture: `note:${String(noteGesture.current)}` });
+  }, []);
+
+  const applyPhrase = useCallback((phrase: Phrase) => {
+    dispatch({ type: 'applyPhrase', phrase });
+  }, []);
+
   const undo = useCallback(() => {
     // A macro gesture left open would coalesce the next move into the entry Undo just
     // restored, which is a way of losing a change nobody asked to lose.
@@ -143,6 +167,9 @@ export function useStudio(initial: CreativeState): StudioApi {
       beginEdit,
       setCell,
       applyTransform,
+      beginNoteEdit,
+      setNote,
+      applyPhrase,
       undo,
     }),
     [
@@ -156,9 +183,17 @@ export function useStudio(initial: CreativeState): StudioApi {
       beginEdit,
       setCell,
       applyTransform,
+      beginNoteEdit,
+      setNote,
+      applyPhrase,
       undo,
     ],
   );
+}
+
+/** The melody, for anything that only needs that. */
+export function phraseOf(state: CreativeState): Phrase {
+  return state.phrase;
 }
 
 /** The pattern, for anything that only needs that. */

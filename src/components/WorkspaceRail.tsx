@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { cx } from '@/app/cx';
-import { WORKSPACES, type WorkspaceId } from './workspaces';
+import { workspacesFor, type Domain, type WorkspaceId } from './workspaces';
 import styles from './WorkspaceRail.module.css';
 
 /*
@@ -112,11 +112,25 @@ export interface WorkspaceRailProps {
   readonly onSelect: (id: WorkspaceId) => void;
   /** Prefix for the `aria-controls` ids, so tabs and panels agree. */
   readonly panelIds: string;
+  /**
+   * Which layer's workspaces to offer. Beats when not stated, which is what every caller wanted
+   * before Stage 8 existed.
+   *
+   * The four ids are the same on both sides — the *tools* are the same four tools — so a rail
+   * that changes domain keeps whichever tab was open rather than resetting to Play.
+   */
+  readonly domain?: Domain;
 }
 
-export function WorkspaceRail({ active, onSelect, panelIds }: WorkspaceRailProps): React.JSX.Element {
+export function WorkspaceRail({
+  active,
+  onSelect,
+  panelIds,
+  domain = 'beats',
+}: WorkspaceRailProps): React.JSX.Element {
   const rail = useRef<HTMLDivElement | null>(null);
   const orientation = useRenderedOrientation(rail);
+  const workspaces = workspacesFor(domain);
 
   /**
    * Arrow keys, as a tablist is supposed to.
@@ -136,15 +150,15 @@ export function WorkspaceRail({ active, onSelect, panelIds }: WorkspaceRailProps
     const step = keys[event.key];
 
     let index: number | null = null;
-    const at = WORKSPACES.findIndex((workspace) => workspace.id === active);
+    const at = workspaces.findIndex((workspace) => workspace.id === active);
 
-    if (step !== undefined) index = (at + step + WORKSPACES.length) % WORKSPACES.length;
+    if (step !== undefined) index = (at + step + workspaces.length) % workspaces.length;
     else if (event.key === 'Home') index = 0;
-    else if (event.key === 'End') index = WORKSPACES.length - 1;
+    else if (event.key === 'End') index = workspaces.length - 1;
     if (index === null) return;
 
     event.preventDefault();
-    const next = WORKSPACES[index];
+    const next = workspaces[index];
     if (next !== undefined) onSelect(next.id);
   };
 
@@ -157,7 +171,7 @@ export function WorkspaceRail({ active, onSelect, panelIds }: WorkspaceRailProps
       aria-orientation={orientation}
       onKeyDown={onKeyDown}
     >
-      {WORKSPACES.map((workspace) => {
+      {workspaces.map((workspace) => {
         const selected = workspace.id === active;
         return (
           <button

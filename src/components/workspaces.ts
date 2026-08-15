@@ -33,3 +33,64 @@ export const WORKSPACES: readonly Workspace[] = [
   },
   { id: 'explore', label: 'Explore', hint: 'Edit the APL yourself and run it.' },
 ];
+
+/* ------------------------------------------------------------------------- */
+
+/**
+ * The two layers, and the tabs above the rail that choose between them.
+ *
+ * Stage 8's one structural addition. Beats is the eight-track Boolean matrix APL Beats has always
+ * been; Tones is a single line of sixteen numbers played by one pitched instrument. Two layers of
+ * one piece of music, not two applications — which is why switching between them is a change of
+ * *view* and nothing else: the transport does not stop, the bar does not restart, both layers keep
+ * sounding, and nothing is fetched or executed.
+ *
+ * The same four workspaces on both sides, because they mean the same four things: play it, have
+ * APL create one, have APL change the one you have, write the APL yourself. Only the hints differ,
+ * and they differ because `⌽m` and `⌽n` are genuinely different sentences about different data —
+ * which is the whole reason Tones exists.
+ */
+export type Domain = 'beats' | 'tones';
+
+export interface DomainDefinition {
+  readonly id: Domain;
+  readonly label: string;
+  readonly hint: string;
+  /** What its APL variable is called, shown wherever the two are contrasted. */
+  readonly variable: string;
+}
+
+export const DOMAINS: readonly DomainDefinition[] = [
+  {
+    id: 'beats',
+    label: 'Beats',
+    hint: 'Eight drum tracks, sixteen steps. A Boolean matrix.',
+    variable: 'm',
+  },
+  {
+    id: 'tones',
+    label: 'Tones',
+    hint: 'One melody line, sixteen steps. A numeric vector.',
+    variable: 'n',
+  },
+];
+
+/** The workspaces offered on the Tones side. Same four ideas, different data. */
+const TONE_WORKSPACES: readonly Workspace[] = [
+  { id: 'play', label: 'Play', hint: 'Write the melody by hand, and choose the instrument.' },
+  { id: 'create', label: 'Create', hint: 'Ask Dyalog APL for a whole new melody from a recipe and a seed.' },
+  {
+    id: 'transform',
+    label: 'Transform',
+    hint: 'Change the melody you have with one of four APL operations.',
+  },
+  { id: 'explore', label: 'Explore', hint: 'Edit the APL yourself and run it against the melody.' },
+];
+
+export function workspacesFor(domain: Domain): readonly Workspace[] {
+  return domain === 'tones' ? TONE_WORKSPACES : WORKSPACES;
+}
+
+export function isDomain(value: unknown): value is Domain {
+  return value === 'beats' || value === 'tones';
+}

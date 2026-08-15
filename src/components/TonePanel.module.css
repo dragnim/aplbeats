@@ -1,0 +1,135 @@
+/*
+ * The Tones panel's own controls.
+ *
+ * The card itself comes from `AplPanel.module.css` — the canonical workspace surface — and
+ * nothing here restates it. What is here is a label-above-control field, the same shape as the
+ * generator's sliders, and the vector readout at the foot of the panel.
+ */
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.select {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.select:hover {
+  border-color: var(--accent);
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.sliderRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.slider {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.readout {
+  flex: 0 0 auto;
+  min-width: 2.5ch;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/*
+ * One line, and no height at all when there is nothing to say — the same arrangement as the
+ * drum machine selector's status, and for the same reasons. It stays in the DOM when empty so
+ * that the live region is one a screen reader has been watching all along.
+ */
+.status {
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1rem;
+  color: var(--text-dim);
+}
+
+.statusFailed {
+  color: var(--accent-bright);
+}
+
+.retry {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-bright);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* --- The vector ----------------------------------------------------------- */
+
+/*
+ * The melody as sixteen numbers.
+ *
+ * Set apart by a rule rather than by another card, because it is not a control — it is the data
+ * the controls above are editing, shown plainly. The monospace face and the tabular figures make
+ * the sixteen positions line up as sixteen positions, which is the point.
+ */
+.vector {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.vectorLabel {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.variable {
+  color: var(--accent-ink);
+  font-family: var(--font-apl);
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+
+.vectorValue {
+  display: block;
+  overflow-x: auto;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--stage);
+  color: var(--text-muted);
+  font-family: var(--font-apl);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.6;
+  white-space: nowrap;
+}

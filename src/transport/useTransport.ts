@@ -3,6 +3,8 @@ import type { Kit } from '@/audio/kit';
 import type { Mixer } from '@/pattern/mixer';
 import type { Pattern } from '@/pattern/pattern';
 import type { TrackId } from '@/pattern/tracks';
+import type { ToneSampler } from '@/audio/tones/ToneSampler';
+import type { Phrase } from '@/tones/phrase';
 import { Transport, type TransportState } from './Transport';
 
 /*
@@ -24,6 +26,8 @@ export interface UseTransportOptions {
   /** Read the pattern at the moment a step is scheduled. Must not be memoised stale. */
   readonly getPattern: () => Pattern;
   readonly getMixer: () => Mixer;
+  /** Read the Tone phrase at the moment a step is scheduled. Same contract as `getPattern`. */
+  readonly getPhrase: () => Phrase;
   readonly bpm: number;
   readonly swing: number;
   /** False while the tab is hidden: the transport pauses and the playhead stops. */
@@ -55,10 +59,25 @@ export interface TransportApi {
    * remembers the number, so moving the fader while stopped costs nothing at all.
    */
   readonly setMasterVolume: (volume: number) => void;
+  /**
+   * Set how loud the melody is, 0 to 1.
+   *
+   * Its own bus, so this is genuinely a balance control between the two layers rather than a
+   * second master fader. Like `setMasterVolume`, it opens no audio device.
+   */
+  readonly setToneVolume: (volume: number) => void;
+  /**
+   * Install the decoded Tone sound, or `null` to remove it.
+   *
+   * Safe at any time for the same reason `setKit` is: one assignment, between scheduler ticks.
+   */
+  readonly setToneSampler: (sampler: ToneSampler | null) => void;
+  /** Sound one pitch now, if the audio device is already open. The Tone equivalent of `audition`. */
+  readonly previewTone: (midi: number, level?: number) => void;
 }
 
 export function useTransport(options: UseTransportOptions): TransportApi {
-  const { getPattern, getMixer, bpm, swing, isVisible } = options;
+  const { getPattern, getMixer, getPhrase, bpm, swing, isVisible } = options;
 
   /*
    * The getters, behind refs.
@@ -76,11 +95,13 @@ export function useTransport(options: UseTransportOptions): TransportApi {
    */
   const patternSource = useRef(getPattern);
   const mixerSource = useRef(getMixer);
+  const phraseSource = useRef(getPhrase);
 
   useEffect(() => {
     patternSource.current = getPattern;
     mixerSource.current = getMixer;
-  }, [getPattern, getMixer]);
+    phraseSource.current = getPhrase;
+  }, [getPattern, getMixer, getPhrase]);
 
   const transportRef = useRef<Transport | null>(null);
   const [state, setState] = useState<TransportState>('stopped');
@@ -90,6 +111,7 @@ export function useTransport(options: UseTransportOptions): TransportApi {
     transportRef.current ??= new Transport({
       getPattern: () => patternSource.current(),
       getMixer: () => mixerSource.current(),
+      getPhrase: () => phraseSource.current(),
       bpm,
       swing,
     });
@@ -211,6 +233,27 @@ export function useTransport(options: UseTransportOptions): TransportApi {
     [getTransport],
   );
 
+  const setToneVolume = useCallback(
+    (volume: number) => {
+      getTransport().setToneVolume(volume);
+    },
+    [getTransport],
+  );
+
+  const setToneSampler = useCallback(
+    (sampler: ToneSampler | null) => {
+      getTransport().setToneSampler(sampler);
+    },
+    [getTransport],
+  );
+
+  const previewTone = useCallback(
+    (midi: number, level = 1) => {
+      getTransport().previewTone(midi, level);
+    },
+    [getTransport],
+  );
+
   const prepare = useCallback(() => {
     void getTransport().prepare();
   }, [getTransport]);
@@ -226,5 +269,8 @@ export function useTransport(options: UseTransportOptions): TransportApi {
     prepare,
     setKit,
     setMasterVolume,
+    setToneVolume,
+    setToneSampler,
+    previewTone,
   };
 }

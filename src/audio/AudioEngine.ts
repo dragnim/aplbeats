@@ -24,6 +24,8 @@ import type { TrackId } from '@/pattern/tracks';
 import { createNoiseBuffer, saturator } from './dsp';
 import { SYNTH_KIT, type Kit, type VoiceContext } from './kit';
 import { triggersForStep } from './triggers';
+import { REST, type Phrase } from '@/tones/phrase';
+import type { ToneSampler } from './tones/ToneSampler';
 
 /**
  * How hard the mix bus drives the master processing.
@@ -62,6 +64,18 @@ interface Graph {
   readonly context: AudioContext;
   readonly voiceContext: VoiceContext;
   /**
+   * Where the Tone sampler connects.
+   *
+   * Into the mix bus, *before* the compressor and the limiter — so a melody is glued to the drums
+   * by the same processing rather than sitting outside it. That is the one place it could go that
+   * makes Beats and Tones sound like one instrument instead of two things playing at once.
+   *
+   * Its own gain, so Tone Volume attenuates the melody and nothing else. When no Tone is sounding
+   * this node passes silence, which is why adding it left the drum-only output measurably
+   * unchanged: a gain node with nothing connected to it contributes nothing.
+   */
+  readonly toneBus: GainNode;
+  /**
    * The last node before the speakers.
    *
    * Everything else in the chain is finished by the time signal arrives here: the
@@ -84,6 +98,10 @@ export class AudioEngine {
    * noise nobody asked for.
    */
   private masterVolume = 1;
+  /** The Tone layer’s level, held whether or not a graph exists. */
+  private toneVolume = 0.7;
+  /** The installed Tone sound, or nothing. Null until a sound has been loaded. */
+  private toneSampler: ToneSampler | null = null;
   private graph: Graph | null = null;
 
   constructor(options: AudioEngineOptions = {}) {
@@ -221,6 +239,100 @@ export class AudioEngine {
   }
 
   /**
+   * Sound one step of the Tone phrase, at the same instant.
+   *
+   * Called from the same `onStep` callback as `playStep`, with the same `time` — which is what
+   * makes "one transport" true rather than merely intended. Swing has already been applied to
+   * that number, so a Tone on step 3 is swung exactly as the snare on step 3 is, and neither can
+   * drift from the other because neither has a clock of its own.
+   *
+   * A rest releases whatever is sounding. That is not the same as doing nothing: a note left
+   * ringing through a rest would turn every phrase into a legato smear.
+   */
+  playTone(phrase: Phrase, step: number, time: number, level: number): void {
+    const graph = this.graph;
+    const sampler = this.toneSampler;
+    if (graph === null || sampler === null) return;
+
+    const value = phrase[step] ?? REST;
+    if (value === REST || level <= 0) {
+      sampler.release(graph.context, time);
+      return;
+    }
+
+    sampler.play({ context: graph.context, destination: graph.toneBus }, time, value, level);
+  }
+
+  /**
+   * Install the Tone sampler, or take it away.
+   *
+   * Atomic: the caller has already loaded and decoded every recording, so this is one assignment
+   * and the next step plays the new sound. Whatever the old sampler was holding is silenced
+   * first, because a swap that left the previous note ringing would sound like a fault.
+   */
+  setToneSampler(sampler: ToneSampler | null): void {
+    const graph = this.graph;
+    if (graph !== null && this.toneSampler !== null) this.toneSampler.silence(graph.context);
+    this.toneSampler = sampler;
+  }
+
+  /** Whether a Tone sound is installed and could sound. */
+  get hasTone(): boolean {
+    return this.toneSampler !== null;
+  }
+
+  /**
+   * How loud the melody is, 0 to 1.
+   *
+   * Its own gain on its own bus, so it attenuates the Tone layer and leaves the drums exactly
+   * where they were. Held here whether or not a graph exists, so a level chosen before the audio
+   * device opened is the level it opens at — and reading it never creates a context.
+   */
+  setToneVolume(volume: number): void {
+    const wanted = Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 1;
+    this.toneVolume = wanted;
+
+    const graph = this.graph;
+    if (graph === null) return;
+
+    const { gain } = graph.toneBus;
+    const now = graph.context.currentTime;
+    gain.cancelScheduledValues(now);
+    gain.setValueAtTime(gain.value, now);
+    gain.linearRampToValueAtTime(wanted, now + VOLUME_RAMP_SECONDS);
+  }
+
+  get toneLevel(): number {
+    return this.toneVolume;
+  }
+
+  /**
+   * Sound one pitch straight away, for auditioning.
+   *
+   * Used when a step's pitch is chosen, so editing a phrase while stopped still tells you what
+   * you just wrote. The small offset ahead of the clock keeps the attack intact.
+   */
+  playTonePreview(midi: number, level: number): void {
+    const graph = this.graph;
+    const sampler = this.toneSampler;
+    if (graph === null || sampler === null || level <= 0) return;
+
+    sampler.play(
+      { context: graph.context, destination: graph.toneBus },
+      graph.context.currentTime + 0.01,
+      midi,
+      level,
+    );
+  }
+
+  /** Silence the Tone layer now. Called when the transport stops. */
+  silenceTone(): void {
+    const graph = this.graph;
+    if (graph === null || this.toneSampler === null) return;
+    this.toneSampler.silence(graph.context);
+  }
+
+  /**
    * Sound one voice straight away, for auditioning.
    *
    * Used when a cell is switched on, so editing a pattern while stopped still
@@ -283,6 +395,16 @@ export class AudioEngine {
     const output = context.createGain();
     output.gain.value = this.masterVolume;
 
+    /*
+     * The Tone bus, joining the mix before the glue.
+     *
+     * Opens at whatever level was last chosen, for the same reason the output gain does: a graph
+     * built after the slider moved should open at the right level rather than jump to it.
+     */
+    const toneBus = context.createGain();
+    toneBus.gain.value = this.toneVolume;
+    toneBus.connect(master);
+
     master.connect(glue);
     glue.connect(saturator(context, 1.25)).connect(output);
     output.connect(context.destination);
@@ -290,6 +412,7 @@ export class AudioEngine {
     const graph: Graph = {
       context,
       output,
+      toneBus,
       voiceContext: {
         context,
         destination: master,
