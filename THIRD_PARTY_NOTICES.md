@@ -391,13 +391,20 @@ because the licence asks for it.
 | Lead  | `Blip Lead`     | `Blip Lead-SAMPLES`     | 7     | 724 KB |
 | Pad   | `jp4 - Shimmer` | `jp4 - Shimmer-SAMPLES` | 7     | 724 KB |
 
-One preset from each of the four categories upstream publishes as audio — Bass, Keys, Lead and Pads
-— at roughly one recording every six semitones from MIDI 48 to 84. The FX and Misc folders were
-inspected and nothing from them is shipped: they are effects and one-shots rather than playable
-pitched instruments, and this layer plays melodies.
+One preset from each of four of the six categories upstream publishes as audio — Bass, Keys, Lead
+and Pads — at roughly one recording every six semitones from MIDI 48 to 84.
+
+**FX and Misc were inspected, and the finding was not what was expected.** They are not effects and
+one-shots: both are full of chromatically sampled playable presets, exactly like the four above —
+FX has 11 such folders across 636 recordings, Misc has 10 across 499. So nothing is taken from them
+for reasons of **scope** rather than suitability: this layer offers four sounds, and a fifth and
+sixth would be another 1.4 MB for a feature nobody asked for. The numbers are recorded in the
+manifest under `categoriesNotShipped` and can be reproduced with `npm run prepare:jupiter4 --
+--survey`, which reads about a megabyte of ZIP directories and downloads no audio at all.
 
 The SFZ files were read for their key mappings and nothing else. SFZ is metadata about which
-recording covers which pitch; it is not a fifth category of instrument, and none of it is bundled.
+recording covers which pitch; it is not a further category of instrument, and none of it is
+bundled.
 
 #### What was done to the audio
 

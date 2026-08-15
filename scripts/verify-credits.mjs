@@ -733,6 +733,43 @@ check(
   'both the manifest and the notices record that upstream loop points are unused',
 );
 
+/*
+ * The two categories nothing is taken from.
+ *
+ * The survey found the opposite of what was assumed — FX and Misc are chromatically sampled
+ * playable instruments, not effects — and the documents were corrected. This keeps them corrected:
+ * the counts must match the manifest, and the sentence that was wrong must not grow back.
+ */
+const notShipped = tones.categoriesNotShipped ?? {};
+for (const category of ['FX', 'Misc']) {
+  const found = notShipped[category];
+  check(found !== undefined, `the manifest records what was found in ${category}`);
+  if (found === undefined) continue;
+
+  check(
+    flowed(notices).includes(`${category} has ${String(found.chromaticFolders)} such folders`) ||
+      flowed(notices).includes(`${String(found.chromaticFolders)} across ${String(found.audioFiles)}`),
+    `the notices state ${category}'s real contents`,
+    `${String(found.chromaticFolders)} folders, ${String(found.audioFiles)} recordings`,
+  );
+  check(found.chromaticFolders > 0, `${category} really was inspected rather than assumed about`);
+}
+
+for (const document of [
+  { name: 'README', text: flowed(readme) },
+  { name: 'notices', text: flowed(notices) },
+]) {
+  check(
+    !/(FX and Misc|they) are effects and one-shots rather than playable/iu.test(document.text),
+    `${document.name} does not repeat the corrected claim that FX and Misc are one-shots`,
+  );
+  check(
+    // Either emphasis, since the notices bold the word and the README does not.
+    /(?:\*\*)?scope(?:\*\*)? rather than suitability/u.test(document.text),
+    `${document.name} says why FX and Misc are excluded, correctly`,
+  );
+}
+
 /* ---- report ---------------------------------------------------------------- */
 
 console.log(notes.join('\n'));

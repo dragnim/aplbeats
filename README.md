@@ -338,6 +338,12 @@ it. That is an honest limitation rather than a claim of taste: the reasoning is 
 in [`src/audio/tones/jupiter4.json`](src/audio/tones/jupiter4.json), and a preset that turns out to
 sound wrong under the kit is a thing to change.
 
+Four categories of the six upstream publishes. **FX and Misc were inspected and turned out to be
+chromatically sampled playable instruments too**, rather than the effects and one-shots their names
+suggest — so nothing is taken from them for reasons of scope rather than suitability. The survey is
+reproducible with `npm run prepare:jupiter4 -- --survey`, which reads about a megabyte of ZIP
+directories and downloads no audio.
+
 Seven recordings per sound, roughly every six semitones, played back at
 `2^((midi − root) / 12)` from the nearest one — so nothing is ever shifted more than three
 semitones, which is about where a shifted analogue sample stops sounding like a note and starts

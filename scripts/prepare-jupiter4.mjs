@@ -198,6 +198,25 @@ const ASSETS = {
   'Pads.zip.004': 385960488,
 };
 
+/*
+ * The two categories nothing is taken from, and their pinned sizes.
+ *
+ * Not shipped, and *inspected* rather than assumed — which is the difference between "we did not
+ * use FX" and "FX is not a playable pitched instrument". `--survey` reads their central
+ * directories over Range requests and prints what is in them; the finding is recorded in the
+ * manifest below so a reader does not have to take it on trust or spend two gigabytes checking.
+ */
+const SURVEY_ASSETS = {
+  FX: [
+    ['FX.zip.001', 1000000000],
+    ['FX.zip.002', 907003152],
+  ],
+  Misc: [
+    ['Misc.zip.001', 1000000000],
+    ['Misc.zip.002', 436061712],
+  ],
+};
+
 const manifest = {
   upstream: UPSTREAM,
   preparation: {
@@ -221,6 +240,36 @@ const manifest = {
     roots: ROOTS,
     preparedBy: 'scripts/prepare-jupiter4.mjs',
   },
+  /*
+   * The two categories nothing is taken from, as found rather than as assumed.
+   *
+   * Established by `npm run prepare:jupiter4 -- --survey`, which reads their central directories
+   * over Range requests for about a megabyte. The finding is not what was expected: both are full
+   * of chromatically sampled playable instruments, exactly like the four shipped categories. So
+   * the reason nothing comes from them is scope — this layer offers four sounds — and not that
+   * they are effects. Recording the numbers keeps the documentation from restating the guess.
+   */
+  categoriesNotShipped: {
+    FX: {
+      entries: 1633,
+      audioFiles: 636,
+      folders: 11,
+      chromaticFolders: 11,
+      finding:
+        'chromatically sampled playable presets, not one-shots — excluded for scope rather than ' +
+        'for suitability',
+    },
+    Misc: {
+      entries: 4247,
+      audioFiles: 499,
+      folders: 10,
+      chromaticFolders: 10,
+      finding:
+        'chromatically sampled playable presets, not one-shots — excluded for scope rather than ' +
+        'for suitability',
+    },
+    surveyedBy: 'npm run prepare:jupiter4 -- --survey',
+  },
   sounds: {},
   sourceArchives: {},
 };
@@ -229,6 +278,55 @@ let networkBytes = 0;
 let totalBytes = 0;
 let rebuilt = 0;
 let mismatched = 0;
+
+/* ---- the survey ------------------------------------------------------------ */
+
+/**
+ * What is in a category, without downloading it.
+ *
+ * Reads the ZIP central directory over `Range` requests and counts what kinds of file are there
+ * and how many of them look chromatically sampled — the `-<key>-127` naming every playable preset
+ * in this library uses. A folder with no chromatic set is not something a melody can be played on,
+ * whatever it is called.
+ */
+async function survey(label, parts) {
+  const archive = new RemoteZip(parts.map(([name, size]) => ({ url: `${RELEASE_BASE}/${name}`, size })));
+  await archive.open();
+
+  const names = [...archive.entries.keys()];
+  const audio = names.filter((name) => /\.aif$/iu.test(name));
+  const folders = new Set(audio.map((name) => name.split('/').slice(0, -1).join('/')));
+  const chromatic = new Set(
+    audio.filter((name) => /-\d+-127/u.test(name)).map((name) => name.split('/').slice(0, -1).join('/')),
+  );
+
+  console.log(`${label}:`);
+  console.log(
+    `   ${String(names.length)} entries, ${String(audio.length)} AIFF, ${String(folders.size)} folders`,
+  );
+  console.log(`   ${String(chromatic.size)} folder(s) with chromatically sampled keys`);
+  for (const folder of [...folders].sort().slice(0, 12)) {
+    const count = audio.filter((name) => name.startsWith(`${folder}/`)).length;
+    console.log(
+      `     ${folder.padEnd(52)} ${String(count).padStart(4)} files${chromatic.has(folder) ? '  chromatic' : ''}`,
+    );
+  }
+  if (folders.size > 12) console.log(`     … and ${String(folders.size - 12)} more`);
+  console.log(`   read ${(archive.bytesRead / 1024).toFixed(1)} KB\n`);
+
+  return {
+    entries: names.length,
+    audioFiles: audio.length,
+    folders: folders.size,
+    chromaticFolders: chromatic.size,
+  };
+}
+
+if (args.includes('--survey')) {
+  console.log('Surveying the categories nothing is taken from.\n');
+  for (const [label, parts] of Object.entries(SURVEY_ASSETS)) await survey(label, parts);
+  process.exit(0);
+}
 
 mkdirSync(outDir, { recursive: true });
 
