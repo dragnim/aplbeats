@@ -512,6 +512,38 @@ describe('a result must never lie about the code that produced it', () => {
     expect(calls).toHaveLength(1);
   });
 
+  it('is discarded if the target changed while it was running', async () => {
+    /*
+     * A reply is computed *for* a target. Change the target while one is in flight and the old
+     * matrix would install into a row it was never meant for — a row of the right shape, so
+     * nothing would look wrong about it.
+     *
+     * Stage 6 could not catch this: the staleness check compared only the expression, and
+     * changing the target does not change the expression. It is caught by comparing the whole
+     * identity — expression, target and random seed — which is the same thing the cache compares.
+     */
+    const user = userEvent.setup();
+    const { client, calls, release } = reversing({ hold: true });
+    render(<Harness client={client} />);
+    await openExplore(user);
+
+    await user.selectOptions(screen.getByLabelText('Result goes to'), '0');
+    const before = grid();
+    await user.click(runButton());
+    expect(exploreStatus()).toHaveTextContent('Running APL…');
+
+    // Somewhere else entirely, while the answer for the kick is still out.
+    await user.selectOptions(screen.getByLabelText('Result goes to'), '7');
+
+    release();
+    await waitFor(() => {
+      expect(exploreStatus()).toHaveTextContent('');
+    });
+
+    expect(grid()).toBe(before);
+    expect(calls).toHaveLength(1);
+  });
+
   it('is discarded if the pattern changed while it was running', async () => {
     const user = userEvent.setup();
     const { client, release } = reversing({ hold: true });

@@ -32,7 +32,7 @@ import {
   type Target,
 } from './operations';
 import { buildAplSource, type AplSource } from './operations';
-import { isStillApplicable, AplService, type TransformOutcome } from './service';
+import { customIdentityKey, isStillApplicable, AplService, type TransformOutcome } from './service';
 
 /*
  * When APL runs, and what the interface knows about it.
@@ -628,17 +628,32 @@ export function useApl({ pattern, lockedRows, onApply, client }: UseAplOptions):
   );
 
   /**
-   * What the editor holds *now*, read when a reply arrives.
+   * What the editor is asking *now*, read when a reply arrives.
    *
    * A ref rather than the closed-over value, and that distinction is the whole of the check: the
-   * running expression is captured when the request starts, so comparing it with itself would
-   * always agree and nothing could ever be stale. It has to be compared with what is on screen
-   * at the moment the answer comes back.
+   * running request is captured when it starts, so comparing it with itself would always agree
+   * and nothing could ever be stale. It has to be compared with what is on screen at the moment
+   * the answer comes back.
+   *
+   * It holds the whole identity — expression, target and random seed — rather than the
+   * expression alone. Stage 6 checked only the expression, which left two ways for a reply to
+   * land under a question nobody asked: run against one track, change the target, and the old
+   * matrix installs into the new row; or run a generator at one seed, change the seed, and a bar
+   * from the old seed arrives under the new one. Neither changes the expression, so neither was
+   * caught.
+   *
+   * `customIdentityKey` is the same function the cache uses. That is deliberate: these two must
+   * agree about what makes one custom run different from another, and the way to guarantee it is
+   * to have one of them rather than two that look alike.
    */
-  const latestExpression = useRef(exploreExpression);
+  const latestCustomIdentity = useRef('');
   useEffect(() => {
-    latestExpression.current = exploreExpression;
-  }, [exploreExpression]);
+    latestCustomIdentity.current = customIdentityKey({
+      core: exploreExpression.trim(),
+      target: exploreTarget,
+      randomSeed: exploreRandomSeed,
+    });
+  }, [exploreExpression, exploreTarget, exploreRandomSeed]);
 
   /*
    * The draft, written a moment after typing stops.
@@ -753,6 +768,19 @@ export function useApl({ pattern, lockedRows, onApply, client }: UseAplOptions):
     const valid = checkCustomExpression(exploreExpression);
     if (!valid.ok) return;
 
+    /*
+     * What is being asked, captured now.
+     *
+     * Everything the answer depends on except the bar, which `submit` compares separately and by
+     * value. Editing during a run stays allowed — the network must not freeze somebody's
+     * writing — so it is the *reply* that gets discarded when any of this has moved on.
+     */
+    const asked = customIdentityKey({
+      core: valid.core,
+      target: exploreTarget,
+      randomSeed: exploreRandomSeed,
+    });
+
     submit(
       'custom',
       (service) =>
@@ -762,9 +790,7 @@ export function useApl({ pattern, lockedRows, onApply, client }: UseAplOptions):
           pattern: patternRef.current,
           ...(exploreRandomSeed === null ? {} : { randomSeed: exploreRandomSeed }),
         }),
-      // Stale if the editor has moved on. The network must not freeze somebody's writing, so
-      // editing during a run is allowed and the reply is what gets discarded.
-      () => latestExpression.current.trim() === valid.core,
+      () => latestCustomIdentity.current === asked,
     );
   }, [exploreExpression, exploreTarget, exploreRandomSeed, submit]);
 

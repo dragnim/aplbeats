@@ -438,6 +438,65 @@ describe('status ownership', () => {
 
 /* ------------------------------------------------------------------------- */
 
+describe('a custom reply that is no longer wanted', () => {
+  it('is discarded when the seed changed while it was running', async () => {
+    /*
+     * The Explore half of the same bug the cache had.
+     *
+     * A generator loaded from Create is pristine, so it follows the Create seed — and running it
+     * at seed A then moving to seed B while the request is out would, before this was fixed,
+     * install A's bar under B. Nothing about the expression changes, so the Stage 6 check that
+     * compared expressions could not see it, and the result looked exactly as plausible as the
+     * right one.
+     *
+     * Editing during a run stays allowed, as Stage 5 decided. It is the reply that is dropped.
+     */
+    const user = userEvent.setup();
+    const { client, calls, pending } = controllableClient();
+    render(<Harness client={client} />);
+
+    await user.click(screen.getByRole('button', { name: 'Peek at the APL' }));
+    await user.click(screen.getByRole('button', { name: 'Edit this APL' }));
+
+    const before = bits();
+    await user.click(screen.getByRole('button', { name: 'Run this APL' }));
+    expect(calls).toHaveLength(1);
+
+    // The editor is still pristine, so this moves the seed the expression would run under.
+    await user.clear(screen.getByLabelText('Seed'));
+    await user.type(screen.getByLabelText('Seed'), '123456');
+
+    act(() => {
+      pending[0]?.settle(reply(GENERATED));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('status', { name: 'Explore' })).toHaveTextContent('');
+    });
+    expect(bits()).toBe(before);
+    expect(calls).toHaveLength(1);
+  });
+
+  it('is kept when nothing that decides the answer moved', async () => {
+    // The other half, so the check above is not simply refusing everything.
+    const user = userEvent.setup();
+    const { client, pending } = controllableClient();
+    render(<Harness client={client} />);
+
+    await user.click(screen.getByRole('button', { name: 'Peek at the APL' }));
+    await user.click(screen.getByRole('button', { name: 'Edit this APL' }));
+
+    await user.click(screen.getByRole('button', { name: 'Run this APL' }));
+    act(() => {
+      pending[0]?.settle(reply(GENERATED));
+    });
+
+    await waitFor(() => {
+      expect(bits()).toBe(bitsOf(GENERATED));
+    });
+  });
+});
+
 describe('Explore, loaded from Create', () => {
   it('opens on the recipe’s own expression, and says which seed it will use', async () => {
     const user = userEvent.setup();

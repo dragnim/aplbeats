@@ -72,6 +72,50 @@ export interface CustomRequest {
   readonly core: string;
   readonly target: Target;
   readonly pattern: Pattern;
+  /**
+   * The seed `⎕RL` is fixed to, when the expression needs one.
+   *
+   * Absent for an ordinary Explore expression, which is how Stage 5 worked and still works.
+   * Present for one loaded from Create, because a generator uses `?` and the seed decides its
+   * answer as surely as the expression does.
+   *
+   * Which makes it part of this request's *identity*, not decoration — see `customIdentityKey`.
+   */
+  readonly randomSeed?: number;
+}
+
+/**
+ * Everything that decides what a hand-written expression will answer.
+ *
+ * Written down once, and once only, because there are two questions that need it and they must
+ * never disagree: *have I already computed this?* — the cache — and *is the reply still the one
+ * that was asked for?* — staleness. Stage 6 shipped with those two derived separately, and they
+ * drifted immediately: the seed reached the request through `buildCustomSource` but neither the
+ * cache key nor the staleness check knew about it. So the same expression at a different seed
+ * was answered from cache with the wrong rhythm, and a reply computed for one target could
+ * install into another.
+ *
+ * The pattern is deliberately *not* here. It is part of the cache key, because the same
+ * expression against a different bar is a different question — but staleness compares patterns
+ * by value elsewhere, so that a bar edited and undone is still answerable. These are the parts
+ * both questions treat identically.
+ *
+ * The seed is normalised the same way `buildCustomSource` normalises it, through `clampSeed`,
+ * so that two requests which would send byte-identical APL have byte-identical identities. And
+ * *no* random context is its own value rather than a missing one: an unseeded expression and a
+ * seeded one are different questions even when the seed happens to be 1.
+ */
+export function customIdentityKey(request: {
+  readonly core: string;
+  readonly target: Target;
+  readonly randomSeed?: number | null;
+}): string {
+  const seed =
+    request.randomSeed === undefined || request.randomSeed === null
+      ? 'none'
+      : String(clampSeed(request.randomSeed));
+
+  return `${String(request.target)}|rl=${seed}|${request.core}`;
 }
 
 export interface TransformOutcome {
@@ -121,10 +165,14 @@ export function cacheKey(request: TransformRequest): string {
  * a much better failure than a wrong rhythm.
  *
  * Prefixed, so a custom expression can never collide with a generated one.
+ *
+ * The identity above plus the bar it runs against. Built from `customIdentityKey` rather than
+ * from the fields directly, so that the cache and the staleness check cannot start disagreeing
+ * about what makes two custom runs the same run.
  */
 export function customCacheKey(request: CustomRequest): string {
   const bits = request.pattern.map((row) => row.map((cell) => (cell ? '1' : '0')).join('')).join('');
-  return `custom|${String(request.target)}|${request.core}|${bits}`;
+  return `custom|${customIdentityKey(request)}|${bits}`;
 }
 
 /**
