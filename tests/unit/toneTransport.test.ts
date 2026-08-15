@@ -308,6 +308,36 @@ describe('the Tone layer and the transport', () => {
     }).not.toThrow();
   });
 
+  it('schedules the drums identically whether or not a melody is playing', async () => {
+    /*
+     * The audio-regression claim, made as a comparison rather than as an assurance.
+     *
+     * Stage 8 added a node to the graph and a call to the scheduler's callback. Neither may change
+     * a single drum event — not its step, not its time, not its level — and the way to know that
+     * is to schedule the same bar twice and compare, rather than to reason about it.
+     */
+    const capture = async (withMelody: boolean): Promise<string[]> => {
+      const harness = rig({ phrase: withMelody ? openingPhrase() : emptyPhrase() });
+      const seen: string[] = [];
+      vi.spyOn(harness.engine, 'playStep').mockImplementation((_pattern, mixer, step, time) => {
+        seen.push(`${String(step)}@${time.toFixed(9)}|${mixer.map((mix) => mix.volume).join(',')}`);
+      });
+      if (withMelody) harness.transport.setToneSampler(harness.sampler);
+      await harness.transport.play();
+      for (let elapsed = 0; elapsed < 2.2; elapsed += 0.025) {
+        harness.recorder.currentTime += 0.025;
+        harness.tick();
+      }
+      return seen;
+    };
+
+    const withoutMelody = await capture(false);
+    const withMelody = await capture(true);
+
+    expect(withoutMelody.length).toBeGreaterThan(10);
+    expect(withMelody).toEqual(withoutMelody);
+  });
+
   it('remembers the Tone level with no audio device open', () => {
     // The same bargain the master volume makes: moving a fader must not start an AudioContext.
     const built = Recorder.built;
