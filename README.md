@@ -2,13 +2,13 @@
 
 **Make music first. Discover array programming second.**
 
-A generative drum machine and melody sequencer in the browser. Eight drum tracks and one
+A generative drum machine and Tone sequencer in the browser. Eight drum tracks and one
 Tone phrase, sixteen steps each, a groove and a tune already loaded — press Play, then press
 Randomise.
 
 Live site: <https://dragnim.github.io/aplbeats/>
 
-Underneath the grid is an 8 × 16 matrix of Booleans, and underneath the Tone strip is a
+Underneath the grid is an 8 × 16 matrix of Booleans, and underneath the Tone matrix is a
 sixteen-element vector of numbers. That is not an implementation detail but the whole idea —
 and the _contrast_ between the two is the sharpest thing here:
 
@@ -167,7 +167,7 @@ They are now. On a desktop the page is three columns, under two rows of layer ta
 ├──────┬─────────────────────────────┬─────────────────────────┤
 │ Play │                             │                         │
 │ Crea │  the sequencer, or          │  the active APL         │  sticky
-│ Tran │  the Tone strip             │  workspace              │  column
+│ Tran │  the Tone matrix            │  workspace              │  column
 │ Expl │  (the instrument)           │                         │
 └──────┴─────────────────────────────┴─────────────────────────┘
 ```
@@ -253,7 +253,7 @@ n   0 60 0 63 67 …     Tones: which pitch sounds on this step, if any?
 `m` needs `8 16⍴` to say what shape it is. `n` is just numbers. Everything below follows from
 that.
 
-![The Tones layer: the Tone strip, the Sound selector, and the phrase as a numeric vector](docs/screenshot-tones.png)
+![The Tones layer: a twelve by sixteen matrix of pitch classes, the Sound selector, and the phrase as a numeric vector](docs/screenshot-tones.png)
 
 ### The data model
 
@@ -301,31 +301,64 @@ musical instrument are how you lose a take.
 
 ### Writing a Tone phrase by hand
 
-The Tones Play view is sixteen columns on the same rhythm as the drum grid, so a note on step 5
-sits above the snare on step 5 at every width. What differs is the pad: a drum step is on or off,
-and a phrase step has a _value_. The note name is printed on it and the height of the fill shows
-the pitch.
+The Tones Play view is a **twelve by sixteen matrix**: sixteen step columns on the same rhythm as
+the drum grid, so a note on step 5 sits above the snare on step 5 at every width, and twelve rows
+running C at the bottom to B at the top. Black keys are tinted, so an octave is legible without
+counting up from anywhere.
 
-| Gesture                          | What it does                |
-| -------------------------------- | --------------------------- |
-| Click a rest                     | gives it a note at middle C |
-| Click a note                     | selects it, and plays it    |
-| **↑** / **↓**                    | up or down a semitone       |
-| **Page Up** / **Page Down**      | up or down an octave        |
-| **Backspace**, **Delete**, **0** | makes it a rest             |
-| **←** / **→**, **Home**, **End** | walk the bar                |
+**The rows are pitch classes, not an octave window.** C3, C4, C5 and C6 all light the same C row
+and are told apart by the octave badge drawn on the note. That is what lets twelve rows hold a
+thirty-seven semitone instrument with no octave pages, no base note and nothing to scroll — and it
+is why MIDI 84 needed no thirteenth row.
 
-The editor row below the strip is the same operations as buttons — −12, −1, +1, +12 and Rest —
-because a touchscreen has no arrow keys. It acts on the selected step, which is named beside it,
-so "Up" is never an instruction without an object.
+| Gesture                           | What it does                                      |
+| --------------------------------- | ------------------------------------------------- |
+| Click an empty cell               | puts a note there                                 |
+| Click a cell in a sounding column | **moves** the note to it — nothing to erase first |
+| Click the note itself             | makes the column a rest                           |
+| **↑** / **↓**                     | move between rows                                 |
+| **←** / **→**, **Home**, **End**  | walk the bar                                      |
+| **Page Up** / **Page Down**       | the note up or down an octave                     |
+| **Backspace**, **Delete**, **0**  | makes the column a rest                           |
+
+A click says which pitch _class_ you meant and nothing about which octave, so the note lands in the
+octave you were last in — and clicking a row above the note you were on always sounds above it,
+which nearest-pitch would not. Crossing an octave is what **Page Up** and the **±12** buttons are
+for, and they are the only place the octave is ever named.
+
+**One note per column, and that is not a rule the editor imposes.** A phrase holds one value per
+step, so at most one cell in a column can be lit — the monophonic sampler showing through the shape
+of the data. Trying to place a second note in a column teaches that in about a second.
+
+The editor row below the matrix is −12, −1, +1, +12 and Rest as buttons, because a touchscreen has
+no arrow keys and because the grid alone cannot say which octave. It acts on the selected step,
+which is named beside it, so "up an octave" is never an instruction without an object.
 
 **Every change is heard**, whether the transport is running or not. A drum step you switch on is
 heard a fraction of a bar later anyway; a note moved from G to A♭ might not sound again for fifteen
 steps, and choosing a pitch by ear means hearing the pitch when you choose it.
 
-Under the strip, the panel shows the phrase as APL holds it: `60 0 0 63 0 67 0 0 65 0 0 63 0 60 0
+Under the matrix, the panel shows the phrase as APL holds it: `60 0 0 63 0 67 0 0 65 0 0 63 0 60 0
 0`. It costs nothing to show and it is the whole lesson — the Beats side needs a Peek to show the
 same thing.
+
+**The grid is a view; the vector is the data.** The Tones Peek prints the one line that turns one
+into the other:
+
+```apl
+⎕IO←0
+M←((⍳12)∘.=12|n)×[1]0<n
+```
+
+`12|n` is the row each note lands on and `∘.=` compares the twelve rows against all sixteen steps
+at once — the same outer product the drum generator uses to build `m`. `×[1]0<n` is what makes it
+true rather than nearly true: without it every rest would light the C row, because `12|0` is 0.
+
+There is **no expression back**, and that is the honest part. A cell says _a G sounds on step 6_ and
+never which G, so the grid cannot rebuild `n` — which is exactly why `n`, and not the grid, is what
+is stored, transformed and sent. Neither line is executed; both are arithmetic over sixteen numbers,
+and they were checked against real Dyalog by hand for rests, for MIDI 48 and 84, for four octaves on
+one row and for an ordinary bar.
 
 ### The sound
 
@@ -1130,10 +1163,10 @@ src/
     kitLoader.ts   fetch, decode, cache. Never more than once
     useDrumMachine.ts  the one identifier that is Stage 4's whole state
   pattern/     the matrix, the eight tracks, the mixer, the opening groove
-  tones/       the phrase: sixteen numbers, and what may be one of them
+  tones/       the phrase: sixteen numbers, what may be one of them, and the grid that draws them
   transport/   the timing arithmetic, the look-ahead scheduler, the one transport
   audio/       the AudioContext boundary, the synthesised kit, the DSP pieces
-  components/  the sequencer grid, the Tone strip, the panels, the transport bar
+  components/  the sequencer grid, the Tone matrix, the panels, the transport bar
   app/         the creative state and its history, persistence, the shell
   styles/      tokens and the global sheet
 ```

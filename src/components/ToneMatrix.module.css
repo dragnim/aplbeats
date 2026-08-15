@@ -1,0 +1,274 @@
+/*
+ * The Tone matrix.
+ *
+ * Sixteen columns on the same rhythm as the drum grid, so the eye reads the two layers as one bar
+ * — a note on step 5 sits directly above the snare on step 5, at every width. What differs is the
+ * vertical: the drum grid's eight rows are instruments, and these twelve are pitch classes, C at
+ * the bottom.
+ *
+ * Twelve rows against the grid's eight is half again as much height, so a cell is shorter than a
+ * drum pad can afford to be. It can be: a drum pad carries a name and a level, and a cell here
+ * carries at most one digit. The row labels down the left do the naming once instead of sixteen
+ * times.
+ *
+ * **Black-key rows are tinted**, and it is not decoration. It is how anybody who has seen a
+ * keyboard finds C without counting up from the bottom, and it is what makes an octave legible at
+ * a glance rather than after reading five labels.
+ */
+.matrix {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/*
+ * The same scroller the drum grid has, for the same reason.
+ *
+ * `min-width: min-content` on the grid is what makes it necessary rather than incidental: the
+ * columns have a floor, so below a certain width the matrix stops shrinking and starts scrolling
+ * instead of squeezing sixteen columns down to something a thumb cannot hit.
+ */
+.scroller {
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Vertical panning still belongs to the page; only sideways is ours. */
+  touch-action: pan-x pan-y;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  padding-bottom: var(--space-1);
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cell-gap);
+  min-width: min-content;
+}
+
+/* One pitch class: its label, then sixteen steps on the drum grid's own column rhythm. */
+.row,
+.stepNumbers {
+  display: grid;
+  grid-template-columns: 2.25rem repeat(16, minmax(var(--cell-min), 1fr));
+  gap: var(--cell-gap);
+  align-items: center;
+}
+
+.rowLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: right;
+  padding-inline-end: var(--space-2);
+  /* The labels are not interactive and must never take a click meant for the first column. */
+  pointer-events: none;
+  user-select: none;
+}
+
+/* A black key's name is quieter, so the white rows lead the eye and C is findable. */
+.rowLabel.black {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  /*
+   * 26px, and deliberately not `--cell-min`.
+   *
+   * That token is 34px and is the drum grid's floor for both dimensions, which twelve rows cannot
+   * afford — it would make the matrix 450px tall before the step numbers. The width still uses it,
+   * so the columns line up with the drums exactly; the height comes down to 26px, which clears the
+   * 24px WCAG 2.2 target-size minimum with a little to spare. A cell here has one digit on it at
+   * most, so it needs none of the room a drum pad's name and level need.
+   */
+  height: 1.625rem;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--cell);
+  scroll-snap-align: start;
+  touch-action: pan-x pan-y;
+  transition:
+    background-color var(--motion-fast) var(--ease),
+    border-color var(--motion-fast) var(--ease);
+}
+
+/*
+ * Two shadings that have to stay independent.
+ *
+ * The grid is read in both directions at once: *which beat is this* along one axis and *which key
+ * is this* along the other. Giving both the same token — the first version gave black rows the
+ * drum grid's beat shade — meant a black key on beat 1 was indistinguishable from either, and the
+ * bar lost its pulse. So the beat keeps the drum grid's own shade, exactly, and the black keys are
+ * a separate tint mixed on top of whichever shade the column already has.
+ */
+.cell.beatStart {
+  background: var(--cell-beat);
+  border-color: var(--line-strong);
+}
+
+.cell.blackRow {
+  background: color-mix(in srgb, var(--cell) 86%, var(--text-dim));
+}
+
+.cell.blackRow.beatStart {
+  background: color-mix(in srgb, var(--cell-beat) 86%, var(--text-dim));
+}
+
+.cell:hover:not(.lit) {
+  background: var(--cell-hover);
+}
+
+/*
+ * A note.
+ *
+ * The whole cell, rather than a fill of some height: the pitch is now *where the cell is*, so
+ * there is nothing left for a height to say. This is the one place the accent appears in the
+ * grid, which is what makes a phrase readable as a shape from across a desk.
+ */
+.cell.lit {
+  background: var(--accent);
+  border-color: var(--accent-bright);
+}
+
+.cell.lit:hover {
+  background: var(--accent-bright);
+}
+
+/*
+ * The octave, on the note.
+ *
+ * The one thing the row cannot say. A C row cell is C3, C4, C5 or C6 and the digit is the whole
+ * difference, so it sits on the note itself rather than anywhere it would have to be looked up.
+ */
+.octave {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--on-accent);
+}
+
+.underPlayhead {
+  border-color: var(--line-strong);
+}
+
+.playing {
+  border-color: var(--playhead);
+  box-shadow: inset 0 0 0 1px var(--playhead);
+}
+
+/* --- The step numbers ----------------------------------------------------- */
+
+.stepNumbers {
+  margin-top: var(--space-1);
+}
+
+.stepNumber {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.beatNumber {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+/* --- The editor row ------------------------------------------------------- */
+
+.editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+
+.selection {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  min-width: 7.5rem;
+}
+
+.selectionLabel {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.selectionValue {
+  color: var(--accent-bright);
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.button {
+  min-width: var(--tap-target);
+  min-height: var(--tap-target);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  transition:
+    background-color var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease);
+}
+
+.button:hover:not(:disabled) {
+  background: var(--cell-hover);
+  color: var(--accent-bright);
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* The rest toggle is a word rather than a number, so it is not read as another interval. */
+.rest {
+  font-family: inherit;
+  padding: 0 var(--space-4);
+}
+
+/*
+ * On a phone the labels lose nothing but width.
+ *
+ * A pitch class is one or two characters already, so unlike the strip's note names there is no
+ * abbreviation to make — the column simply narrows and the cells keep their height, because
+ * twelve rows that each lost a pixel would be twelve pixels of phrase.
+ */
+@media (max-width: 47.9375rem) {
+  .row,
+  .stepNumbers {
+    grid-template-columns: 1.75rem repeat(16, minmax(var(--cell-min), 1fr));
+  }
+
+  .cell {
+    height: 1.5rem;
+  }
+}

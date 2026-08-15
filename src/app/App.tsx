@@ -14,7 +14,7 @@ import { UndoButton } from '@/components/UndoButton';
 import { TransportBar } from '@/components/TransportBar';
 import { WorkspaceRail } from '@/components/WorkspaceRail';
 import { DomainTabs } from '@/components/DomainTabs';
-import { ToneStrip } from '@/components/ToneStrip';
+import { ToneMatrix } from '@/components/ToneMatrix';
 import { TonePanel } from '@/components/TonePanel';
 import { ToneCreatePanel } from '@/components/ToneCreatePanel';
 import { ToneTransformPanel } from '@/components/ToneTransformPanel';
@@ -505,7 +505,7 @@ export function App(): React.JSX.Element {
           ) : (
             <>
               <h2 className="visuallyHidden">Tones</h2>
-              <ToneStrip
+              <ToneMatrix
                 phrase={phrase}
                 playheadStep={transport.playheadStep}
                 isPlaying={transport.isPlaying}

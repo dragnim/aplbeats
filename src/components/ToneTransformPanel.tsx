@@ -2,6 +2,7 @@ import { useId, useState } from 'react';
 import { cx } from '@/app/cx';
 import { TONE_OPERATIONS, type ToneOperationId } from '@/apl/toneOperations';
 import type { TransformApi } from '@/apl/useApl';
+import { projectionSource } from '@/tones/matrix';
 import { noteName, phraseToAplLiteral, REST, type Phrase } from '@/tones/phrase';
 import styles from './AplPanel.module.css';
 
@@ -204,6 +205,36 @@ export function ToneTransformPanel({
               <p className={styles.note}>
                 Sixteen numbers. 0 is a rest; everything else is a MIDI note, where 60 is middle C. That is
                 the whole phrase — no shape prefix, because a vector does not need one.
+              </p>
+            </div>
+
+            <div className={styles.peekBlock}>
+              <h4 className={styles.peekHeading}>The same phrase, as the grid draws it</h4>
+              {/*
+                The projection, in the language the grid is an argument about.
+
+                Not sent anywhere — it is arithmetic over sixteen numbers, and asking a remote
+                interpreter to redraw a grid would be absurd. It is here because the matrix above
+                is a *view* and a reader is entitled to see exactly what kind: one line turns the
+                vector into twelve rows, and no line turns it back, because the octave is not in
+                the grid at all.
+              */}
+              <pre className={cx(styles.code, styles.codeWrapped)}>
+                <code>{projectionSource(phrase).join('\n')}</code>
+              </pre>
+              <p className={styles.note}>
+                <span className={styles.glyph}>12|n</span> is the row each note lands on, so C3, C4, C5 and C6
+                share one row and differ only by the badge drawn on the cell.{' '}
+                <span className={styles.glyph}>∘.=</span> compares the twelve rows against all sixteen steps
+                at once — the same outer product the drum generator uses to build{' '}
+                <span className={styles.glyph}>m</span>. And <span className={styles.glyph}>×[1]0&lt;n</span>{' '}
+                is what makes it true rather than nearly true: without it every rest would light the C row,
+                because <span className={styles.glyph}>12|0</span> is 0.
+              </p>
+              <p className={styles.note}>
+                There is no expression back. A cell says <em>a G sounds on step 6</em> and never which G, so
+                the grid cannot rebuild <span className={styles.glyph}>n</span> — which is the honest reason
+                the vector, and not the grid, is the thing that is stored, transformed and sent.
               </p>
             </div>
 

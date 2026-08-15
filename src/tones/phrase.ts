@@ -36,8 +36,8 @@ export const REST = 0;
  * The playable range, derived from the source recordings rather than chosen.
  *
  * Each Jupiter-4 preset is sampled chromatically over its own span, and the intersection of the
- * four shipped sounds is MIDI 48–83; the top note is reached by shifting the highest recording of
- * the two presets that stop at 83 up one semitone. So: C3 to C6, three octaves — low enough for a
+ * shipped sounds is MIDI 48–83; the top note is reached by shifting the highest recording of the
+ * presets that stop short of it up a semitone. So: C3 to C6, three octaves — low enough for a
  * bass line to sit under a kick and high enough for a lead to be a lead.
  *
  * See `scripts/prepare-jupiter4.mjs`, which derives the same numbers from the archives.

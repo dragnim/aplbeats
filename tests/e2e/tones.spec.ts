@@ -74,8 +74,19 @@ const layer = (page: Page, name: 'Beats' | 'Tones') =>
   page.getByRole('tablist', { name: 'Layer' }).getByRole('tab', { name, exact: true });
 const workspace = (page: Page, name: string) =>
   page.getByRole('tablist', { name: 'Workspace' }).getByRole('tab', { name, exact: true });
-const pad = (page: Page, step: number) =>
-  page.getByRole('button', { name: new RegExp(`^Step ${String(step)},`, 'u') });
+/*
+ * One cell of the Tone matrix, by row and step.
+ *
+ * By data attribute rather than by accessible name, because the name of a cell is now the *row* —
+ * "Step 3, D♯" — and twelve of those share a column. The name is what a screen reader hears and is
+ * asserted on its own below; this is how a test says which square it means.
+ */
+const cell = (page: Page, row: number, step: number) =>
+  page.locator(`[data-row="${String(row)}"][data-step="${String(step - 1)}"]`);
+
+/** Whichever cell sounds in a column — none, or exactly one, because the sampler is monophonic. */
+const sounding = (page: Page, step: number) =>
+  page.locator(`[data-step="${String(step - 1)}"][aria-pressed="true"]`);
 
 /* ---- the layer tabs ------------------------------------------------------ */
 
@@ -191,16 +202,40 @@ test('nothing is downloaded until Tones is opened, and nothing twice', async ({ 
 
 /* ---- editing a phrase ---------------------------------------------------- */
 
-test('a step carries its pitch in its name, not only in its picture', async ({ page }) => {
+test('a note carries its pitch and its octave in its name', async ({ page }) => {
   await freshVisit(page);
   await layer(page, 'Tones').click();
 
   // The opening phrase: C4 on step 1, and a rest on the backbeat.
-  await expect(pad(page, 1)).toHaveAccessibleName('Step 1, C4');
-  await expect(pad(page, 5)).toHaveAccessibleName('Step 5, rest');
+  await expect(sounding(page, 1)).toHaveAccessibleName('Step 1, C4');
+  await expect(sounding(page, 5)).toHaveCount(0);
+
+  // An empty cell names its row and no octave, because it has none to name until it sounds.
+  await expect(cell(page, 7, 5)).toHaveAccessibleName('Step 5, G');
 });
 
-test('arrow keys move a note by a semitone, and the vector agrees', async ({ page }) => {
+test('C3, C4, C5 and C6 share one row and differ by their badge', async ({ page }) => {
+  /*
+   * The load-bearing claim of the whole editor. Twelve rows hold a thirty-seven semitone
+   * instrument because a row is a pitch *class*, so four octaves of C are one row and four
+   * different names.
+   */
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  await cell(page, 0, 2).click();
+  await expect(sounding(page, 2)).toHaveAccessibleName('Step 2, C4');
+
+  await page.getByRole('button', { name: 'Step 2 up an octave' }).click();
+  await expect(sounding(page, 2)).toHaveAccessibleName('Step 2, C5');
+  await page.getByRole('button', { name: 'Step 2 up an octave' }).click();
+  await expect(sounding(page, 2)).toHaveAccessibleName('Step 2, C6');
+
+  // Still the C row, four octaves later — MIDI 84 has a home rather than being a thirteenth row.
+  await expect(cell(page, 0, 2)).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('placing a note in the grid moves the vector with it', async ({ page }) => {
   await freshVisit(page);
   await layer(page, 'Tones').click();
 
@@ -209,58 +244,99 @@ test('arrow keys move a note by a semitone, and the vector agrees', async ({ pag
   const vector = page.getByRole('region', { name: 'Tones' }).locator('pre');
   await expect(vector).toContainText('60 0 0 63');
 
-  await pad(page, 1).focus();
-  await page.keyboard.press('ArrowUp');
-  await expect(pad(page, 1)).toHaveAccessibleName('Step 1, C♯4');
+  // The C♯ row on step 1: one row up from the C that is there, so one semitone up.
+  await cell(page, 1, 1).click();
+  await expect(sounding(page, 1)).toHaveAccessibleName('Step 1, C♯4');
   // The readout is the same data, so it has to move with it — that is the whole demonstration.
   await expect(vector).toContainText('61 0 0 63');
 
   await page.keyboard.press('PageUp');
-  await expect(pad(page, 1)).toHaveAccessibleName('Step 1, C♯5');
+  await expect(sounding(page, 1)).toHaveAccessibleName('Step 1, C♯5');
   await expect(vector).toContainText('73 0 0 63');
+});
+
+test('a column holds one note: clicking another row moves it', async ({ page }) => {
+  /*
+   * Monophonic, shown rather than explained. Nothing is erased first and nothing stacks — the
+   * note is simply somewhere else, in one gesture.
+   */
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  await expect(sounding(page, 4)).toHaveAccessibleName('Step 4, D♯4');
+
+  await cell(page, 7, 4).click();
+  await expect(sounding(page, 4)).toHaveAccessibleName('Step 4, G4');
+  await expect(page.locator('[data-step="3"][aria-pressed="true"]')).toHaveCount(1);
+  await expect(cell(page, 3, 4)).toHaveAttribute('aria-pressed', 'false');
 });
 
 test('a rest becomes a note, and a note becomes a rest', async ({ page }) => {
   await freshVisit(page);
   await layer(page, 'Tones').click();
 
-  await pad(page, 2).click();
-  await expect(pad(page, 2)).toHaveAccessibleName('Step 2, C4');
+  await cell(page, 0, 2).click();
+  await expect(sounding(page, 2)).toHaveAccessibleName('Step 2, C4');
 
+  // Clicking the lit cell again clears the column, and so does Backspace.
+  await cell(page, 0, 2).click();
+  await expect(sounding(page, 2)).toHaveCount(0);
+
+  await cell(page, 0, 2).click();
   await page.keyboard.press('Backspace');
-  await expect(pad(page, 2)).toHaveAccessibleName('Step 2, rest');
+  await expect(sounding(page, 2)).toHaveCount(0);
 });
 
 test('the editor row acts on the step you selected', async ({ page }) => {
   await freshVisit(page);
   await layer(page, 'Tones').click();
 
-  await pad(page, 4).click();
-  await expect(pad(page, 4)).toHaveAccessibleName('Step 4, D♯4');
+  await cell(page, 0, 2).click();
+  await expect(sounding(page, 2)).toHaveAccessibleName('Step 2, C4');
 
-  await page.getByRole('button', { name: 'Step 4 up an octave' }).click();
-  await expect(pad(page, 4)).toHaveAccessibleName('Step 4, D♯5');
+  await page.getByRole('button', { name: 'Step 2 up an octave' }).click();
+  await expect(sounding(page, 2)).toHaveAccessibleName('Step 2, C5');
 
-  await page.getByRole('button', { name: 'Step 4 down a semitone' }).click();
-  await expect(pad(page, 4)).toHaveAccessibleName('Step 4, D5');
+  await page.getByRole('button', { name: 'Step 2 down a semitone' }).click();
+  await expect(sounding(page, 2)).toHaveAccessibleName('Step 2, B4');
 });
 
-test('arrow keys walk the bar without leaving it', async ({ page }) => {
+test('arrow keys walk the grid without leaving it', async ({ page }) => {
   await freshVisit(page);
   await layer(page, 'Tones').click();
 
-  await pad(page, 1).focus();
+  await cell(page, 0, 1).focus();
   await page.keyboard.press('ArrowRight');
-  await expect(pad(page, 2)).toBeFocused();
+  await expect(cell(page, 0, 2)).toBeFocused();
+
+  // Up and Down move between rows. They no longer edit — that is what Space and the row below do.
+  await page.keyboard.press('ArrowUp');
+  await expect(cell(page, 1, 2)).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(cell(page, 0, 2)).toBeFocused();
+
+  // The bottom is the bottom: C is the lowest row and there is nothing under it.
+  await page.keyboard.press('ArrowDown');
+  await expect(cell(page, 0, 2)).toBeFocused();
 
   await page.keyboard.press('End');
-  await expect(pad(page, 16)).toBeFocused();
+  await expect(cell(page, 0, 16)).toBeFocused();
   // The end is the end: a phrase has sixteen steps and there is no seventeenth to reach.
   await page.keyboard.press('ArrowRight');
-  await expect(pad(page, 16)).toBeFocused();
+  await expect(cell(page, 0, 16)).toBeFocused();
 
   await page.keyboard.press('Home');
-  await expect(pad(page, 1)).toBeFocused();
+  await expect(cell(page, 0, 1)).toBeFocused();
+});
+
+test('the grid is one tab stop, not a hundred and ninety-two', async ({ page }) => {
+  // The same bargain the drum grid makes. Sixteen tab presses to get past a bar would be bad;
+  // a hundred and ninety-two would be an interface nobody could use with a keyboard at all.
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  const reachable = page.locator('[data-row][data-step][tabindex="0"]');
+  await expect(reachable).toHaveCount(1);
 });
 
 /* ---- Undo, across both layers ------------------------------------------- */
@@ -272,18 +348,17 @@ test('one Undo covers both layers, and takes back whatever was last', async ({ p
   await expect(undo).toBeDisabled();
 
   // A drum edit, then a phrase edit.
-  const cell = page.locator(CELL).nth(2);
-  await cell.click();
+  const drumCell = page.locator(CELL).nth(2);
+  await drumCell.click();
   await expect(undo).toBeEnabled();
 
   await layer(page, 'Tones').click();
-  await pad(page, 1).focus();
-  await page.keyboard.press('ArrowUp');
-  await expect(pad(page, 1)).toHaveAccessibleName('Step 1, C♯4');
+  await cell(page, 1, 1).click();
+  await expect(sounding(page, 1)).toHaveAccessibleName('Step 1, C♯4');
 
   // The phrase comes back first, because it was the last thing changed.
   await undo.click();
-  await expect(pad(page, 1)).toHaveAccessibleName('Step 1, C4');
+  await expect(sounding(page, 1)).toHaveAccessibleName('Step 1, C4');
 
   // And the drum edit is still there until the next press.
   await layer(page, 'Beats').click();
@@ -298,8 +373,8 @@ test('the phrase and its instrument survive a reload', async ({ page }) => {
   await freshVisit(page);
   await layer(page, 'Tones').click();
 
-  await pad(page, 3).click();
-  await expect(pad(page, 3)).toHaveAccessibleName('Step 3, C4');
+  await cell(page, 0, 3).click();
+  await expect(sounding(page, 3)).toHaveAccessibleName('Step 3, C4');
 
   await page.getByLabel('Sound', { exact: true }).selectOption('four-bass');
   // The write is debounced, so give it the half second it waits for.
@@ -307,7 +382,7 @@ test('the phrase and its instrument survive a reload', async ({ page }) => {
 
   await page.reload();
   await layer(page, 'Tones').click();
-  await expect(pad(page, 3)).toHaveAccessibleName('Step 3, C4');
+  await expect(sounding(page, 3)).toHaveAccessibleName('Step 3, C4');
   await expect(page.getByLabel('Sound', { exact: true })).toHaveValue('four-bass');
 });
 

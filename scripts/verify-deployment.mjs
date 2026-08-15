@@ -286,11 +286,27 @@ page.on('response', (response) => {
 
 await page.getByRole('tablist', { name: 'Layer' }).getByRole('tab', { name: 'Tones' }).click();
 
-const pads = page.getByRole('group', { name: 'Tone steps' });
-await pads.waitFor({ timeout: 15_000 });
-const padCount = await pads.getByRole('button').count();
-console.log(`  Tone steps: ${String(padCount)}`);
-if (padCount !== 16) note(`expected 16 Tone steps, found ${String(padCount)}`);
+const grid = page.getByRole('group', { name: 'Tone steps' });
+await grid.waitFor({ timeout: 15_000 });
+
+/*
+ * Twelve pitch classes by sixteen steps, and exactly one of them reachable by Tab.
+ *
+ * The cell count is the shape of the editor stated as a number: if a build ever ships eight rows,
+ * or thirty-seven, this is what says so. The tab count is the accessibility promise — a hundred
+ * and ninety-two tab stops would be an interface nobody could get past with a keyboard.
+ */
+const cellCount = await grid.getByRole('button').count();
+console.log(`  Tone matrix: ${String(cellCount)} cells`);
+if (cellCount !== 192) note(`expected 192 matrix cells (12 × 16), found ${String(cellCount)}`);
+
+const tabStops = await grid.locator('[data-row][data-step][tabindex="0"]').count();
+console.log(`  reachable by Tab: ${String(tabStops)}`);
+if (tabStops !== 1) note(`expected exactly 1 tab stop in the matrix, found ${String(tabStops)}`);
+
+const sounding = await grid.locator('[aria-pressed="true"]').count();
+console.log(`  notes sounding: ${String(sounding)}`);
+if (sounding !== 6) note(`expected the opening phrase's 6 notes, found ${String(sounding)}`);
 
 const toneStatus = page.getByRole('status', { name: 'Tone sound' });
 

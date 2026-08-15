@@ -119,29 +119,33 @@ for (const size of WIDTHS) {
 
     const tones = await page.evaluate(() => {
       const doc = document.documentElement;
-      const strip = document.querySelector('[aria-label="Tone steps"]');
+      const grid = document.querySelector('[aria-label="Tone steps"]');
       const apl = document.querySelector('[role="tabpanel"]:not([id*="domain"])');
-      const stripBox = strip?.getBoundingClientRect();
+      const gridBox = grid?.getBoundingClientRect();
       const aplBox = apl?.getBoundingClientRect();
 
       return {
         overflow: doc.scrollWidth - doc.clientWidth,
-        pads: strip?.querySelectorAll('button').length ?? 0,
-        beside: (aplBox?.left ?? 0) >= (stripBox?.right ?? 0) - 4,
+        cells: grid?.querySelectorAll('button').length ?? 0,
+        rows: grid?.querySelectorAll('[role="group"]').length ?? 0,
+        beside: (aplBox?.left ?? 0) >= (gridBox?.right ?? 0) - 4,
       };
     });
 
     console.log(
       `${`${size.name} · tones`.padEnd(17)}${theme.padEnd(7)}${String(tones.overflow).padStart(9)}` +
-        `${String(tones.pads).padStart(7)}${(tones.beside ? 'beside' : 'stacked').padStart(11)}`,
+        `${String(tones.cells).padStart(7)}${(tones.beside ? 'beside' : 'stacked').padStart(11)}`,
     );
 
     if (tones.overflow > 1) {
       problems.push(`${where} · tones: page scrolls sideways by ${String(tones.overflow)}px`);
     }
-    if (tones.pads !== 16) problems.push(`${where} · tones: ${String(tones.pads)} pads, expected 16`);
+    if (tones.cells !== 192) {
+      problems.push(`${where} · tones: ${String(tones.cells)} cells, expected 192 (12 × 16)`);
+    }
+    if (tones.rows !== 12) problems.push(`${where} · tones: ${String(tones.rows)} pitch rows, expected 12`);
     if (size.width >= 1600 && !tones.beside) {
-      problems.push(`${where} · tones: the APL is stacked under the Tone strip at ${String(size.width)}px`);
+      problems.push(`${where} · tones: the APL is stacked under the Tone matrix at ${String(size.width)}px`);
     }
     if (errors.length > 0) problems.push(`${where} · tones: ${errors.join('; ')}`);
 
