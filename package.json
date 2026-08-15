@@ -43,7 +43,9 @@
     "measure:generated": "node scripts/measure-generated.mjs",
     "review:apl-tones": "tsx scripts/review-apl-tones.ts",
     "verify:apl-tones-live": "tsx scripts/verify-apl-tones-live.ts",
-    "measure:tones": "node scripts/measure-tones.mjs"
+    "measure:tones": "node scripts/measure-tones.mjs",
+    "survey:jupiter4": "node scripts/survey-jupiter4.mjs",
+    "prepare:audition": "node scripts/prepare-audition.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",

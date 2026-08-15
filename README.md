@@ -88,6 +88,7 @@ playing them.
 - [Drum machines](#drum-machines)
 - [Drum machine samples and credits](#drum-machine-samples-and-credits)
 - [Sounds and licensing](#sounds-and-licensing)
+- [The Jupiter-4 audition bench — temporary](#the-jupiter-4-audition-bench--temporary)
 - [Review tooling](#review-tooling)
 - [Accessibility](#accessibility)
 - [Privacy and what leaves the browser](#privacy-and-what-leaves-the-browser)
@@ -354,12 +355,15 @@ directories and downloads no audio.
 Seven recordings per sound, roughly every six semitones, played back at
 `2^((midi − root) / 12)` from the nearest one — so nothing is ever shifted more than three
 semitones, which is about where a shifted analogue sample stops sounding like a note and starts
-sounding like a shifted sample. The sampler is **monophonic**: one voice, a new note releases the
-previous one, and a rest releases whatever is sounding.
+sounding like a shifted sample. The sampler is **monophonic**: one voice, and a new note takes it from
+whatever was ringing. A rest takes nothing — see [the data model](#the-data-model).
 
 Each sound is brought to the same working peak, so the selector changes the timbre and not the
 level — the recordings arrive at wildly different levels, and a Sound selector that changed how
-loud the melody was would be a volume control pretending to be an instrument control. **Tone
+loud the melody was would be a volume control pretending to be an instrument control. That gain
+was measured, documented and tested from the first day of Stage 8 and applied _nowhere_ until the
+audition pass found it, so the shipped Pad — whose recordings peak at 6% of full scale — played
+some fifteen times quieter than the shipped Lead. **Tone
 volume** is a separate fader on its own bus, and it starts below the drums on purpose: the promise
 of this layer is that the groove keeps playing underneath.
 
@@ -1068,6 +1072,8 @@ npm run dev
 | `npm run verify:credits`             | Check every attribution claim against the live upstream repositories                     |
 | `npm run measure:generated`          | Render generated bars through the real master chain and check for clipping               |
 | `npm run measure:tones`              | Render both layers through the real master chain and check the balance                   |
+| `npm run survey:jupiter4`            | List every playable preset in the library; `-- --measure` measures one note of each      |
+| `npm run prepare:audition`           | Build the temporary audition candidates into gitignored `.audition/`                     |
 | `npm run verify:deployment`          | Load the published site and check it works. **Two real TryAPL requests**                 |
 
 ## How it is put together
@@ -1658,6 +1664,43 @@ Stage 8 put a second instrument into a chain that was calibrated with one in it,
 peaks at −1.9 dBFS; with a melody over it that becomes −1.8 to −1.6, and **nothing clips even with
 Tone volume at 100%**. Each sound adds between +0.85 and +2.0 dB of RMS to the bar — present
 without becoming the loudest thing in it, which is what the layer promised.
+
+## The Jupiter-4 audition bench — temporary
+
+**This is scaffolding, and it is meant to be deleted.** Stage 8 chose its four presets by
+measuring candidates, and the two that were chosen for the most measurable reasons — the brightest
+Lead, the fastest-attacking Pad — are the two that sound worst. The bench exists so the final Lead
+and Pad can be chosen by ear instead.
+
+```bash
+npm run survey:jupiter4 -- --measure   # every playable preset in the library, measured
+npm run prepare:audition               # build the candidates locally (~230 MB once, then cached)
+npm run dev                            # then open /aplbeats/audition.html
+```
+
+**Nothing it produces is committed.** `.audition/` is gitignored and sits outside `public/`, and
+the dev server reaches it through a plugin that does not exist during `vite build`. `audition.html`
+is not one of the build's entry points, so the published site has no such page. The final
+repository will contain only the sounds that ship.
+
+What it does:
+
+- plays the **real** opening groove through the **real** master chain at the **real** tempo and
+  swing, with the **real** monophonic sampler — the question is never "is this sample good" but
+  "does this sound good as part of APL Beats";
+- **← and →** move between candidates, and switching installs a different sampler between
+  scheduler ticks exactly as the production Sound selector does. The bar does not restart, the
+  drums do not stop, the phrase does not change;
+- brings every candidate to the same working peak, so nothing wins by being louder;
+- offers two fixed phrases — the shipped opening one, and a denser eleven-note reference — so
+  "sounds good with space" and "sounds good when sequenced" can be told apart;
+- for Pads, offers the production 1.2 s trim, a 4 s natural length, and **upstream's own sustain
+  loop** where the AIFF chunks and the SFZ mapping agree. No loop point is invented, nothing is
+  repeated to fake a sustain, and no reverb, delay or filtering is added.
+
+The measurements are still recorded and still shown — they are useful when something sounds odd —
+but they are presented as supporting information under the candidate's name, and nothing is
+ranked. That is the whole point.
 
 ## Review tooling
 
