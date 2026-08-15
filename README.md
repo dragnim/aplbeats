@@ -1047,6 +1047,7 @@ npm run dev
 | `npm run prepare:jupiter4`           | Re-prepare the Tone samples from the pinned upstream release; `-- --check` verifies only |
 | `npm run verify:credits`             | Check every attribution claim against the live upstream repositories                     |
 | `npm run measure:generated`          | Render generated bars through the real master chain and check for clipping               |
+| `npm run measure:tones`              | Render both layers through the real master chain and check the balance                   |
 | `npm run verify:deployment`          | Load the published site and check it works. **One real TryAPL request**                  |
 
 ## How it is put together
@@ -1632,6 +1633,12 @@ sixteenth, which the hand-written opening groove never did. `npm run measure:gen
 renders those bars through the real master chain and reports what comes out: at Density 100
 across every preset, peaks sit between −0.4 and −0.9 dBFS with no clipped samples.
 
+Stage 8 put a second instrument into a chain that was calibrated with one in it, so
+`npm run measure:tones` asks the same question of both layers together. The opening groove alone
+peaks at −1.9 dBFS; with a melody over it that becomes −1.8 to −1.6, and **nothing clips even with
+Tone volume at 100%**. Each sound adds between +0.2 and +1.0 dB of RMS to the bar — present
+without becoming the loudest thing in it, which is what the layer promised.
+
 ## Review tooling
 
 Judging a generator one Randomise press at a time is hopeless — you cannot tell whether a
@@ -1780,8 +1787,8 @@ description, and it names exactly one external origin.
 ## Testing
 
 ```bash
-npm test          # 500 unit and component tests, in jsdom
-npm run test:e2e  # 231 end-to-end runs across three browser projects
+npm test          # 772 unit and component tests, in jsdom
+npm run test:e2e  # 417 end-to-end runs across three browser projects
 ```
 
 **Not one of them makes a live TryAPL request.** The unit tests inject a fake client; the
@@ -1817,6 +1824,12 @@ keystroke. So the tests type, insert glyphs, change targets, open and close thin
 down, and assert zero — plus two staleness cases, because the code can now move under a reply as
 well as the pattern.
 
+Stage 8's are about one number and one guarantee. The number is the _time_ each layer is handed:
+every Tone event is compared with the drum event for its own step, straight and swung, and adding a
+tenth of a millisecond to the Tone call fails both tests — which is the only way "one clock" can be
+something other than an intention. The guarantee is that switching layers costs nothing: no
+request, no second download, no stopped playback, no lost draft, each asserted in the browser.
+
 Stage 4's tests are mostly about _counts_: how many requests a kit change makes, how many times a
 sample is decoded, and how many parts of the creative state moved when the machine changed. The
 answer to the last is always zero, and it is checked by reading the whole interface — every cell,
@@ -1841,25 +1854,22 @@ deploy step abandons itself if `main` has moved on. The published base path come
 
 ## Where APL goes next
 
-APL now transforms, and you can now write the transformation. It does not yet generate, and it
-never will time.
+APL now generates and transforms, on both layers, and you can write either. It never will time.
 
 ```
-now:     TypeScript generates  →  APL transforms, yours or ours  →  Web Audio plays
-later:   APL generates         →  APL transforms                 →  Web Audio plays
+now:     APL generates a rhythm or a melody  →  APL transforms it, yours or ours  →  Web Audio plays
+         TypeScript also generates a rhythm, instantly and offline
 never:   APL times anything
 ```
 
-The generator is already a pure function from settings to a matrix, so replacing its innards
-changes nothing above it — and `euclidean.ts` is kept small and alone precisely so that
-Bjorklund's recursion sits beside the one line of APL that does the same thing.
+**Randomise stays local, and that is the settled answer rather than an unfinished one.** A
+generator that ran remotely would want a request per press of the most-pressed button in the
+application, which is exactly the shape this project promised TryAPL not to build. Create with APL
+is the deliberate version of the same idea, and it is one press for one request.
 
-What a later stage has to solve before generation can move is not the APL. It is the request
-budget. A generator that ran remotely would want a request per Randomise, which is a request
-per press of the most-pressed button in the application — and that is exactly the shape this
-stage promised not to build. The likely answer is batching: ask APL for several candidate bars
-at once and spend them locally. That is a design problem, not a translation problem, and it is
-not this stage's.
+The generator is a pure function from settings to a matrix, so replacing its innards changes
+nothing above it — and `euclidean.ts` is kept small and alone precisely so that Bjorklund's
+recursion sits beside the one line of APL that does the same thing.
 
 An APL editor is a larger question again, because everything in
 [There is no APL editor](#there-is-no-apl-editor) stops applying the moment arbitrary source is
