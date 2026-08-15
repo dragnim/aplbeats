@@ -36,7 +36,7 @@
 
 /* The one place the accent is used as text, because it names the thing. */
 .apl {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-family: var(--font-apl);
   letter-spacing: 0.06em;
 }
@@ -217,7 +217,7 @@
   padding: var(--space-2) var(--space-3);
   overflow-x: auto;
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background: var(--code-surface);
   box-shadow: inset 0 0 0 1px var(--line);
   color: var(--text);
   font-family: var(--font-apl);

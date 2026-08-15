@@ -346,3 +346,25 @@
     height: 1.25rem;
   }
 }
+
+/*
+ * When the panel itself is narrow, whatever the window is doing.
+ *
+ * Beside the sequencer the APL column is 380px at 1280 and 448px at 1440, and two macros across
+ * either of those leaves a slider with no visible track — just a thumb floating between a label
+ * and a number. 32rem is the width below which the two-column form stops working; above it, at
+ * 1600, the column is 540px and two across is comfortable.
+ *
+ * This is the same collapse the phone breakpoint does, asked of the container instead of the
+ * viewport — which is the only question that makes sense now that a panel can be narrow on a
+ * wide screen.
+ */
+@container apl (max-width: 32rem) {
+  .macros {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .macro {
+    grid-template-columns: 7rem minmax(0, 1fr) 2.25rem;
+  }
+}

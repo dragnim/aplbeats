@@ -38,6 +38,7 @@
     "review:patterns": "tsx scripts/review-patterns.ts",
     "review:transforms": "tsx scripts/review-transforms.ts",
     "review:apl-generators": "tsx scripts/review-apl-generators.ts",
+    "review:layout": "node scripts/review-layout.mjs",
     "measure:generated": "node scripts/measure-generated.mjs"
   },
   "dependencies": {

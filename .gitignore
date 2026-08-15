@@ -31,3 +31,6 @@ npm-debug.log*
 
 # Vendored upstream sources, downloaded on demand by the render tooling.
 .cache/
+
+# Layout review screenshots, regenerated on demand by review:layout.
+docs/review/

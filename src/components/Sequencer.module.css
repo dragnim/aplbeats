@@ -63,7 +63,14 @@
   position: sticky;
   left: 0;
   z-index: 2;
-  background: var(--stage);
+  /*
+   * The card, not the stage.
+   *
+   * This column is sticky and opaque so the grid scrolls *behind* the track names rather than
+   * through them. Stage 7 put the sequencer in a card, so painting it the stage colour left a
+   * darker slab down the left of a lighter panel — invisible on dark, and unmistakable on light.
+   */
+  background: var(--surface);
   min-width: 0;
   /* Covers the gap between the pinned column and the first step. */
   padding-right: var(--space-2);

@@ -21,8 +21,14 @@
       content="A browser drum machine with eight tracks and sixteen steps. Press Play, edit the grid, and hear the pattern change."
     />
 
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#0d0e11" />
+    <!--
+      Both themes, so the browser paints its own chrome and the scrollbars to match rather than
+      assuming dark. theme-color is given twice, one per scheme, which is how a browser is told
+      what to tint the address bar with in each.
+    -->
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0d0e11" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#eef0f4" media="(prefers-color-scheme: light)" />
 
     <!--
       One origin beyond our own, and only one: https://tryapl.org, where APL actually

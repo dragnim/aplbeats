@@ -1,35 +1,64 @@
 /*
  * Design tokens for APL Beats.
  *
- * One theme, and it is dark. This is not a document to be read but an instrument
- * to be watched while it moves, and a dark stage is what lets a lit step read as
- * lit. A light theme would need the whole active-state language rebuilding, so
- * rather than ship a poor one there is deliberately only this.
+ * Two themes now, and both are meant. Stage 7 added light, and the way it is done matters more
+ * than the fact of it: every colour below is a *semantic* name defined once per theme, so the
+ * component stylesheets never learn which theme they are in. There is no second stylesheet, no
+ * `.light` variant of a component, and nothing anywhere that inverts a colour at the point of
+ * use. Adding a third theme would mean adding one block to this file.
  *
- * Contrast. Every foreground/background pairing used for text is checked against
- * WCAG 2.2 AA — 4.5:1 for body text, 3:1 for large text and for non-text
- * indicators such as the playhead and an active step. The accent orange clears
- * 6:1 as text on all three dark surfaces, which is why it can be used for text
- * here where in APL Art it could not.
+ * How a theme is chosen, in order:
  *
- * Colour is never the only signal. An active step is a filled solid where a silent
- * one is a recessed outline; the playhead carries a marker as well as a wash; a
- * muted track dims and its button reports `aria-pressed`. Take all the colour out
- * and the grid still reads.
+ *   1. `:root` is dark. That is the default, and it is what a browser with no colour preference
+ *      gets — the instrument was designed on a dark stage and a lit step reads as lit there.
+ *
+ *   2. `prefers-color-scheme: light` switches to light, *unless* the document carries
+ *      `data-theme="dark"`. This is the first-visit behaviour: somebody whose system asks for
+ *      light gets light without having to say so.
+ *
+ *   3. `data-theme` on the root element wins outright, in both directions. That is the explicit
+ *      choice, set by the toggle and remembered in `localStorage`.
+ *
+ * Written that way round on purpose. The Content-Security-Policy here is `script-src 'self'`,
+ * so there is no inline script to set the attribute before first paint — which means the CSS
+ * has to be able to get a system-preference visitor right on its own, with JavaScript only ever
+ * *overriding*. See `src/app/theme.ts`.
+ *
+ * Contrast. Every foreground/background pairing used for text is checked against WCAG 2.2 AA —
+ * 4.5:1 for body text, 3:1 for large text and for non-text indicators such as the playhead and
+ * an active step. That check is done for both themes, not just the one that came first.
+ *
+ * Colour is never the only signal. An active step is a filled solid where a silent one is a
+ * recessed outline; the playhead carries a marker as well as a wash; a muted track dims and its
+ * button reports `aria-pressed`; the active workspace tab is marked with `aria-current` and a
+ * bar as well as a colour. Take all the colour out and the interface still reads.
  */
 
 :root {
   color-scheme: dark;
 
   /*
-   * Accent.
+   * Accent — the one colour APL Beats is.
    *
-   * The same orange APL Art uses, because these are two rooms in one house. Here
-   * it is the sound: a step that fires is orange, and nothing else in the
-   * interface is allowed to be.
+   * `--accent` is the identity orange and is the same value in both themes, because it *is* the
+   * brand: #ff6a13, the same orange APL Art uses. It fills things — a step that fires, the
+   * Randomise button — and nothing else in the interface is allowed to be orange.
+   *
+   * The other three exist because one orange cannot do every job on two backgrounds:
+   *
+   *   `--accent-ink`   the accent used as *large* text — the wordmark, a link, the "APL" in a
+   *                    panel heading. On dark this is the identity orange itself; on light that
+   *                    orange manages only 2.9:1 on white, so light uses a deeper one.
+   *   `--accent-bright` the accent used as *small* text — button labels, glyph names, counts.
+   *   `--accent-deep`  a border or an inset ring in the accent.
+   *   `--accent-wash`  a tint of it behind something selected.
+   *
+   * On dark, `--accent-ink` is exactly `--accent`, so nothing about the dark theme moved when
+   * light was added.
    */
   --accent: #ff6a13;
-  --accent-bright: #ff8c45;
+  --accent-ink: #ff6a13; /* 6.0:1 on --stage */
+  --accent-bright: #ff8c45; /* 8.4:1 on --surface */
   --accent-deep: #b8480c;
   --accent-wash: rgb(255 106 19 / 14%);
   --on-accent: #17140f; /* 6.2:1 on --accent */
@@ -37,8 +66,8 @@
   /*
    * The playhead, deliberately cool.
    *
-   * Warm means sound and cool means position, so the two never have to be told
-   * apart by brightness alone. 10:1 against the stage as a non-text indicator.
+   * Warm means sound and cool means position, so the two never have to be told apart by
+   * brightness alone. 10:1 against the stage as a non-text indicator.
    */
   --playhead: #7cc4ff;
   --playhead-wash: rgb(124 196 255 / 9%);
@@ -49,11 +78,22 @@
   --surface: #15171c;
   --surface-raised: #1c1f26;
   /*
+   * Two more surfaces, named for what sits on them rather than for how bright they are.
+   *
+   * `--code-surface` is behind APL — Peek's blocks and the Explore editor. `--input-surface` is
+   * behind anything typed into or chosen from. On dark they are nearly the surfaces above; on
+   * light they are the reason code does not sit on flat white, which is unpleasant to read a
+   * long expression on.
+   */
+  --code-surface: #101216;
+  --input-surface: #1c1f26;
+
+  /*
    * A silent step, and a silent step that falls on a beat.
    *
-   * The gap between these two is what lets the bar be counted at a glance, and the
-   * first attempt at it was too subtle to see at all. It has to survive a phone
-   * screen at an angle, so it is a step of lightness rather than a hint of one.
+   * The gap between these two is what lets the bar be counted at a glance, and the first attempt
+   * at it was too subtle to see at all. It has to survive a phone screen at an angle, so it is a
+   * step of lightness rather than a hint of one.
    */
   --cell: #171a20;
   --cell-beat: #262b36;
@@ -70,13 +110,123 @@
   --focus: #7cc4ff;
   --focus-ring: 0 0 0 2px var(--stage), 0 0 0 4px var(--focus);
 
+  /*
+   * Depth, and not much of it.
+   *
+   * A drum machine with shadows everywhere reads as clutter. On light the same shadows would be
+   * soot, so light gets its own — softer, and carrying a hairline instead of an inset highlight.
+   */
+  --shadow-panel: 0 1px 0 rgb(255 255 255 / 4%) inset, 0 12px 32px rgb(0 0 0 / 45%);
+  --shadow-step: 0 1px 3px rgb(0 0 0 / 40%);
+
+  /* The warm highlight on a step at the moment it is struck. Lands on orange in both themes. */
+  --hit-highlight: rgb(255 238 226 / 62%);
+  --hit-glow: rgb(255 138 69 / 38%);
+}
+
+/*
+ * Light, when the system asks for it and nothing has overridden it.
+ *
+ * Not an inversion. Two things had to be rebuilt rather than flipped: the accent, which stops
+ * being legible as text long before it stops being legible as a fill, and the playhead, which
+ * is a pale blue precisely because the stage is dark. Everything else is a considered pairing.
+ */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+
+    --accent: #ff6a13;
+    --accent-ink: #a8400a; /* 5.9:1 on --surface — the identity orange is 2.9:1 there */
+    --accent-bright: #9a3b09; /* 7.0:1 on --surface */
+    --accent-deep: #d2540e;
+    --accent-wash: rgb(255 106 19 / 12%);
+    --on-accent: #17140f;
+
+    --playhead: #0b6bcb;
+    --playhead-wash: rgb(11 107 203 / 8%);
+    --playhead-wash-strong: rgb(11 107 203 / 15%);
+
+    --stage: #eef0f4;
+    --surface: #fff;
+    --surface-raised: #f6f7fa;
+    --code-surface: #f2f4f8;
+    --input-surface: #fff;
+
+    --cell: #e4e7ed;
+    --cell-beat: #d0d5df;
+    --cell-hover: #bcc3d0;
+
+    --text: #14161a; /* 16.6:1 on --surface */
+    --text-muted: #4d5462; /* 8.1:1 on --surface */
+    --text-dim: #656c7a; /* 5.7:1 on --surface */
+
+    --line: #dfe3ea;
+    --line-strong: #c0c7d3;
+    --focus: #0b6bcb;
+
+    --shadow-panel: 0 0 0 1px rgb(20 22 26 / 6%), 0 8px 24px rgb(20 22 26 / 8%);
+    --shadow-step: 0 1px 2px rgb(20 22 26 / 18%);
+
+    --hit-highlight: rgb(255 250 245 / 72%);
+    --hit-glow: rgb(255 138 69 / 45%);
+  }
+}
+
+/*
+ * And the explicit choice, which wins over the system in both directions.
+ *
+ * Duplicated rather than shared with the block above because a CSS custom property cannot be
+ * declared once for two different selectors without a preprocessor, and adding one to save
+ * thirty lines of colour values would be a poor trade. If a third theme ever appears, that is
+ * the moment to reconsider — not before.
+ */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --accent: #ff6a13;
+  --accent-ink: #a8400a;
+  --accent-bright: #9a3b09;
+  --accent-deep: #d2540e;
+  --accent-wash: rgb(255 106 19 / 12%);
+  --on-accent: #17140f;
+
+  --playhead: #0b6bcb;
+  --playhead-wash: rgb(11 107 203 / 8%);
+  --playhead-wash-strong: rgb(11 107 203 / 15%);
+
+  --stage: #eef0f4;
+  --surface: #fff;
+  --surface-raised: #f6f7fa;
+  --code-surface: #f2f4f8;
+  --input-surface: #fff;
+
+  --cell: #e4e7ed;
+  --cell-beat: #d0d5df;
+  --cell-hover: #bcc3d0;
+
+  --text: #14161a;
+  --text-muted: #4d5462;
+  --text-dim: #656c7a;
+
+  --line: #dfe3ea;
+  --line-strong: #c0c7d3;
+  --focus: #0b6bcb;
+
+  --shadow-panel: 0 0 0 1px rgb(20 22 26 / 6%), 0 8px 24px rgb(20 22 26 / 8%);
+  --shadow-step: 0 1px 2px rgb(20 22 26 / 18%);
+
+  --hit-highlight: rgb(255 250 245 / 72%);
+  --hit-glow: rgb(255 138 69 / 45%);
+}
+
+/* Everything that is not a colour, and so is the same in both themes. */
+:root {
   /* Type */
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Consolas, monospace;
   /*
-   * APL. Bundled first, then any APL font the reader happens to have installed,
-   * then plain monospace — which will still find the glyphs by fallback, just not
-   * in matching metrics.
+   * APL. Bundled first, then any APL font the reader happens to have installed, then plain
+   * monospace — which will still find the glyphs by fallback, just not in matching metrics.
    */
   --font-apl: 'APL387', 'APL385 Unicode', 'BQN386 Unicode', var(--font-mono);
 
@@ -101,35 +251,20 @@
   --radius-lg: 12px;
 
   /*
-   * Depth, and not much of it.
-   *
-   * Two shadows: one to lift the transport off the stage, one to make an active
-   * step look struck rather than painted. A drum machine with shadows everywhere
-   * reads as clutter, and clutter is what this interface is trying not to be.
-   */
-  --shadow-panel: 0 1px 0 rgb(255 255 255 / 4%) inset, 0 12px 32px rgb(0 0 0 / 45%);
-  --shadow-step: 0 1px 3px rgb(0 0 0 / 40%);
-
-  /*
    * Motion — short, restrained, and switched off entirely below.
    *
-   * There is deliberately no scale token here any more. A step used to swell by eleven per
-   * cent as the playhead crossed it, and on the last column that swell pushed the face past
-   * the grid's right edge: CSS counts the *transformed* border boxes of descendants towards
-   * a scroll container's scrollable overflow, so at a width where the sixteen steps fitted
-   * exactly, a horizontal scrollbar flickered in and out once per bar. Measured at three
-   * pixels of overflow.
+   * There is deliberately no scale token here. A step used to swell by eleven per cent as the
+   * playhead crossed it, and on the last column that swell pushed the face past the grid's right
+   * edge: CSS counts the *transformed* border boxes of descendants towards a scroll container's
+   * scrollable overflow, so at a width where the sixteen steps fitted exactly, a horizontal
+   * scrollbar flickered in and out once per bar. Measured at three pixels of overflow.
    *
-   * The hit is now colour and light — a brighter face, a struck inner ring, a bounded glow —
-   * all of which are *ink* overflow and cannot change an element's geometry. See
-   * `Sequencer.module.css`.
+   * The hit is now colour and light — a brighter face, a struck inner ring, a bounded glow — all
+   * of which are *ink* overflow and cannot change an element's geometry.
    */
   --motion-fast: 90ms;
   --motion-base: 160ms;
   --ease: cubic-bezier(0.2, 0, 0.2, 1);
-  /* The warm highlight on a step at the moment it is struck. */
-  --hit-highlight: rgb(255 238 226 / 62%);
-  --hit-glow: rgb(255 138 69 / 38%);
 
   /* The grid */
   --cell-min: 2.125rem;
@@ -140,20 +275,32 @@
   --control-height: 2rem;
 
   /*
-   * Wide enough for a comfortable grid, narrow enough that the pads stay close to
-   * square on a large monitor rather than stretching into letterboxes.
+   * The workspace.
+   *
+   * Stage 7 stopped centring everything in a 68rem column. The page is a workspace now: a rail
+   * of tabs, the sequencer, and the APL beside it — so the width that matters is not "how wide
+   * may a paragraph be" but "how much room do the two halves need".
+   *
+   * `--layout-max` still exists and still caps the whole thing, but at a width where three
+   * columns are comfortable rather than at one where a single column stops being readable. Long
+   * prose is kept narrow by `--measure` where it appears, which is the footer and very little
+   * else.
    */
-  --layout-max: 68rem;
+  --layout-max: 120rem;
+  --measure: 46rem;
+  --rail-width: 4.5rem;
+  --apl-column: 30rem;
+  --apl-column-wide: 34rem;
 }
 
 /*
  * Reduced motion.
  *
- * Transitions go to zero, so every state change is instant rather than eased. Nothing else
- * needs switching off: since the hit effect stopped being a scale, there is no movement in
- * the grid to remove. What reduced motion still changes is the playhead — its column gains a
- * stronger wash and a real outline, so "where are we in the bar" is answered by a static
- * difference rather than by having watched something arrive. See `Sequencer.module.css`.
+ * Transitions go to zero, so every state change is instant rather than eased. Nothing else needs
+ * switching off: since the hit effect stopped being a scale, there is no movement in the grid to
+ * remove. What reduced motion still changes is the playhead — its column gains a stronger wash
+ * and a real outline, so "where are we in the bar" is answered by a static difference rather
+ * than by having watched something arrive.
  */
 @media (prefers-reduced-motion: reduce) {
   :root {
@@ -165,10 +312,10 @@
 /*
  * A finger, or a window narrow enough to be held in one hand.
  *
- * Both, because neither alone is the question: a touchscreen laptop reports a
- * coarse pointer at desk width, and a narrow desktop window is where this layout
- * has to fold. Steps get smaller rather than the grid getting shorter — sixteen
- * steps is the instrument, and hiding four of them would be hiding the bar.
+ * Both, because neither alone is the question: a touchscreen laptop reports a coarse pointer at
+ * desk width, and a narrow desktop window is where this layout has to fold. Steps get smaller
+ * rather than the grid getting shorter — sixteen steps is the instrument, and hiding four of
+ * them would be hiding the bar.
  */
 @media (pointer: coarse), (max-width: 52rem) {
   :root {
@@ -176,5 +323,50 @@
     --cell-gap: 0.125rem;
     --track-label: 8.25rem;
     --control-height: var(--tap-target);
+  }
+}
+
+/*
+ * The three-column bands, and the arithmetic behind them.
+ *
+ * Sixteen pads at full size need about 590px, and they are not negotiable — shrinking the steps
+ * to make room for the tools is shrinking the instrument. So each band gives the APL column and
+ * the track label exactly what is left, and the bands exist because that leftover changes.
+ *
+ * The first attempt got this wrong and it was visible immediately: at 1280 the grid was handed
+ * 648px, needed 741, and quietly scrolled — a sequencer showing twelve of its sixteen steps on a
+ * desktop monitor. The numbers below are checked by , which measures the grid at
+ * every width rather than trusting them.
+ */
+@media (min-width: 78rem) and (max-width: 87.4375rem) {
+  :root {
+    /* 1248–1398px: the tightest three-column band. Both the label and the APL give way. */
+    --track-label: 8.25rem;
+    --apl-column: 22rem;
+  }
+}
+
+@media (min-width: 87.5rem) and (max-width: 99.9375rem) {
+  :root {
+    --track-label: 8.25rem;
+    --apl-column: 28rem;
+  }
+}
+
+/*
+ * Genuinely wide: the pads grow.
+ *
+ * Above 1600px there is room the grid was not using, and a sequencer with more air in it is a
+ * better instrument as well as a better answer to a large monitor than more empty stage.
+ *
+ * The size is arithmetic, not taste, and the first attempt at it was wrong: 40px pads plus 4px
+ * gaps needed 900px, the column gives 904, and the card the sequencer now sits in takes 32 of
+ * those in padding. The grid quietly scrolled and the first step went missing. 38px pads and 3px
+ * gaps need 853, which fits with room to spare — and  measures it rather than
+ * trusting this sum.
+ */
+@media (min-width: 100rem) {
+  :root {
+    --cell-min: 2.375rem;
   }
 }

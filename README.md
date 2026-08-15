@@ -58,6 +58,7 @@ else: APL sees the same matrix whichever machine is playing it.
 ## Contents
 
 - [What it does](#what-it-does)
+- [The workspace](#the-workspace)
 - [Create with APL](#create-with-apl)
 - [Transform with APL](#transform-with-apl)
 - [Explore the APL](#explore-the-apl)
@@ -88,6 +89,9 @@ else: APL sees the same matrix whichever machine is playing it.
 
 ## What it does
 
+- **A wide workspace, in dark or light.** The sequencer and the APL sit side by side on a
+  desktop, with a rail of four tabs — Play, Create, Transform, Explore — choosing which tool is
+  open beside the grid. Change an expression, run it, and the beat changes in front of you.
 - **Eight tracks, sixteen steps.** Kick, Snare, Closed Hat, Open Hat, Clap, Low Perc, High
   Perc and Rim, across one bar of four-four in sixteenth notes.
 - **Ten drum machines, plus the synthesised kit.** TR-808, TR-909, LinnDrum LM-2, CR-8000,
@@ -120,6 +124,89 @@ On a phone the whole bar stays on screen: each track's name, fader, lock and mut
 above its steps rather than beside them.
 
 <img src="docs/screenshot-mobile.png" alt="APL Beats on a phone, with all sixteen steps of every track visible" width="330" />
+
+## The workspace
+
+The whole point of APL Beats is the moment where you change a line of APL, run it, and hear the
+beat change. Until Stage 7 that moment involved scrolling: the sequencer was at the top of a long
+page and the four APL panels were stacked underneath it, so the cause and the effect were rarely
+on screen together.
+
+They are now. On a desktop the page is three columns:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ brand · Undo · theme                                         │
+│ Play · drum machine · tempo · swing · master                 │  sticky
+├──────┬─────────────────────────────┬─────────────────────────┤
+│ Play │                             │                         │
+│ Crea │  the sequencer              │  the active APL         │  sticky
+│ Tran │  (the instrument)           │  workspace              │  column
+│ Expl │                             │                         │
+└──────┴─────────────────────────────┴─────────────────────────┘
+```
+
+The APL column is sticky and scrolls inside itself, so a long Peek or a tall editor never pushes
+the grid off the screen.
+
+### The four workspaces
+
+The rail on the left is real navigation, not decoration. One tool is open at a time, beside the
+grid:
+
+| Tab           | What is in it                                                                       |
+| ------------- | ----------------------------------------------------------------------------------- |
+| **Play**      | Randomise, New Seed, the eight presets and the four macros. All local, all instant. |
+| **Create**    | Create with APL — a recipe, a seed, and one deliberate request.                     |
+| **Transform** | Transform with APL — the four operations, applied to a track or the whole matrix.   |
+| **Explore**   | The APL editor, the glyph strip and Run this APL.                                   |
+
+Every tab carries its word as well as its icon, they are a proper `tablist` with arrow-key
+navigation, and the selected one is marked by `aria-selected`, a filled surface and a bar — so it
+is never colour alone that tells you where you are.
+
+**Only the active workspace is rendered.** Switching costs nothing and makes no request, and an
+Explore draft survives being switched away from because the draft lives in the hook rather than in
+the textarea.
+
+Two things sit outside the tabs because they are true of the whole application rather than of one
+tool: the transport, and **Undo**. Undo used to live in the generator panel, which stopped making
+sense the moment the panels became tabs — generating a bar on Create and having to leave Create to
+take it back would have been absurd. It is in the top bar now, beside the theme toggle.
+
+### Dark and light
+
+Both are meant, and the identity orange `#ff6a13` is the same value in both.
+
+The theme is decided in three steps: the stylesheet is dark by default, a system that asks for
+light gets light, and an explicit choice on the toggle overrides both and is remembered under
+`aplbeats.theme.v1`. Following the system is the _absence_ of a stored value rather than a third
+one — a page you have not interacted with should not quietly opt you out of ever following your
+system again.
+
+That order is also why the CSS does the work rather than a script: the Content-Security-Policy
+here is `script-src 'self'`, so there is no inline script that could set an attribute before first
+paint, and the stylesheet has to get an untouched visitor right on its own.
+
+Light is not an inversion. Two things were rebuilt rather than flipped — the accent, which stops
+being legible as text long before it stops being legible as a fill, and the playhead, which is a
+pale blue precisely because the stage is dark. Every colour is a semantic token defined once per
+theme in [`src/styles/tokens.css`](src/styles/tokens.css); no component stylesheet knows which
+theme it is in.
+
+### Narrower screens
+
+The three columns fold twice. Below about 1250px the APL moves under the sequencer and the rail
+stays, so a laptop still gets tabs and a full-width grid. Below about 990px the rail lies down
+into a scrolling tab strip and everything is one column.
+
+On a phone the sequencer keeps the layout it always had — labels above the steps, sixteen pads
+across, no card around it. That last part is an accessibility decision rather than a stylistic
+one: the pads reach WCAG 2.2's target-spacing exception by their _pitch_, and a card's 32px of
+padding took that from 24.25px to 23.4px and broke it.
+
+`npm run review:layout` measures all of this — horizontal overflow, cell count, and whether the
+APL is beside the grid or under it — at seven widths in both themes, and can write screenshots.
 
 ## Create with APL
 
@@ -708,6 +795,7 @@ npm run dev
 | `npm run format:check`      | Prettier, checking — this is what CI runs                                            |
 | `npm test`                  | Unit and component tests, once                                                       |
 | `npm run test:e2e`          | Playwright, across three browser projects                                            |
+| `npm run review:layout`     | Measure the workspace at seven widths in both themes; writes screenshots             |
 | `npm run review:patterns`   | Inspect many generated bars — see [Review tooling](#review-tooling)                  |
 | `npm run review:transforms` | Read what each transformation does to a beat, before and after                       |
 | `npm run verify:apl-live`   | **Four real TryAPL requests.** Manual, never in CI                                   |

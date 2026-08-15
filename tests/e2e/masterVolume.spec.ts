@@ -61,6 +61,18 @@ async function creativeState(page: Page): Promise<Record<string, unknown>> {
   }));
 }
 
+/**
+ * Open one of the four workspaces.
+ *
+ * Stage 7 put the local generator, Create, Transform and Explore behind a tab rail beside the
+ * sequencer instead of stacking them down the page, so a spec that wants a panel has to ask for
+ * it. That is the layout genuinely changing rather than a test needing a workaround: on the page
+ * itself, one workspace is open at a time.
+ */
+async function openWorkspace(page: Page, name: 'Play' | 'Create' | 'Transform' | 'Explore'): Promise<void> {
+  await page.getByRole('tab', { name, exact: true }).click();
+}
+
 async function freshVisit(page: Page): Promise<void> {
   await page.goto('/');
   await page.evaluate(() => {
@@ -72,6 +84,7 @@ async function freshVisit(page: Page): Promise<void> {
   });
   await page.reload();
   await expect(page.locator(CELL).first()).toBeVisible();
+  await openWorkspace(page, 'Transform');
 }
 
 async function requireAudio(page: Page): Promise<void> {
@@ -176,6 +189,8 @@ test('survives discarding an Explore draft', async ({ page }) => {
   await freshVisit(page);
 
   await master(page).fill('37');
+  // Explore is reached *through* the Transform workspace, so start by being on it.
+  await openWorkspace(page, 'Transform');
   await transformPanel(page).getByRole('button', { name: 'Peek at the APL' }).click();
   await transformPanel(page).getByRole('button', { name: 'Edit this APL' }).click();
 
@@ -192,6 +207,8 @@ test('survives discarding an Explore draft', async ({ page }) => {
 
   // The draft is gone, as asked. The volume is not.
   await expect(master(page)).toHaveValue('37');
+  // A reload opens on Play, deliberately: which tool you had open is not a preference.
+  await openWorkspace(page, 'Transform');
   await transformPanel(page).getByRole('button', { name: 'Peek at the APL' }).click();
   await transformPanel(page).getByRole('button', { name: 'Edit this APL' }).click();
   await expect(page.getByRole('textbox', { name: 'Your APL expression' })).toHaveValue('¯1⌽m');

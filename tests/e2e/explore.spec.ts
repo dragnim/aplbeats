@@ -221,6 +221,18 @@ const editor = (page: Page) => page.getByRole('textbox', { name: 'Your APL expre
 const runButton = (page: Page) => page.getByRole('button', { name: 'Run this APL' });
 const exploreStatus = (page: Page) => page.getByRole('status', { name: 'Explore' });
 
+/**
+ * Open one of the four workspaces.
+ *
+ * Stage 7 put the local generator, Create, Transform and Explore behind a tab rail beside the
+ * sequencer instead of stacking them down the page, so a spec that wants a panel has to ask for
+ * it. That is the layout genuinely changing rather than a test needing a workaround: on the page
+ * itself, one workspace is open at a time.
+ */
+async function openWorkspace(page: Page, name: 'Play' | 'Create' | 'Transform' | 'Explore'): Promise<void> {
+  await page.getByRole('tab', { name, exact: true }).click();
+}
+
 async function freshVisit(page: Page): Promise<void> {
   await page.goto('/');
   await page.evaluate(() => {
@@ -232,10 +244,13 @@ async function freshVisit(page: Page): Promise<void> {
   });
   await page.reload();
   await expect(page.locator(CELL).first()).toBeVisible();
+  await openWorkspace(page, 'Transform');
 }
 
 /** Play, Peek, Explore. */
 async function openExplore(page: Page): Promise<void> {
+  // Explore is reached *through* the Transform workspace, so start by being on it.
+  await openWorkspace(page, 'Transform');
   await transformPanel(page).getByRole('button', { name: 'Peek at the APL' }).click();
   await transformPanel(page).getByRole('button', { name: 'Edit this APL' }).click();
   await expect(editor(page)).toBeVisible();
@@ -395,9 +410,21 @@ test('nothing but Run sends anything', async ({ page }) => {
   // Change everything that can be changed.
   await page.getByLabel('Result goes to').selectOption('3');
   await page.getByLabel('Result goes to').selectOption('all');
+  // The fixed controls are on another workspace now. Changing them still costs nothing.
+  await openWorkspace(page, 'Transform');
   await panel(page).getByLabel('Operation').selectOption('euclidean');
   await panel(page).getByLabel('Target').selectOption('5');
+  await openWorkspace(page, 'Explore');
+  /*
+   * Randomise lives on the Play workspace, so reaching it means going there.
+   *
+   * That is the design rather than an obstacle: Randomise is the *local* generator's action, and
+   * Stage 7 put the local generator in its own tab. What this test is really asserting — that a
+   * local action costs no request — is unchanged by where the button sits.
+   */
+  await openWorkspace(page, 'Play');
   await page.getByRole('button', { name: 'Randomise' }).click();
+  await openWorkspace(page, 'Explore');
   await page.getByRole('button', { name: 'Undo' }).click();
 
   expect(mock.expressions).toEqual([]);
@@ -640,9 +667,17 @@ test('the fixed controls do not overwrite a draft', async ({ page }) => {
 
   await editor(page).fill('m[1;]∨2⌽m[1;]');
 
+  /*
+   * Away to the Transform workspace, change everything, and back.
+   *
+   * A stronger version of the same promise than Stage 5 could make: the draft now survives its
+   * editor being *unmounted* as well as the controls being moved, because it lives in    * rather than in the textarea.
+   */
+  await openWorkspace(page, 'Transform');
   await panel(page).getByLabel('Operation').selectOption('reverse');
   await panel(page).getByLabel('Target').selectOption('3');
   await panel(page).getByLabel('Operation').selectOption('euclidean');
+  await openWorkspace(page, 'Explore');
 
   await expect(editor(page)).toHaveValue('m[1;]∨2⌽m[1;]');
 
@@ -666,18 +701,33 @@ test('Apply with APL still works, and cannot run beside Explore', async ({ page 
   await openExplore(page);
 
   const before = await gridOf(page);
+
+  /*
+   * Apply from the Transform workspace, then look at Explore while it is still in flight.
+   *
+   * The claim is unchanged — one execution lane, and the second button cannot start a request
+   * while the first owns it — but the journey is, because the two buttons are no longer on
+   * screen together. Switching tabs mid-request is itself worth exercising: the lane is in
+   * , which outlives both panels.
+   */
+  await openWorkspace(page, 'Transform');
   await panel(page).getByLabel('Operation').selectOption('reverse');
   await panel(page).getByLabel('Target').selectOption('all');
 
   await page.getByRole('button', { name: 'Apply with APL' }).click();
+  await openWorkspace(page, 'Explore');
   await expect(runButton(page)).toBeDisabled();
+  // Back, because a panel's status line lives with its panel — one workspace is rendered at a time.
+  await openWorkspace(page, 'Transform');
   expect(mock.expressions).toHaveLength(1);
 
   await expect(page.getByRole('status', { name: 'APL transform' })).toHaveText('Applied.', {
     timeout: 8000,
   });
   expect(await gridOf(page)).not.toBe(before);
-  // Explore said nothing, because Explore did nothing.
+
+  // Explore said nothing, because Explore did nothing — checked on its own workspace.
+  await openWorkspace(page, 'Explore');
   await expect(exploreStatus(page)).toHaveText('');
   await expect(runButton(page)).toBeEnabled();
 
@@ -685,7 +735,11 @@ test('Apply with APL still works, and cannot run beside Explore', async ({ page 
   await editor(page).fill('~m');
   await page.getByLabel('Result goes to').selectOption('all');
   await runButton(page).click();
+
+  await openWorkspace(page, 'Transform');
   await expect(page.getByRole('button', { name: 'Apply with APL' })).toBeDisabled();
+
+  await openWorkspace(page, 'Explore');
   await expect(exploreStatus(page)).toHaveText('Applied.', { timeout: 8000 });
   expect(mock.expressions).toHaveLength(2);
 

@@ -1,0 +1,58 @@
+/*
+ * The theme toggle, in the top bar.
+ *
+ * Quiet by design. It is a preference, not an instrument control, so it reads as a chip rather
+ * than as anything worth pressing before Play.
+ */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--control-height);
+  padding: 0 var(--space-3);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    color var(--motion-fast) var(--ease),
+    box-shadow var(--motion-fast) var(--ease);
+}
+
+.toggle:hover {
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.icon {
+  flex: none;
+  width: 1.0625rem;
+  height: 1.0625rem;
+}
+
+/*
+ * The word beside the icon.
+ *
+ * Hidden below the width where the top bar starts to fight for room, and only there — the
+ * button keeps its accessible name either way, so nothing is lost to anybody reading it with
+ * assistive technology. What is lost visually is a word that the icon already carries.
+ */
+@media (max-width: 62rem) {
+  .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .toggle {
+    padding: 0 var(--space-2);
+  }
+}

@@ -206,7 +206,7 @@ export function CreatePanel({ transform, exploreOpen, onEditApl }: CreatePanelPr
               )}
 
               {exploreOpen && exploreIsShowingThis && (
-                <p className={styles.note}>This expression is open in Explore, below.</p>
+                <p className={styles.note}>This expression is open in Explore.</p>
               )}
 
               {exploreOpen && exploreHasOwnWork && (

@@ -1,34 +1,77 @@
 /*
- * The stage.
+ * The workspace.
  *
- * A header that says what this is, a transport, and the grid. Nothing else is
- * permanent chrome, because there is nothing else that has earned a permanent place
- * — and because the sequencer should be so plainly the subject of the page that no
- * arrangement of it needs explaining.
+ * Stage 6 left this a long page: a header, a transport, the grid, then four APL panels stacked
+ * beneath it, so changing an expression and seeing the beat change meant scrolling between the
+ * cause and the effect. That was the product problem Stage 7 exists to fix, and the whole layout
+ * follows from it — **the code and the grid must be in one visual field.**
+ *
+ * Three regions on desktop:
+ *
+ *     ┌──────────────────────────────────────────────────────┐
+ *     │ top bar — brand, transport, kit, master, theme        │  sticky
+ *     ├──────┬───────────────────────────┬────────────────────┤
+ *     │ rail │ sequencer                 │ the active APL     │  sticky
+ *     │ tabs │ (the instrument)          │ workspace          │  column
+ *     └──────┴───────────────────────────┴────────────────────┘
+ *
+ * The APL column is sticky and scrolls within itself, so the expression stays put while the
+ * sequencer and everything under it move. That is the "magic moment" made structural rather than
+ * hoped for: press Run, and the grid is already on screen.
+ *
+ * It folds twice. Below 100rem the APL column drops under the sequencer but the rail stays, so a
+ * laptop still gets tabs and a wide grid. Below 62rem the rail lies down into a tab strip and
+ * everything is one column, which is what a phone had before and still wants.
  */
+
 .app {
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  gap: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
   min-height: 100dvh;
   max-width: var(--layout-max);
   margin: 0 auto;
-  padding: var(--space-5) var(--space-5) var(--space-4);
+  padding: var(--space-4) var(--space-5) var(--space-5);
 }
 
-.header {
+/* ---- the top bar --------------------------------------------------------- */
+
+/*
+ * Sticky, and the only thing that is besides the APL column.
+ *
+ * Play, the tempo and the master volume are wanted at every scroll position, and a transport you
+ * have to scroll back up to reach is a transport that gets in the way. It carries the stage
+ * colour rather than a translucent blur: a backdrop filter over a moving sixteen-step grid is
+ * the most expensive thing this interface could ask a compositor for, and it would buy nothing.
+ */
+.topBar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2) var(--space-5);
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: calc(var(--space-4) * -1) calc(var(--space-5) * -1) 0;
+  padding: var(--space-4) var(--space-5) var(--space-3);
+  background: var(--stage);
+  border-bottom: 1px solid var(--line);
+}
+
+.brandRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
 }
 
 .title {
   font-size: inherit;
   font-weight: inherit;
+  line-height: 1;
 }
 
 .tagline {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: var(--text-sm);
   color: var(--text-dim);
 }
@@ -36,27 +79,230 @@
 /*
  * The second half of the promise fades back.
  *
- * "Make beats first" is what a visitor is here for; "discover array programming
- * second" is a promise about later, and it should read like one.
+ * "Make beats first" is what a visitor is here for; "discover array programming second" is a
+ * promise about later, and it should read like one.
  */
 .taglineSecond {
   color: color-mix(in srgb, var(--text-dim) 68%, var(--stage));
 }
 
+/* ---- the body ------------------------------------------------------------ */
+
+.body {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: var(--rail-width) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.railColumn {
+  position: sticky;
+  top: var(--sticky-top, 8.5rem);
+  /*
+   * Zero, and it matters.
+   *
+   * A flex or grid child refuses to shrink below its content by default, so on a phone the tab
+   * strip — four tabs whose own min-width is their text — made the column wider than the screen
+   * and took the page with it. Thirty-five pixels of sideways scroll, from a container that was
+   * never asked how wide it wanted to be.
+   */
+  min-width: 0;
+}
+
 /*
- * Centred in whatever height is left over.
+ * The sequencer, in a card.
  *
- * The transport and the grid are a fixed height, and on a tall window they were
- * pinned to the top with a lake of empty stage beneath them. Centring puts the
- * instrument where the eye already is.
+ * Stage 6 had it floating on the stage with no edge of its own, which read as "page" rather than
+ * "instrument" — and beside a panelled APL column it would have looked like the one thing
+ * nobody had finished. Giving it the same surface, radius and hairline as every panel is what
+ * makes the workspace read as a set of related objects instead of a stack of content.
  */
 .main {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: var(--space-5);
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/*
+ * The APL column.
+ *
+ * Its own scroll container, so a long Peek or a tall editor scrolls inside the panel instead of
+ * pushing the sequencer off the top of the window. `min-height: 0` matters more than it looks:
+ * without it a grid item refuses to shrink below its content and the whole column grows the page
+ * instead of scrolling.
+ */
+.aplColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   min-width: 0;
 }
+
+.aplPanel {
+  min-width: 0;
+  /*
+   * A query container, and the reason the panels inside it lay out correctly.
+   *
+   * Stage 7 put these panels in a column about 380px wide on a 1280px monitor, which broke the
+   * assumption every media query in them was built on: the window being wide no longer means the
+   * panel is. The macro grid stayed two-across in 380px and its sliders shrank to thirty pixels.
+   *
+   * A container query asks the right question — how wide is the *panel* — so the same stylesheet
+   * works whether it is beside the grid, beneath it, or on a phone. Where support is missing the
+   * rules simply do not apply and the layout is the tight two-column one, which is the
+   * pre-Stage-7 behaviour rather than a broken one.
+   */
+  container: apl / inline-size;
+}
+
+/* ---- the wide workspace -------------------------------------------------- */
+
+/*
+ * Three columns, from the width where all three genuinely fit.
+ *
+ * 100rem rather than something smaller because the grid is not negotiable: sixteen pads at full
+ * size plus a track label is about 700px, and squeezing the APL in beside it any earlier would
+ * mean shrinking the steps — which is shrinking the instrument to make room for the tools.
+ */
+@media (min-width: 100rem) {
+  .body {
+    grid-template-columns: var(--rail-width) minmax(0, 1fr) var(--apl-column-wide);
+  }
+
+  .aplColumn {
+    position: sticky;
+    top: var(--sticky-top, 8.5rem);
+    max-height: calc(100dvh - var(--sticky-top, 8.5rem) - var(--space-5));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* Room for the scrollbar so a focus ring on the panel edge is not clipped by it. */
+    padding-right: var(--space-1);
+  }
+}
+
+@media (min-width: 78rem) and (max-width: 99.9375rem) {
+  .body {
+    grid-template-columns: var(--rail-width) minmax(0, 1fr) var(--apl-column);
+  }
+
+  .aplColumn {
+    position: sticky;
+    top: var(--sticky-top, 8.5rem);
+    max-height: calc(100dvh - var(--sticky-top, 8.5rem) - var(--space-5));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: var(--space-1);
+  }
+}
+
+/*
+ * Between 62rem and 78rem: rail beside a single stacked column.
+ *
+ * The APL sits under the sequencer rather than beside it, because beside it at this width would
+ * be two columns of about 30rem each and neither would be comfortable. The rail stays, so the
+ * four workspaces are still one click apart and only one is open — which is most of the value.
+ */
+@media (max-width: 77.9375rem) {
+  .aplColumn {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 62rem) and (max-width: 77.9375rem) {
+  .aplColumn {
+    grid-column: 2;
+  }
+}
+
+/* ---- the fold ------------------------------------------------------------ */
+
+/*
+ * Phone and small tablet: one column, and the rail becomes a tab strip above the APL.
+ *
+ * Deliberately *above* the APL panel rather than at the top of the page. It labels the thing it
+ * switches, and putting it under the sequencer keeps the grid — which is what somebody came for
+ * — at the top of the first screen.
+ */
+@media (max-width: 61.9375rem) {
+  .app {
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-3) var(--space-4);
+  }
+
+  .topBar {
+    margin: calc(var(--space-3) * -1) calc(var(--space-3) * -1) 0;
+    padding: var(--space-3) var(--space-3);
+  }
+
+  .body {
+    display: flex;
+    flex-direction: column;
+    /*
+     * Back to stretch.
+     *
+     * The desktop grid sets `align-items: start` so the rail and the APL column sit at the top
+     * of their row rather than stretching to the height of the sequencer. Inherited into a
+     * *column* flex container that same declaration means the cross axis is horizontal, so every
+     * child sized to its content instead of to the page — and the tab strip, whose content is
+     * four tabs wide, took the page sideways with it.
+     */
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .railColumn {
+    position: static;
+    order: 2;
+  }
+
+  /*
+   * No card on a phone.
+   *
+   * Not a stylistic choice — an accessibility one, and it was measured. The sixteen pads reach
+   * WCAG 2.2's target-spacing exception by their *pitch*: adjacent centres more than 24px apart
+   * means a 24px circle on each never overlaps its neighbour, which is what lets the pads
+   * themselves be smaller than 24px on a screen where sixteen of them have to fit.
+   *
+   * On a 412px phone the grid gets 388px, and 388 ÷ 16 is 24.25px of pitch. The card's 32px of
+   * horizontal padding took that to 23.4 and broke conformance. Sixteen pixels of decoration is
+   * not worth a target-spacing failure, so the card is a desktop affordance and the phone gets
+   * the layout it had before Stage 7, unchanged.
+   */
+  .main {
+    order: 1;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  .aplColumn {
+    order: 3;
+  }
+
+  .brandRow {
+    gap: var(--space-2) var(--space-3);
+  }
+
+  /*
+   * The tagline goes.
+   *
+   * Not hidden from a screen reader — removed from the layout entirely, because on a 375px
+   * screen it is the difference between the brand and the theme toggle fitting on one line and
+   * not. The same words are the first thing in the README and the first thing on the desktop.
+   */
+  .tagline {
+    display: none;
+  }
+}
+
+/* ---- the footer ---------------------------------------------------------- */
 
 .footer {
   display: flex;
@@ -64,14 +310,21 @@
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2) var(--space-4);
-  padding-top: var(--space-3);
+  margin-top: auto;
+  padding-top: var(--space-4);
   border-top: 1px solid var(--line);
   font-size: var(--text-sm);
   color: var(--text-dim);
 }
 
+/*
+ * Prose stays narrow even though the page no longer is.
+ *
+ * The workspace uses its width for interaction; a paragraph that ran to 1600px would be the one
+ * place the new layout made things worse to read.
+ */
 .note {
-  max-width: 46rem;
+  max-width: var(--measure);
 }
 
 .emphasis {
@@ -80,7 +333,7 @@
 }
 
 .link {
-  color: var(--accent);
+  color: var(--accent-ink);
   text-decoration: none;
   border-bottom: 1px solid transparent;
   white-space: nowrap;
@@ -93,26 +346,4 @@
 
 .link:focus-visible {
   border-radius: var(--radius-sm);
-}
-
-@media (max-width: 52rem) {
-  .app {
-    gap: var(--space-4);
-    padding: var(--space-4) var(--space-3) var(--space-3);
-  }
-
-  .main {
-    gap: var(--space-4);
-  }
-}
-
-/*
- * Where the one Explore editor sits.
- *
- * Below both APL panels rather than inside either, because both can feed it and there is only
- * ever one. Full width on every size — an editor squeezed into a column is an editor nobody
- * writes anything in.
- */
-.explore {
-  display: block;
 }

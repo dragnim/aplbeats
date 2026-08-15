@@ -268,6 +268,18 @@ function expected(
 }
 
 /** Start from the documented opening state, with no stored session. */
+/**
+ * Open one of the four workspaces.
+ *
+ * Stage 7 put the local generator, Create, Transform and Explore behind a tab rail beside the
+ * sequencer instead of stacking them down the page, so a spec that wants a panel has to ask for
+ * it. That is the layout genuinely changing rather than a test needing a workaround: on the page
+ * itself, one workspace is open at a time.
+ */
+async function openWorkspace(page: Page, name: 'Play' | 'Create' | 'Transform' | 'Explore'): Promise<void> {
+  await page.getByRole('tab', { name, exact: true }).click();
+}
+
 async function freshVisit(page: Page): Promise<void> {
   await page.goto('/');
   await page.evaluate(() => {
@@ -279,6 +291,7 @@ async function freshVisit(page: Page): Promise<void> {
   });
   await page.reload();
   await expect(page.locator(CELL).first()).toBeVisible();
+  await openWorkspace(page, 'Transform');
 }
 
 const panel = (page: Page) => page.getByRole('region', { name: 'Transform with APL' });
@@ -545,7 +558,16 @@ test('nothing but Apply sends anything', async ({ page }) => {
   await panel(page).getByLabel('Target').selectOption('all');
 
   await page.locator('button[data-track="2"][data-step="5"]').click();
+  /*
+   * Randomise lives on the Play workspace, so reaching it means going there.
+   *
+   * That is the design rather than an obstacle: Randomise is the *local* generator's action, and
+   * Stage 7 put the local generator in its own tab. What this test is really asserting — that a
+   * local action costs no request — is unchanged by where the button sits.
+   */
+  await openWorkspace(page, 'Play');
   await page.getByRole('button', { name: 'Randomise' }).click();
+  await openWorkspace(page, 'Transform');
   await page.getByRole('button', { name: 'Undo' }).click();
 
   expect(mock.expressions).toEqual([]);

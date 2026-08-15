@@ -71,6 +71,18 @@ async function mockApl(page: Page, options: { delayMs?: number } = {}): Promise<
   return { expressions };
 }
 
+/**
+ * Open one of the four workspaces.
+ *
+ * Stage 7 put the local generator, Create, Transform and Explore behind a tab rail beside the
+ * sequencer instead of stacking them down the page, so a spec that wants a panel has to ask for
+ * it. That is the layout genuinely changing rather than a test needing a workaround: on the page
+ * itself, one workspace is open at a time.
+ */
+async function openWorkspace(page: Page, name: 'Play' | 'Create' | 'Transform' | 'Explore'): Promise<void> {
+  await page.getByRole('tab', { name, exact: true }).click();
+}
+
 async function freshVisit(page: Page): Promise<void> {
   await page.goto('/');
   await page.evaluate(() => {
@@ -82,6 +94,7 @@ async function freshVisit(page: Page): Promise<void> {
   });
   await page.reload();
   await expect(page.locator(CELL).first()).toBeVisible();
+  await openWorkspace(page, 'Create');
 }
 
 /** The whole grid as 128 characters, for comparing bars. */
@@ -244,7 +257,16 @@ test('Randomise stays instant and offline while APL is unreachable', async ({ pa
   await freshVisit(page);
 
   const before = await gridOf(page);
+  /*
+   * Randomise lives on the Play workspace, so reaching it means going there.
+   *
+   * That is the design rather than an obstacle: Randomise is the *local* generator's action, and
+   * Stage 7 put the local generator in its own tab. What this test is really asserting — that a
+   * local action costs no request — is unchanged by where the button sits.
+   */
+  await openWorkspace(page, 'Play');
   await page.getByRole('button', { name: 'Randomise' }).click();
+  await openWorkspace(page, 'Create');
   expect(await gridOf(page)).not.toBe(before);
 
   const afterRandomise = await gridOf(page);
@@ -332,6 +354,16 @@ test('Edit this APL loads the generator into the one Explore editor', async ({ p
   await freshVisit(page);
 
   await createPanel(page).getByRole('button', { name: 'Peek at the APL' }).click();
+
+  /*
+   * Read the seed while the Create panel is still on screen.
+   *
+   * "Edit this APL" moves the workspace to Explore, and Stage 7 renders one workspace at a
+   * time — so the Seed input is gone by the time the editor appears. That is the layout working:
+   * the point of the tab rail is that only the active tool is present.
+   */
+  const currentSeed = await seed(page).inputValue();
+
   const panel = createPanel(page);
   await panel.getByRole('button', { name: 'Edit this APL' }).click();
 
@@ -342,7 +374,6 @@ test('Edit this APL loads the generator into the one Explore editor', async ({ p
   await expect(page.getByLabel('Your APL expression')).toHaveCount(1);
 
   // And it holds the recipe's own expression, with the seed named in the intro.
-  const currentSeed = await seed(page).inputValue();
   await expect(page.getByText(/It also fixes/u)).toContainText(currentSeed);
 
   expect(mock.expressions, 'opening the editor must send nothing').toEqual([]);

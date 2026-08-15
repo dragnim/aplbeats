@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useApl, type ExploreOrigin } from '@/apl/useApl';
 import { useDrumMachine } from '@/audio/useDrumMachine';
 import { DrumMachineSelect } from '@/components/DrumMachineSelect';
@@ -8,7 +8,11 @@ import { ExploreEditor } from '@/components/ExploreEditor';
 import { TransformPanel } from '@/components/TransformPanel';
 import { Logo } from '@/components/Logo';
 import { Sequencer } from '@/components/Sequencer';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { UndoButton } from '@/components/UndoButton';
 import { TransportBar } from '@/components/TransportBar';
+import { WorkspaceRail } from '@/components/WorkspaceRail';
+import type { WorkspaceId } from '@/components/workspaces';
 import { INITIAL_BPM, INITIAL_SWING } from '@/pattern/initialGroove';
 import { createMixer, effectiveLevel, setVolume, toggleMute, trackIdFor, type Mixer } from '@/pattern/mixer';
 import { TRACKS } from '@/pattern/tracks';
@@ -18,6 +22,7 @@ import { loadMasterVolume, loadSession, saveMasterVolume, saveSession } from './
 import { INITIAL_CREATIVE_STATE } from './openingState';
 import { usePageVisibility } from './usePageVisibility';
 import { useStudio } from './useStudio';
+import { useTheme } from './useTheme';
 import styles from './App.module.css';
 
 /*
@@ -66,14 +71,59 @@ export function App(): React.JSX.Element {
    */
   const [masterVolume, setMasterVolume] = useState(() => loadMasterVolume());
 
+  const theme = useTheme();
+
   /*
-   * Whether the one Explore editor is open.
+   * Which of the four workspaces is open beside the grid.
    *
-   * Open once, open until the tab closes. Collapsing a Peek to look at the grid is not a request
-   * to throw an expression away, and an editor that emptied itself would feel like losing work
-   * even though the draft is stored.
+   * Stage 7's central change. The local generator, Create, Transform and Explore used to be four
+   * cards stacked down a long page, with the APL a scroll away from the beat it changed; now one
+   * of them is open at a time, next to the sequencer. `play` first, because that is what
+   * somebody is here for.
+   *
+   * Not persisted, deliberately. Which tool you had open is a fact about the last thirty
+   * seconds, not a preference — and a returning visitor should land on the instrument rather
+   * than wherever they happened to stop.
    */
-  const [exploreOpen, setExploreOpen] = useState(false);
+  const [workspace, setWorkspace] = useState<WorkspaceId>('play');
+  const workspaceIds = useId();
+
+  /*
+   * Whether Explore has been opened at all.
+   *
+   * The Create and Transform panels use this to decide whether to offer "Edit this APL" or to
+   * explain that the editor is already holding somebody's own work. It is *visited*, not
+   * *visible*: with tabs, Explore is one click away rather than below, and a panel that offered
+   * to open an editor which already contains an edited draft would be offering to lose it.
+   */
+  const [exploreVisited, setExploreVisited] = useState(false);
+
+  /*
+   * How far down the sticky columns must start.
+   *
+   * Measured rather than guessed. The top bar is two rows whose height changes with the width —
+   * the tagline disappears on a phone, the transport wraps on a narrow laptop — and a hard-coded
+   * offset would leave the rail either overlapping the transport or floating below it at exactly
+   * the widths nobody tests. One `ResizeObserver`, no polling, and it writes a CSS custom
+   * property so the rest of the arithmetic stays in the stylesheet.
+   */
+  const shell = useRef<HTMLDivElement | null>(null);
+  const topBar = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const bar = topBar.current;
+    const root = shell.current;
+    if (bar === null || root === null) return;
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(() => {
+      root.style.setProperty('--sticky-top', `${String(bar.offsetHeight + 12)}px`);
+    });
+    observer.observe(bar);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   const isVisible = usePageVisibility();
   const { pattern, locks } = studio.state;
@@ -127,7 +177,9 @@ export function App(): React.JSX.Element {
   const openExplore = useCallback(
     (origin: ExploreOrigin) => {
       transform.explore.follow(origin);
-      setExploreOpen(true);
+      setExploreVisited(true);
+      // "Edit this APL" now means "show me that, in Explore" — so it moves the workspace too.
+      setWorkspace('explore');
     },
     [transform.explore],
   );
@@ -248,17 +300,27 @@ export function App(): React.JSX.Element {
   }, [studio, transport]);
 
   return (
-    <div className={styles.app}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>
-          <Logo />
-        </h1>
-        <p className={styles.tagline}>
-          Make beats first. <span className={styles.taglineSecond}>Discover array programming second.</span>
-        </p>
-      </header>
+    <div className={styles.app} ref={shell}>
+      {/*
+        The top bar: who this is, how it is playing, and how it looks.
 
-      <main className={styles.main}>
+        Two thin rows rather than one wide band. Squeezing the brand, the transport, the kit, the
+        master volume and the theme toggle onto a single line would have put the Stage 5.1
+        transport layout back under pressure at exactly the widths it was fixed for, and the
+        second row costs about forty pixels.
+      */}
+      <header className={styles.topBar} ref={topBar}>
+        <div className={styles.brandRow}>
+          <h1 className={styles.title}>
+            <Logo />
+          </h1>
+          <p className={styles.tagline}>
+            Make beats first. <span className={styles.taglineSecond}>Discover array programming second.</span>
+          </p>
+          <UndoButton canUndo={studio.canUndo} onUndo={studio.undo} />
+          <ThemeToggle resolved={theme.resolved} onToggle={theme.toggle} />
+        </div>
+
         <h2 className="visuallyHidden">Transport</h2>
         <TransportBar
           state={transport.state}
@@ -275,82 +337,101 @@ export function App(): React.JSX.Element {
           onMasterVolumeChange={handleMasterVolumeChange}
           instrument={<DrumMachineSelect drumMachine={drumMachine} />}
         />
+      </header>
 
-        <h2 className="visuallyHidden">Pattern</h2>
-        <Sequencer
-          pattern={pattern}
-          mixer={mixer}
-          locks={locks}
-          playheadStep={transport.playheadStep}
-          isPlaying={transport.isPlaying}
-          onSetCell={handleSetCell}
-          onToggleMute={handleToggleMute}
-          onToggleLock={studio.toggleLock}
-          onVolumeChange={handleVolumeChange}
-          onAuditionTrack={handleAuditionTrack}
-          onEditGesture={beginEdit}
-        />
+      <div className={styles.body}>
+        <div className={styles.railColumn}>
+          <WorkspaceRail active={workspace} onSelect={setWorkspace} panelIds={workspaceIds} />
+        </div>
 
-        <TransformPanel
-          transform={transform}
-          pattern={pattern}
-          exploreOpen={exploreOpen}
-          onEditApl={() => {
-            openExplore('transform');
-          }}
-        />
-
-        <CreatePanel
-          transform={transform}
-          exploreOpen={exploreOpen}
-          onEditApl={() => {
-            openExplore('create');
-          }}
-        />
+        <main className={styles.main}>
+          <h2 className="visuallyHidden">Pattern</h2>
+          <Sequencer
+            pattern={pattern}
+            mixer={mixer}
+            locks={locks}
+            playheadStep={transport.playheadStep}
+            isPlaying={transport.isPlaying}
+            onSetCell={handleSetCell}
+            onToggleMute={handleToggleMute}
+            onToggleLock={studio.toggleLock}
+            onVolumeChange={handleVolumeChange}
+            onAuditionTrack={handleAuditionTrack}
+            onEditGesture={beginEdit}
+          />
+        </main>
 
         {/*
-          One Explore editor, below both panels that can feed it.
+          The APL column, and the reason for the whole layout.
 
-          Stage 5 rendered it inside the Transform Peek, which read well when there was one thing
-          to edit. Stage 6 has two, and two editors would mean two drafts, two ideas of pristine
-          and two ways to lose somebody's work — so it lives here instead, and both "Edit this
-          APL" buttons lead to this one. It stays open once opened: collapsing a Peek to look at
-          the grid is not a request to throw an expression away.
+          One workspace at a time, beside the grid rather than beneath it. Each is a real tab
+          panel — `role="tabpanel"`, labelled by its tab — and only the selected one is rendered,
+          which is why switching costs nothing: no work to do, and certainly no request.
+
+          Rendering only the active one has one consequence worth stating plainly: an Explore
+          draft survives being switched away from, because the draft lives in `useApl` and not in
+          the editor component. Unmounting the textarea does not unmake what somebody wrote.
         */}
-        {exploreOpen && (
-          <section aria-label="Explore the APL" className={styles.explore}>
-            <ExploreEditor transform={transform} />
-          </section>
-        )}
+        <div className={styles.aplColumn}>
+          <div
+            className={styles.aplPanel}
+            role="tabpanel"
+            id={`${workspaceIds}-panel-${workspace}`}
+            aria-labelledby={`${workspaceIds}-tab-${workspace}`}
+            tabIndex={-1}
+          >
+            {workspace === 'play' && (
+              <GeneratorPanel
+                preset={studio.state.preset}
+                seed={studio.state.seed}
+                macros={studio.state}
+                onRandomise={handleRandomise}
+                onNewSeed={studio.newSeed}
+                onPresetChange={studio.setPreset}
+                onMacroChange={studio.setMacro}
+                onMacroCommit={studio.commitMacro}
+              />
+            )}
 
-        <h2 className="visuallyHidden">Generator</h2>
-        <GeneratorPanel
-          preset={studio.state.preset}
-          seed={studio.state.seed}
-          macros={studio.state}
-          canUndo={studio.canUndo}
-          onRandomise={handleRandomise}
-          onNewSeed={studio.newSeed}
-          onUndo={studio.undo}
-          onPresetChange={studio.setPreset}
-          onMacroChange={studio.setMacro}
-          onMacroCommit={studio.commitMacro}
-        />
+            {workspace === 'create' && (
+              <CreatePanel
+                transform={transform}
+                exploreOpen={exploreVisited}
+                onEditApl={() => {
+                  openExplore('create');
+                }}
+              />
+            )}
 
-        {/*
-          Spoken, not shown. The Play button's name changes, but a name changes silently for
-          someone who is not on it — and while the tab was hidden the transport will have paused
-          itself, which is a change nobody asked for.
+            {workspace === 'transform' && (
+              <TransformPanel
+                transform={transform}
+                pattern={pattern}
+                exploreOpen={exploreVisited}
+                onEditApl={() => {
+                  openExplore('transform');
+                }}
+              />
+            )}
 
-          Named, because there are now two live regions on the page: this one and the APL panel's.
-          Two are legitimate — playback and transformation are different concerns and either can
-          change without the other — but an unnamed pair is two anonymous voices, and a reader
-          arriving at one has no way to know which is speaking.
-        */}
-        <p className="visuallyHidden" role="status" aria-label="Playback">
-          {transport.isPlaying ? 'Playing' : 'Paused'}
-        </p>
-      </main>
+            {workspace === 'explore' && <ExploreEditor transform={transform} />}
+          </div>
+        </div>
+      </div>
+
+      {/*
+        Spoken, not shown. The Play button's name changes, but a name changes silently for
+        someone who is not on it — and while the tab was hidden the transport will have paused
+        itself, which is a change nobody asked for.
+
+        Named, because there are several live regions on the page — playback, the transform, the
+        generation and Explore. Several are legitimate, since any of them can change without the
+        others, but an unnamed set is anonymous voices and a reader arriving at one has no way to
+        know which is speaking.
+      */}
+      <p className="visuallyHidden" role="status" aria-label="Playback">
+        {transport.isPlaying ? 'Playing' : 'Paused'}
+      </p>
 
       <footer className={styles.footer}>
         <p className={styles.note}>

@@ -28,10 +28,8 @@ export interface GeneratorPanelProps {
   readonly preset: PresetId;
   readonly seed: number;
   readonly macros: MacroValues;
-  readonly canUndo: boolean;
   readonly onRandomise: () => void;
   readonly onNewSeed: () => void;
-  readonly onUndo: () => void;
   readonly onPresetChange: (preset: PresetId) => void;
   /** Live, while a slider moves. Does not regenerate. */
   readonly onMacroChange: (macro: MacroName, value: number) => void;
@@ -50,10 +48,8 @@ export function GeneratorPanel({
   preset,
   seed,
   macros,
-  canUndo,
   onRandomise,
   onNewSeed,
-  onUndo,
   onPresetChange,
   onMacroChange,
   onMacroCommit,
@@ -82,40 +78,6 @@ export function GeneratorPanel({
             </svg>
           </span>
           Randomise
-        </button>
-
-        {/*
-          Genuinely disabled rather than merely dimmed, so a keyboard visitor is told
-          there is nothing to undo instead of being sent to a button that does nothing.
-        */}
-        <button
-          type="button"
-          className={styles.secondary}
-          onClick={onUndo}
-          disabled={!canUndo}
-          aria-label="Undo"
-          title="Undo"
-        >
-          <span aria-hidden="true" className={styles.undoIcon}>
-            <svg viewBox="0 0 20 20" width="17" height="17" focusable="false">
-              <path
-                d="M4 9h7.5a4 4 0 0 1 0 8H8"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-              />
-              <path
-                d="M7 5.5 3.5 9 7 12.5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          Undo
         </button>
       </div>
 

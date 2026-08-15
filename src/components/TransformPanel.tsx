@@ -225,7 +225,7 @@ export function TransformPanel({
               )}
 
               {exploreOpen && exploreIsShowingThis && (
-                <p className={styles.note}>This expression is open in Explore, below.</p>
+                <p className={styles.note}>This expression is open in Explore.</p>
               )}
 
               {/*
