@@ -32,16 +32,21 @@ export function TonePanel({ tones, phrase }: TonePanelProps): React.JSX.Element 
   const id = useId();
   const { soundId, status, volume, setSound, setVolume, retry } = tones;
 
-  const sounding = noteCount(phrase);
+  const notes = noteCount(phrase);
 
   return (
     <section className={panel.panel} aria-label="Tones">
       <div className={panel.header}>
         <h2 className={panel.title}>Tones</h2>
         <p className={panel.summary}>
-          {sounding === 0
+          {/*
+            "Notes", not "sounding". A note rings through the rests after it, so at any instant
+            more of the bar is sounding than has a number in it — and a count that said otherwise
+            would be describing the data while pretending to describe the sound.
+          */}
+          {notes === 0
             ? 'Sixteen rests. Give a step a note to begin.'
-            : `${String(sounding)} of 16 steps sounding.`}
+            : `${String(notes)} notes in 16 steps.`}
         </p>
       </div>
 
