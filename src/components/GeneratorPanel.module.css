@@ -7,16 +7,19 @@
  * eight presets and four sliders is small enough to show, and a control you have to open
  * is a control you forget exists.
  */
+/*
+ * The same card as every other workspace, with this panel's own grid on top.
+ *
+ * Composed rather than restated. It used to declare the surface, border, radius, padding and
+ * shadow itself — identical values, in a second place, which is how the treatment came to be
+ * missing from Explore without anybody noticing.
+ */
 .panel {
-  display: grid;
+  composes: panel from './AplPanel.module.css';
+
   gap: var(--space-4) var(--space-5);
   grid-template-columns: minmax(0, auto) minmax(0, 1fr);
   align-items: start;
-  padding: var(--space-4);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-panel);
 }
 
 .actions {

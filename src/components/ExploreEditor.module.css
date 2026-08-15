@@ -6,13 +6,19 @@
  * sideways: the sixteen-step grid is what sets the page's width and nothing here may push it.
  */
 
+/*
+ * The editor's contents, inside the workspace card.
+ *
+ * Stage 5 rendered this *within* the Transform panel's Peek, so it carried the top margin,
+ * padding and rule of a section divided off from what sat above it. Stage 7 lifted it out to be a
+ * workspace of its own and left that styling behind — which is why Explore alone appeared to sit
+ * on the page rather than in a card. The card comes from `AplPanel.module.css` now, like every
+ * other workspace, and this is only the grid inside it.
+ */
 .explore {
   display: grid;
   gap: var(--space-3);
   min-width: 0;
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--line);
 }
 
 .intro {

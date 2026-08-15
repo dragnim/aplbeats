@@ -1,10 +1,14 @@
 /*
  * The APL panel.
  *
- * Directly under the sequencer and not behind a disclosure, because it is the differentiator
- * rather than an advanced setting. Compact enough that the grid remains the dominant object:
- * one line of controls on a desk screen, stacked on a phone, with everything that would make
- * it look like an IDE kept inside Peek.
+ * Beside the sequencer rather than under it since Stage 7, and it is the differentiator rather
+ * than an advanced setting — so it is a card in its own right, with everything that would make it
+ * look like an IDE kept inside Peek.
+ *
+ * **This is the canonical workspace card.** Transform and Create use it directly; the generator
+ * and Explore compose it. Nothing else may restate its surface, border, radius, padding or
+ * shadow — the reason Explore looked wrong is that the treatment lived in two stylesheets and
+ * was missing from a third, which is exactly what a fourth copy would do again.
  */
 .panel {
   display: grid;

@@ -3,6 +3,7 @@ import { cx } from '@/app/cx';
 import { customContract, everyTarget, MAX_CUSTOM_LENGTH } from '@/apl/custom';
 import { targetName } from '@/apl/operations';
 import type { TransformApi } from '@/apl/useApl';
+import panel from './AplPanel.module.css';
 import styles from './ExploreEditor.module.css';
 
 /*
@@ -111,143 +112,159 @@ export function ExploreEditor({ transform }: ExploreEditorProps): React.JSX.Elem
   const length = [...explore.expression].length;
 
   return (
-    <div className={styles.explore}>
-      <div className={styles.intro}>
-        <p className={styles.note}>
-          <code className={styles.inline}>m</code> is the current {'8 × 16'} rhythm, one row per track. APL
-          Beats sets <code className={styles.inline}>⎕IO←0</code>, so tracks and steps count from zero.
-          {explore.randomSeed !== null && (
-            <>
-              {' '}
-              It also fixes <code className={styles.inline}>⎕RL</code> to seed{' '}
-              <code className={styles.inline}>{String(explore.randomSeed)}</code>, so{' '}
-              <code className={styles.inline}>?</code> gives the same answers every time you run this.
-            </>
-          )}{' '}
-          Write one expression; everything around it is still provided for you.
-        </p>
+    /*
+     * The same card, the same header, the same landmark as Transform and Create.
+     *
+     * Explore is a workspace in its own right since Stage 7, so it wears the workspace card
+     * rather than the divider it wore when it lived inside the Transform panel's Peek. The
+     * classes come from `AplPanel.module.css` itself rather than being copied, which is what
+     * makes "the same" a fact instead of an intention.
+     */
+    <section className={panel.panel} aria-label="Explore the APL">
+      <div className={panel.header}>
+        <h3 className={panel.title}>
+          Explore the <span className={panel.apl}>APL</span>
+        </h3>
+        <p className={panel.summary}>Edit the expression yourself, then run it on your rhythm.</p>
       </div>
 
-      <div className={styles.controls}>
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor={`${ids}-target`}>
-            Result goes to
-          </label>
-          <select
-            id={`${ids}-target`}
-            className={styles.select}
-            value={explore.target === 'all' ? 'all' : String(explore.target)}
-            onChange={(event) => {
-              const raw = event.currentTarget.value;
-              explore.setTarget(raw === 'all' ? 'all' : Number(raw));
-            }}
-          >
-            {everyTarget().map((option) => (
-              <option key={String(option)} value={option === 'all' ? 'all' : String(option)}>
-                {targetName(option)}
-              </option>
-            ))}
-          </select>
+      <div className={styles.explore}>
+        <div className={styles.intro}>
+          <p className={styles.note}>
+            <code className={styles.inline}>m</code> is the current {'8 × 16'} rhythm, one row per track. APL
+            Beats sets <code className={styles.inline}>⎕IO←0</code>, so tracks and steps count from zero.
+            {explore.randomSeed !== null && (
+              <>
+                {' '}
+                It also fixes <code className={styles.inline}>⎕RL</code> to seed{' '}
+                <code className={styles.inline}>{String(explore.randomSeed)}</code>, so{' '}
+                <code className={styles.inline}>?</code> gives the same answers every time you run this.
+              </>
+            )}{' '}
+            Write one expression; everything around it is still provided for you.
+          </p>
         </div>
 
-        <p className={styles.contract}>{customContract(explore.target)}</p>
-      </div>
+        <div className={styles.controls}>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor={`${ids}-target`}>
+              Result goes to
+            </label>
+            <select
+              id={`${ids}-target`}
+              className={styles.select}
+              value={explore.target === 'all' ? 'all' : String(explore.target)}
+              onChange={(event) => {
+                const raw = event.currentTarget.value;
+                explore.setTarget(raw === 'all' ? 'all' : Number(raw));
+              }}
+            >
+              {everyTarget().map((option) => (
+                <option key={String(option)} value={option === 'all' ? 'all' : String(option)}>
+                  {targetName(option)}
+                </option>
+              ))}
+            </select>
+          </div>
 
-      {/*
+          <p className={styles.contract}>{customContract(explore.target)}</p>
+        </div>
+
+        {/*
         The strip, above the editor rather than below it, so inserting a glyph does not move the
         box somebody is looking at.
       */}
-      <div className={styles.glyphs} role="group" aria-label="Insert an APL glyph">
-        {GLYPHS.map(({ glyph, name }) => (
-          <button
-            key={glyph}
-            type="button"
-            className={styles.glyph}
-            onClick={() => {
-              insert(glyph);
-            }}
-            aria-label={`Insert ${glyph} — ${name}`}
-            title={`${glyph} — ${name}`}
-          >
-            <span aria-hidden="true">{glyph}</span>
-          </button>
-        ))}
-      </div>
+        <div className={styles.glyphs} role="group" aria-label="Insert an APL glyph">
+          {GLYPHS.map(({ glyph, name }) => (
+            <button
+              key={glyph}
+              type="button"
+              className={styles.glyph}
+              onClick={() => {
+                insert(glyph);
+              }}
+              aria-label={`Insert ${glyph} — ${name}`}
+              title={`${glyph} — ${name}`}
+            >
+              <span aria-hidden="true">{glyph}</span>
+            </button>
+          ))}
+        </div>
 
-      <label className={styles.label} htmlFor={`${ids}-code`}>
-        Your APL expression
-      </label>
-      <textarea
-        id={`${ids}-code`}
-        ref={area}
-        className={styles.editor}
-        value={explore.expression}
-        spellCheck={false}
-        autoCapitalize="off"
-        autoCorrect="off"
-        autoComplete="off"
-        rows={2}
-        aria-describedby={`${ids}-help`}
-        onChange={(event) => {
-          explore.setExpression(event.currentTarget.value);
-        }}
-        onKeyDown={(event) => {
-          /*
-           * Ctrl or Cmd with Enter runs it. Plain Enter does not — this is a box you write in,
-           * and a stray newline should not spend somebody else's compute.
-           *
-           * Holding the shortcut repeats the keydown, and every repeat calls `run`; the busy
-           * guard in `useApl` is what stops that becoming a request storm, and there is a
-           * test that holds the key down and counts.
-           */
-          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-            event.preventDefault();
-            explore.run();
-          }
-        }}
-      />
+        <label className={styles.label} htmlFor={`${ids}-code`}>
+          Your APL expression
+        </label>
+        <textarea
+          id={`${ids}-code`}
+          ref={area}
+          className={styles.editor}
+          value={explore.expression}
+          spellCheck={false}
+          autoCapitalize="off"
+          autoCorrect="off"
+          autoComplete="off"
+          rows={2}
+          aria-describedby={`${ids}-help`}
+          onChange={(event) => {
+            explore.setExpression(event.currentTarget.value);
+          }}
+          onKeyDown={(event) => {
+            /*
+             * Ctrl or Cmd with Enter runs it. Plain Enter does not — this is a box you write in,
+             * and a stray newline should not spend somebody else's compute.
+             *
+             * Holding the shortcut repeats the keydown, and every repeat calls `run`; the busy
+             * guard in `useApl` is what stops that becoming a request storm, and there is a
+             * test that holds the key down and counts.
+             */
+            if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+              event.preventDefault();
+              explore.run();
+            }
+          }}
+        />
 
-      <div className={styles.footer}>
-        <p className={styles.help} id={`${ids}-help`}>
-          {explore.isPristine
-            ? 'This is the APL the controls above would run. Change it and it becomes yours.'
-            : 'Your expression.'}{' '}
-          Press <kbd className={styles.kbd}>Ctrl</kbd>
-          <span aria-hidden="true"> / </span>
-          <span className="visuallyHidden">or</span> <kbd className={styles.kbd}>Cmd</kbd> +{' '}
-          <kbd className={styles.kbd}>Enter</kbd> to run.
-        </p>
-        <span className={cx(styles.count, length > MAX_CUSTOM_LENGTH && styles.countOver)}>
-          {length} / {MAX_CUSTOM_LENGTH}
-        </span>
-      </div>
+        <div className={styles.footer}>
+          <p className={styles.help} id={`${ids}-help`}>
+            {explore.isPristine
+              ? 'This is the APL the controls above would run. Change it and it becomes yours.'
+              : 'Your expression.'}{' '}
+            Press <kbd className={styles.kbd}>Ctrl</kbd>
+            <span aria-hidden="true"> / </span>
+            <span className="visuallyHidden">or</span> <kbd className={styles.kbd}>Cmd</kbd> +{' '}
+            <kbd className={styles.kbd}>Enter</kbd> to run.
+          </p>
+          <span className={cx(styles.count, length > MAX_CUSTOM_LENGTH && styles.countOver)}>
+            {length} / {MAX_CUSTOM_LENGTH}
+          </span>
+        </div>
 
-      <div className={styles.actions}>
-        {/*
+        <div className={styles.actions}>
+          {/*
           The name stays "Run this APL" while it is running; only the label a sighted visitor
           reads changes, and `aria-busy` says the rest. A button whose accessible name changes
           under a screen reader is a button that appears to have been replaced by a different
           one — and here the action has not changed at all, only its progress.
         */}
-        <button
-          type="button"
-          className={styles.run}
-          onClick={explore.run}
-          disabled={!explore.canRun || status === 'running'}
-          aria-label="Run this APL"
-          aria-busy={running && mine}
-        >
-          {running && mine ? 'Running APL…' : 'Run this APL'}
-        </button>
-
-        {!explore.isPristine && (
-          <button type="button" className={styles.secondary} onClick={explore.loadCurrent}>
-            {explore.origin === 'create' ? 'Load current generator' : 'Load current transform'}
+          <button
+            type="button"
+            className={styles.run}
+            onClick={explore.run}
+            disabled={!explore.canRun || status === 'running'}
+            aria-label="Run this APL"
+            aria-busy={running && mine}
+          >
+            {running && mine ? 'Running APL…' : 'Run this APL'}
           </button>
-        )}
-      </div>
 
-      {/*
+          {!explore.isPristine && (
+            <button type="button" className={styles.secondary} onClick={explore.loadCurrent}>
+              {explore.origin === 'create' ? 'Load current generator' : 'Load current transform'}
+            </button>
+          )}
+        </div>
+
+        {/*
         Explore's own live region, named like the others on the page.
 
         It reports what *this* control did, which is why it is filtered on `lastRun`: pressing
@@ -256,37 +273,38 @@ export function ExploreEditor({ transform }: ExploreEditorProps): React.JSX.Elem
         all, because a region that spoke on every keystroke would make the editor unusable with a
         screen reader.
       */}
-      <p
-        className={cx(
-          styles.status,
-          mine && status === 'failed' && styles.statusFailed,
-          explore.problem !== null && styles.statusFailed,
-        )}
-        role="status"
-        aria-label="Explore"
-      >
-        {explore.problem ?? (
-          <>
-            {mine && status === 'running' && 'Running APL…'}
-            {mine && status === 'applied' && (lastWasCached ? 'Applied, from cache.' : 'Applied.')}
-            {mine && status === 'unchanged' && 'That ran, and the rhythm came back the same.'}
-            {mine && status === 'failed' && error}
-          </>
-        )}
-      </p>
+        <p
+          className={cx(
+            styles.status,
+            mine && status === 'failed' && styles.statusFailed,
+            explore.problem !== null && styles.statusFailed,
+          )}
+          role="status"
+          aria-label="Explore"
+        >
+          {explore.problem ?? (
+            <>
+              {mine && status === 'running' && 'Running APL…'}
+              {mine && status === 'applied' && (lastWasCached ? 'Applied, from cache.' : 'Applied.')}
+              {mine && status === 'unchanged' && 'That ran, and the rhythm came back the same.'}
+              {mine && status === 'failed' && error}
+            </>
+          )}
+        </p>
 
-      {/*
+        {/*
         What Dyalog said, when Dyalog is what objected.
 
         Stage 3 kept interpreter detail off screen because the application wrote the APL and any
         error was its own bug. Here the error belongs to the person reading it, and "APL could
         not run that" without the word RANK and a caret would be actively unhelpful.
       */}
-      {mine && aplLines.length > 0 && (
-        <pre className={styles.aplError}>
-          <code>{aplLines.join('\n')}</code>
-        </pre>
-      )}
-    </div>
+        {mine && aplLines.length > 0 && (
+          <pre className={styles.aplError}>
+            <code>{aplLines.join('\n')}</code>
+          </pre>
+        )}
+      </div>
+    </section>
   );
 }

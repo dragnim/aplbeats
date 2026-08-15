@@ -176,6 +176,46 @@ test('every tab carries its word, not only a glyph', async ({ page }) => {
   }
 });
 
+test('every workspace wears the same card', async ({ page }) => {
+  /*
+   * Explore did not, and it was visible: it had been styled as a section *inside* the Transform
+   * panel's Peek — a top rule and some padding, which is what a divided-off block wants — and
+   * Stage 7 lifted it out to be a workspace without giving it the card the others have.
+   *
+   * The card is one declaration now, in `AplPanel.module.css`, composed or used directly by all
+   * four. This compares them as *computed* values rather than asserting particular colours, so it
+   * keeps holding in both themes and after any future change to what the card looks like — what
+   * it is checking is that they agree, not what they agree on.
+   */
+  await freshVisit(page);
+
+  const surfaceOf = async (name: string): Promise<Record<string, string>> => {
+    await tab(page, name).click();
+    return page
+      .getByRole('tabpanel')
+      .locator('section, > div')
+      .first()
+      .evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          background: style.backgroundColor,
+          radius: style.borderTopLeftRadius,
+          border: `${style.borderTopWidth} ${style.borderTopStyle} ${style.borderTopColor}`,
+          padding: style.paddingTop,
+          shadow: style.boxShadow,
+        };
+      });
+  };
+
+  const reference = await surfaceOf('Transform');
+  // A card at all, rather than a transparent block on the page background.
+  expect(reference.background).not.toBe('rgba(0, 0, 0, 0)');
+
+  for (const name of ['Play', 'Create', 'Explore']) {
+    expect(await surfaceOf(name), `${name} does not match the workspace card`).toEqual(reference);
+  }
+});
+
 test('switching workspaces sends nothing', async ({ page }) => {
   const apl = watchApl(page);
   await freshVisit(page);
