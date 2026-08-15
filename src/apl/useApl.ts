@@ -49,34 +49,39 @@ import { useToneApl, type ToneAplApi } from './useToneApl';
  * This is the file that keeps the promise about TryAPL. Every rule about *when* a request may
  * be made lives here, in one place, where it can be read and counted:
  *
- *   exactly three functions can cause a request — `apply`, Explore's `run`, and Create's
- *   `generate` — and each is called from one button and from nowhere else;
+ *   exactly six functions can cause a request — `apply`, Explore's `run` and Create's `generate`,
+ *   on each of the two layers — and each is called from one button and from nowhere else;
  *
- *   changing the operation, the target, a parameter, the recipe or the seed changes state and
- *   nothing else. So does drawing a new seed, and so does opening Peek;
+ *   changing the operation, the target, a parameter, the recipe, the root, the scale or the seed
+ *   changes state and nothing else. So does drawing a new seed, and so does opening Peek;
  *
- *   playback, the playhead, Randomise and editing the grid cannot reach this file at all;
+ *   playback, the playhead, Randomise, editing the grid, editing a note and switching between
+ *   Beats and Tones cannot reach a request at all;
  *
- *   a second press of *any* of the three while one is in flight is ignored rather than queued.
- *   One `busy` ref governs all of them, which is what makes "one execution lane" a property of
- *   the code rather than a convention between three call sites;
+ *   a second press of *any* of the six while one is in flight is ignored rather than queued.
+ *   One `busy` ref governs all of them — the Tones half is handed `submit` rather than building
+ *   its own — which is what makes "one execution lane" a property of the code rather than a
+ *   convention between six call sites;
  *
  *   there are no retries and no polling anywhere.
  *
  * The last of those is worth stating plainly: there is no `setInterval`, no `setTimeout` that
- * re-requests, and no effect with a request in it. The two `setTimeout`s here write to
- * `localStorage` half a second after typing stops and cannot reach the network. A request is
- * caused by a click and by nothing else.
+ * re-requests, and no effect with a request in it. The `setTimeout`s here and in `useToneApl`
+ * write to `localStorage` half a second after typing stops and cannot reach the network. A
+ * request is caused by a click and by nothing else.
  *
- * Stage 6 added the third lane rather than a second hook. A `useGenerate` with its own client,
- * busy flag and cache would have been a second set of these rules to keep in step, and they
- * would not have stayed in step.
+ * Stage 6 added the third way in rather than a second hook, and Stage 8 added a whole second layer
+ * the same way. A `useGenerate` or a `useToneTransform` with its own client, busy flag and cache
+ * would have been another set of these rules to keep in step, and they would not have stayed in
+ * step.
  */
 
 export type TransformStatus = 'idle' | 'running' | 'applied' | 'failed' | 'unchanged';
 
 /**
  * Which of the three ways in produced the current status.
+ *
+ * Checked together with `lastDomain`, since Stage 8: the pair says which of the six.
  *
  * They share one request state — one busy flag, one counter, one cache — but they must not
  * claim each other's results. "Generated." appearing beside Transform because Explore
