@@ -55,6 +55,15 @@ export interface AuditionCandidate {
   readonly maxShiftSemitones: number;
   readonly sourcePeak: number;
   readonly gain: number;
+  /** Supporting information, shown but never ranked. Measured from the root nearest middle C. */
+  readonly shape?: {
+    readonly attackMs: number;
+    readonly at500ms: number;
+    readonly at1s: number;
+    readonly at2s: number;
+    readonly brightnessHz: number;
+    readonly sourceSeconds: number;
+  };
   readonly variants: Readonly<Record<string, AuditionVariant>>;
 }
 

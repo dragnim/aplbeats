@@ -54,19 +54,56 @@ export const OPENING_PHRASE: Phrase = [
  */
 export const DENSE_PHRASE: Phrase = [60, 63, 65, 63, 67, REST, 65, 63, 60, 63, 65, 67, 70, REST, 67, 65];
 
+/**
+ * How long a note actually gets, which turns out to be the number that matters most.
+ *
+ * A note is stopped by the *next note*, not by the end of its recording, so the longest hold in a
+ * phrase is what decides whether a slow patch ever speaks — and whether the 1.2-second trim can
+ * take anything away at all. At 112 BPM a step is 134 ms.
+ *
+ * `npm run measure:audition` renders every pad three ways and confirms it: with either phrase
+ * below, the production trim, a four-second sample and upstream's own sustain loop are identical
+ * to five decimal places, because playback never reaches 1.2 s.
+ */
+const STEP_MS = (60 / 112 / 4) * 1000;
+
+function longestHoldSteps(phrase: Phrase): number {
+  const struck = phrase.flatMap((value, step) => (value === REST ? [] : [step]));
+  if (struck.length === 0) return 0;
+
+  let longest = 0;
+  for (const [index, step] of struck.entries()) {
+    // The last note is stopped by the first note of the next bar, so the bar wraps.
+    const next = index + 1 < struck.length ? struck[index + 1]! : struck[0]! + phrase.length;
+    longest = Math.max(longest, next - step);
+  }
+  return longest;
+}
+
 export const AUDITION_PHRASES = [
   {
     id: 'opening',
     name: 'Opening phrase',
     phrase: OPENING_PHRASE,
-    note: 'What the application ships. Sparse: six notes, longest hold three steps.',
+    note: 'What the application ships. Sparse: six notes.',
   },
   {
     id: 'dense',
     name: 'Dense reference',
     phrase: DENSE_PHRASE,
-    note: 'Eleven notes with stepwise movement. Longest hold two steps.',
+    note: 'Fourteen notes with stepwise movement.',
   },
-] as const;
+].map((entry) => ({
+  ...entry,
+  longestHoldSteps: longestHoldSteps(entry.phrase),
+  longestHoldMs: Math.round(longestHoldSteps(entry.phrase) * STEP_MS),
+})) as readonly {
+  readonly id: 'opening' | 'dense';
+  readonly name: string;
+  readonly phrase: Phrase;
+  readonly note: string;
+  readonly longestHoldSteps: number;
+  readonly longestHoldMs: number;
+}[];
 
 export type AuditionPhraseId = (typeof AUDITION_PHRASES)[number]['id'];

@@ -13,7 +13,7 @@ import {
   type AuditionManifest,
   type VariantId,
 } from './candidates';
-import { AUDITION_PHRASES, type AuditionPhraseId } from './phrases';
+import { AUDITION_PHRASES, OPENING_PHRASE, type AuditionPhraseId } from './phrases';
 import styles from './Bench.module.css';
 
 /*
@@ -53,7 +53,7 @@ const MIXER = createMixer();
  * possibly between two renders. The application does the same thing with a ref inside its one hook
  * that knows about both; here there is one bench and one transport, so a holder is plainer.
  */
-const live: { phrase: Phrase } = { phrase: AUDITION_PHRASES[0].phrase };
+const live: { phrase: Phrase } = { phrase: OPENING_PHRASE };
 
 type RoleFilter = 'all' | 'lead' | 'pad' | 'reference';
 
@@ -97,7 +97,7 @@ export function Bench(): React.JSX.Element {
    * The transport reads it when it schedules a step, exactly as the application's does, so
    * changing phrase mid-bar takes effect on the next unscheduled step without restarting anything.
    */
-  const phrase = AUDITION_PHRASES.find((entry) => entry.id === phraseId) ?? AUDITION_PHRASES[0];
+  const phrase = AUDITION_PHRASES.find((entry) => entry.id === phraseId) ?? AUDITION_PHRASES[0]!;
   useEffect(() => {
     live.phrase = phrase.phrase;
   }, [phrase]);
@@ -152,24 +152,25 @@ export function Bench(): React.JSX.Element {
    */
   useEffect(() => {
     if (candidate === null) return;
-    let live = true;
+    // Named `current` rather than `live`, which is the module-level phrase holder above.
+    let current = true;
 
     samplerFor(candidate, chosen).then(
       (sampler) => {
-        if (!live) return;
+        if (!current) return;
         transport.setToneSampler(sampler);
         setLoaded((count) => count + 1);
         setStatus('');
       },
       (error: unknown) => {
-        if (!live) return;
+        if (!current) return;
         setStatus(error instanceof Error ? error.message : String(error));
       },
     );
 
     return () => {
       // A candidate switched away from mid-load must not install over the one now selected.
-      live = false;
+      current = false;
     };
   }, [candidate, chosen, transport]);
 
@@ -425,7 +426,41 @@ export function Bench(): React.JSX.Element {
             {candidate.sourcePeak.toFixed(3)} — played at gain {candidate.gain.toFixed(3)} so nothing wins by
             being louder
           </dd>
+          {candidate.shape === undefined ? null : (
+            <>
+              <dt>Attack</dt>
+              <dd>
+                {candidate.shape.attackMs.toFixed(0)} ms to reach full — and this phrase gives a note{' '}
+                {String(phrase.longestHoldMs)} ms at most
+                {candidate.shape.attackMs > phrase.longestHoldMs * 0.6
+                  ? '. Most of what you hear is the attack.'
+                  : ''}
+              </dd>
+              <dt>Holds</dt>
+              <dd>
+                {candidate.shape.at500ms.toFixed(2)} / {candidate.shape.at1s.toFixed(2)} /{' '}
+                {candidate.shape.at2s.toFixed(2)} at ½s, 1s, 2s · {String(candidate.shape.brightnessHz)} Hz ·
+                source {candidate.shape.sourceSeconds.toFixed(1)} s
+              </dd>
+            </>
+          )}
         </dl>
+
+        {/*
+          The measured answer to the question the brief asked about pads.
+
+          Shown here rather than left to be discovered, because a listener who clicks all three
+          variants and hears nothing will reasonably conclude the bench is broken. It is not: a note
+          is stopped by the *next note*, and neither audition phrase lets one hold for 1.2 s.
+        */}
+        {available.length > 1 && (
+          <p className={styles.unavailable}>
+            With this phrase a note holds {String(phrase.longestHoldMs)} ms at most, so the three variants are
+            identical to five decimal places — the trim is never reached. It bites only on phrases sparser
+            than these; upstream&rsquo;s loops sit at 4.7–9.1 s and no phrase this instrument can play ever
+            reaches them. <code>npm run measure:audition</code> is the measurement.
+          </p>
+        )}
 
         {Object.entries(candidate.variants)
           .filter(([, entry]) => !entry.available)

@@ -140,6 +140,51 @@ if (cleaning) {
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
+/**
+ * What a recording is like, in numbers, for the bench to show.
+ *
+ * The same measures `survey-jupiter4.mjs` uses, kept here so the manifest the bench reads is
+ * self-contained. Supporting information only: nothing in this file or in the bench ranks anything
+ * by them, which is the entire lesson of the pass that produced this.
+ */
+function measureShape(mono, sampleRate) {
+  let peak = 0;
+  for (const value of mono) peak = Math.max(peak, Math.abs(value));
+
+  let attackFrames = mono.length;
+  for (let at = 0; at < mono.length; at += 1) {
+    if (Math.abs(mono[at]) >= peak * 0.9) {
+      attackFrames = at;
+      break;
+    }
+  }
+
+  const level = (fromSeconds) => {
+    const from = Math.min(mono.length, Math.round(fromSeconds * sampleRate));
+    const to = Math.min(mono.length, from + Math.round(0.1 * sampleRate));
+    if (to <= from) return 0;
+    let sum = 0;
+    for (let at = from; at < to; at += 1) sum += mono[at] * mono[at];
+    return Math.sqrt(sum / (to - from));
+  };
+
+  const attack = level(0);
+  let crossings = 0;
+  for (let at = 1; at < mono.length; at += 1) {
+    if (mono[at - 1] < 0 !== mono[at] < 0) crossings += 1;
+  }
+
+  return {
+    attackMs: Number(((attackFrames / sampleRate) * 1000).toFixed(1)),
+    /* How much is left, relative to the first hundred milliseconds. A pad holds; a pluck does not. */
+    at500ms: Number((attack > 0 ? level(0.5) / attack : 0).toFixed(2)),
+    at1s: Number((attack > 0 ? level(1) / attack : 0).toFixed(2)),
+    at2s: Number((attack > 0 ? level(2) / attack : 0).toFixed(2)),
+    brightnessHz: Math.round(crossings / 2 / (mono.length / sampleRate)),
+    sourceSeconds: Number((mono.length / sampleRate).toFixed(2)),
+  };
+}
+
 /** One archive per category, opened at most once and only if something has to be built. */
 const archives = new Map();
 async function archiveFor(category) {
@@ -364,6 +409,18 @@ for (const candidate of wanted) {
   }
   entry.sourcePeak = Number(loudest.toFixed(5));
   entry.gain = loudest > 0 ? Number((TARGET_PEAK / loudest).toFixed(4)) : 1;
+
+  /*
+   * The shape of the recording, from the root nearest middle C.
+   *
+   * Supporting information, shown under the candidate's name in the bench and never used to rank
+   * anything. It earns its place by answering the question a listener asks when something sounds
+   * absent: *is this patch still in its attack when the next note arrives?* Noisy Pad takes 722 ms
+   * to speak and the opening phrase gives a note 402 ms, which is a fact worth being able to read
+   * rather than a mystery to puzzle over.
+   */
+  const middle = sources.find((source) => source.rootMidi === 60) ?? sources[0];
+  if (middle !== undefined) entry.shape = measureShape(middle.mono, middle.sampleRate);
 
   for (const variant of variants) {
     const shape = VARIANTS[variant];
