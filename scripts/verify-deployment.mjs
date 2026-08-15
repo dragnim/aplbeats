@@ -6,19 +6,21 @@
  * Content-Security-Policy that blocks a script, a Pages deployment that half
  * succeeded: none of those fail a test run, and all of them fail a visitor.
  *
- *   npm run verify:deployment                 the full check, one live TryAPL request
- *   npm run verify:deployment -- --no-apl     everything except that request
+ *   npm run verify:deployment                 the full check, two live TryAPL requests
+ *   npm run verify:deployment -- --no-apl     everything except those requests
  *   npm run verify:deployment -- https://example.com/somewhere/
  *
  * Exits non-zero on anything wrong, so it can gate a release.
  *
- * **This makes one real request to TryAPL**, and it is the only check that can: whether the
+ * **This makes two real requests to TryAPL**, and it is the only check that can: whether the
  * deployed origin is allowed to talk to tryapl.org is a fact about CORS and about the
  * published Content-Security-Policy, and neither can be established from a mock or from
- * localhost. It is one request, it is counted, and it is printed. Run by hand, never by CI.
+ * localhost. One generates a rhythm and one a melody, because the two come back in different
+ * shapes and go through different parsers. Both are counted, and both are printed. Run by hand,
+ * never by CI.
  */
 
-import { chromium } from '@playwright/test';
+import { chromium, expect } from '@playwright/test';
 
 const args = process.argv.slice(2);
 const url = args.find((argument) => !argument.startsWith('--')) ?? 'https://dragnim.github.io/aplbeats/';
@@ -236,10 +238,21 @@ if (checkApl) {
   if ((await gridOf()) !== beforeApl) note('Undo did not restore the pattern after a generation');
   if (aplRequests !== 1) note(`Undo cost a request; the count is now ${String(aplRequests)}`);
 
-  // The transform panel is still there and still says nothing it did not do.
+  /*
+   * The Transform panel says nothing it did not do.
+   *
+   * All six APL buttons share one status, so each must filter on what produced it — "Generated."
+   * appearing beside Apply would be the interface claiming something it did not do. Since Stage 7
+   * the panel is a tab and is not mounted until it is selected, so this selects it: reading a
+   * status line that is not on the page proves nothing, which is exactly what this check did
+   * silently until it was run against a Stage 7 deployment.
+   */
+  await page.getByRole('tablist', { name: 'Workspace' }).getByRole('tab', { name: 'Transform' }).click();
+  await aplStatus.waitFor({ timeout: 15_000 });
   if ((await aplStatus.innerText()).trim() !== '') {
     note('the transform panel reported an outcome it did not produce');
   }
+  if (aplRequests !== 1) note(`opening Transform cost a request; the count is now ${String(aplRequests)}`);
 }
 
 /* ---- Tones, from the published origin -------------------------------------- */
@@ -280,21 +293,30 @@ console.log(`  melody steps: ${String(padCount)}`);
 if (padCount !== 16) note(`expected 16 melody steps, found ${String(padCount)}`);
 
 const toneStatus = page.getByRole('status', { name: 'Tone sound' });
+
+/*
+ * Wait for the *sound*, not for the network.
+ *
+ * `networkidle` is a heuristic about connections and it resolved here while seven fetches were
+ * still in flight — which made this report one sample and a status line still saying "Loading
+ * sound…", and call that a problem with the deployment. The honest signal is the status line
+ * itself: the loader clears it when every recording has decoded and installed, and writes a
+ * sentence when it cannot. So this waits for one of those two things.
+ */
 try {
-  await page.waitForResponse((response) => response.url().includes('/audio/tones/'), { timeout: 15_000 });
+  await expect
+    .poll(async () => (await toneStatus.innerText()).trim(), { timeout: 45_000, intervals: [500] })
+    .not.toBe('Loading sound…');
 } catch {
-  note('no Tone sample was requested when Tones was opened');
+  note('the Tone sound had not finished loading after 45s');
 }
-await page.waitForLoadState('networkidle');
 
 console.log(`  sample requests: ${String(sampleRequests)}, failures: ${String(sampleFailures)}`);
 if (sampleRequests === 0) note('the Tone sound was never fetched');
 
 const toneMessage = (await toneStatus.innerText()).trim();
-if (toneMessage !== '') {
-  console.log(`  status line: ${toneMessage}`);
-  note(`the Tone sound reported: ${toneMessage}`);
-}
+console.log(`  status line: ${toneMessage === '' ? '(empty — the sound loaded)' : toneMessage}`);
+if (toneMessage !== '') note(`the Tone sound reported: ${toneMessage}`);
 
 if (checkApl) {
   const before = await page.locator('[class*="vectorValue"]').innerText();

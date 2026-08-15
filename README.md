@@ -694,26 +694,32 @@ rules are enforced in code rather than promised in prose, in one file
 - **`npm test`, `npm run test:e2e`, CI and the Pages deployment make zero live requests.** The
   end-to-end suite mocks the endpoint and drives the real product flow through it.
 
-Live APL is verified deliberately, by hand, by two commands and no others:
+Live APL is verified deliberately, by hand, by four commands and no others:
 
 ```bash
-npm run verify:apl-live               # four requests, one per operation
-npm run verify:apl-live -- --dry-run  # prints the expressions, sends nothing
-npm run verify:deployment             # one request, from the published origin
-npm run verify:deployment -- --no-apl # everything except that request
+npm run verify:apl-live                  # four requests, one per rhythm operation
+npm run verify:apl-generators-live       # four requests, one per rhythm recipe
+npm run verify:apl-tones-live            # two requests: every melody recipe, every melody transform
+npm run verify:deployment                # two requests, from the published origin
+npm run verify:deployment -- --no-apl    # everything except those requests
 ```
+
+The three `verify:apl*` commands accept `-- --dry-run`, which prints every expression and sends
+nothing. All four print their request count on its own line, whether or not anybody asked. None is
+ever run by CI.
 
 `verify:apl-live` builds each expression with the production source builder, sends it with the
 production client, reads it with the production parser, and compares the result against the
 TypeScript reference — then prints the request count on its own line, whether or not anybody
 asked. It refuses to run under CI unless forced.
 
-`verify:deployment` makes the one check nothing else can. Whether a browser will _allow_ the
-request from `https://dragnim.github.io` depends on TryAPL's CORS headers and on the
+`verify:deployment` makes the checks nothing else can. Whether a browser will _allow_ the request
+from `https://dragnim.github.io` depends on TryAPL's CORS headers and on the
 Content-Security-Policy as actually served, and neither can be established from a mock or from
-localhost. So it loads the published site, opens Peek, reads the expression, presses Apply
-once, and asserts the grid became the reversal of what was sent. Neither command is ever run by
-CI.
+localhost. It also serves the only proof that the Tone samples resolve from the published
+base path — a path right in the dev server and wrong in the bundle is a silent seven-404 failure.
+So it loads the published site, generates a rhythm and a melody, and checks that both came back
+and that the opening sound's seven recordings loaded. Two requests, both counted and printed.
 
 ### What comes back is not trusted
 
@@ -1062,7 +1068,7 @@ npm run dev
 | `npm run verify:credits`             | Check every attribution claim against the live upstream repositories                     |
 | `npm run measure:generated`          | Render generated bars through the real master chain and check for clipping               |
 | `npm run measure:tones`              | Render both layers through the real master chain and check the balance                   |
-| `npm run verify:deployment`          | Load the published site and check it works. **One real TryAPL request**                  |
+| `npm run verify:deployment`          | Load the published site and check it works. **Two real TryAPL requests**                 |
 
 ## How it is put together
 
