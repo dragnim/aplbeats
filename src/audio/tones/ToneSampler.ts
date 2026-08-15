@@ -1,7 +1,7 @@
 /*
  * One pitched voice, sampled and monophonic.
  *
- * Small on purpose. A melodic sampler can grow into a whole synthesiser given the chance — zones,
+ * Small on purpose. A pitched sampler can grow into a whole synthesiser given the chance — zones,
  * velocity layers, round robins, envelopes, filters — and none of that is what Stage 8 is for.
  * This does exactly four things: pick the nearest recording to the pitch asked for, shift it,
  * replace whatever was sounding, and get out of the way.
@@ -26,7 +26,7 @@
  *
  * **No loops.** Every recording plays once and decays. Upstream's own sustain loops begin between
  * 4.7 and 9.1 seconds in, and a note here is stopped by the next note rather than by the end of
- * its buffer, so the melody would have to hold a single note for some thirty-five steps to reach
+ * its buffer, so the Tone phrase would have to hold a single note for some thirty-five steps to reach
  * one. That was measured rather than assumed during the sound curation pass: against either shipped
  * phrase, a trimmed sample, a four-second sample and a looped one are identical to five decimal
  * places. See `scripts/prepare-jupiter4.mjs`.

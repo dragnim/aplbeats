@@ -409,7 +409,7 @@ had to be filled.
 
 **Nothing comes from FX either, for a different reason.** Its eleven folders are chromatically
 sampled playable presets rather than the one-shots their name suggests — an earlier version of this
-document said otherwise and was wrong — but they were never candidates for a melodic voice, so they
+document said otherwise and was wrong — but they were never candidates for a pitched voice, so they
 were excluded for scope and never auditioned. Both findings are recorded in the manifest under
 `categoriesNotShipped` and can be reproduced with `npm run prepare:jupiter4 -- --survey`, which
 reads about a megabyte of ZIP directories and downloads no audio at all.

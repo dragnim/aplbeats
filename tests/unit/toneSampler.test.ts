@@ -154,7 +154,7 @@ describe('one monophonic voice', () => {
    * The four rules the runtime actually follows, pinned as tests.
    *
    * Worth pinning because the first version had one of them the other way round: it released on
-   * every rest, which made each note exactly one step long and turned the Pad into a click. The
+   * every rest, which made each note exactly one step long and turned a slow patch into a click. The
    * documentation said so too, for a while after the code stopped doing it.
    */
   const zones = [{ rootMidi: 60, buffer: {} as AudioBuffer }];
@@ -206,11 +206,11 @@ describe('one monophonic voice', () => {
 
   it('applies the sound’s working gain to every note', () => {
     /*
-     * The bug the audition pass found. `ToneSoundDefinition.gain` was measured, documented and
+     * The bug the listening pass found. `ToneSoundDefinition.gain` was measured, documented and
      * tested from the first day of Stage 8 and applied *nowhere*: the loader built zones from raw
-     * buffers, the transport passed level 1, and the sampler played each buffer as it was. The
-     * four sounds' source peaks are 1.000, 0.261, 1.000 and 0.066, so the shipped Pad was some
-     * fifteen times quieter than the shipped Lead.
+     * buffers, the transport passed level 1, and the sampler played each buffer as it was. The six
+     * sounds' source peaks run from 0.044 to 1.000, so the quietest was arriving some twenty-three
+     * times below the loudest.
      */
     const rig = voice();
     const ramped: number[] = [];
@@ -324,8 +324,9 @@ describe('the six sounds', () => {
 
   it('brings every sound to the same working peak, so the selector is not a volume control', () => {
     /*
-     * The recordings arrive at wildly different levels — the Pad peaks around 6% of full scale
-     * and the Lead at 100% — and a Sound selector that changed how loud the melody was would be a
+     * The recordings arrive at wildly different levels — Noisy Lead peaks at about 4% of full
+     * scale and Petals Piano at 100% — and a Sound selector that changed how loud the phrase was
+     * would be a
      * volume control pretending to be an instrument control.
      */
     for (const sound of TONE_SOUNDS) {
@@ -337,7 +338,7 @@ describe('the six sounds', () => {
   });
 
   it('sits below the drums, which is the whole promise of the layer', () => {
-    // The synthesised kit's loudest voice peaks around −1.2 dBFS. A melody at a third of that is
+    // The synthesised kit's loudest voice peaks around −1.2 dBFS. A phrase at a third of that is
     // present without becoming the loudest thing in the bar.
     expect(TONE_TARGET_PEAK).toBeLessThan(0.5);
   });

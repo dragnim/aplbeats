@@ -10,13 +10,13 @@ import styles from './TonePanel.module.css';
  * The Tones instrument panel.
  *
  * What the generator panel is to Beats: the controls beside the thing you are editing. Which
- * instrument plays the melody, how loud it sits under the drums, and — quietly at the bottom —
- * the melody itself as APL would write it.
+ * instrument plays the Tone phrase, how loud it sits under the drums, and — quietly at the
+ * bottom — the phrase itself as APL would write it.
  *
  * That last line is the whole reason Tones exists, and it is here rather than in a Peek because
  * it costs nothing to show. `n` is sixteen numbers. Anybody can read it, nobody has to, and
  * seeing `0 60 0 63` line up with the pads they just edited is the moment the array stops being
- * an abstraction. The Beats side needs `8 16⍴` and a Peek to show the same thing; the melody
+ * an abstraction. The Beats side needs `8 16⍴` and a Peek to show the same thing; the phrase
  * needs neither, and the contrast is the lesson.
  *
  * The canonical workspace card, from `AplPanel.module.css`, so this sits beside Create,
@@ -131,8 +131,8 @@ export function TonePanel({ tones, phrase }: TonePanelProps): React.JSX.Element 
 
       <div className={styles.vector}>
         <p className={styles.vectorLabel}>
-          The melody, as APL holds it — a numeric vector <code className={styles.variable}>n</code>, where 0
-          is a rest.
+          The Tone phrase, as APL holds it — a numeric vector <code className={styles.variable}>n</code>,
+          where is a rest.
         </p>
         {/*
           A `pre`, not an `output`.

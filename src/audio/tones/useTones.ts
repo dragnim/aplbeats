@@ -21,7 +21,7 @@ import { DEFAULT_TONE_SOUND, DEFAULT_TONE_VOLUME, type ToneSoundId } from './sou
  * the current choice is dropped on arrival.
  *
  * And nothing is fetched until Tones is actually opened. A visitor who came for the drums and
- * never touched the melody should not spend three megabytes of their data on it.
+ * never touched the Tones should not spend megabytes of their data on them.
  */
 
 export type ToneStatus =
@@ -47,7 +47,7 @@ export interface UseTonesOptions {
   readonly install: (sampler: ToneSampler | null) => void;
   /** Where the level goes. The transport's `setToneVolume`. */
   readonly applyVolume: (volume: number) => void;
-  /** The melody, so that changing sound can be persisted alongside it. */
+  /** The Tone phrase, so that changing sound can be persisted alongside it. */
   readonly phrase: Phrase;
   /** Where the samples are served from. Defaults to the published base path. */
   readonly baseUrl?: string;
@@ -84,7 +84,7 @@ export function useTones(options: UseTonesOptions): TonesApi {
   const loader = options.loader ?? fallbackLoader;
 
   /*
-   * The melody, behind a ref.
+   * The Tone phrase, behind a ref.
    *
    * Only read when the *sound* changes, to write both into storage together. Holding it as a
    * dependency instead would rewrite that record on every note edit — which the App already does,
@@ -142,7 +142,7 @@ export function useTones(options: UseTonesOptions): TonesApi {
            * No fallback instrument, deliberately — unlike the drum machine, which drops back to
            * the synthesised kit. There is nothing to drop back to: every Tone sound is a set of
            * recordings, and a synthesised stand-in would be a different instrument wearing the
-           * name of the one that failed. The melody, the drums and the transport are all
+           * name of the one that failed. The phrase, the drums and the transport are all
            * untouched; one line says so and offers to try again.
            */
           console.warn('[tones]', error);

@@ -112,7 +112,7 @@
 /* --- The vector ----------------------------------------------------------- */
 
 /*
- * The melody as sixteen numbers.
+ * The Tone phrase as sixteen numbers.
  *
  * Set apart by a rule rather than by another card, because it is not a control — it is the data
  * the controls above are editing, shown plainly. The monospace face and the tabular figures make

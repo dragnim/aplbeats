@@ -4,7 +4,7 @@
  * **Never used in production.** Nothing in `src/apl/service.ts` or `useApl.ts` can reach this
  * file. It exists for two things: so `tests/unit/toneGenerators.test.ts` can assert what each
  * expression is supposed to do without spending a request, and so `npm run review:apl-tones` can
- * print a hundred melodies to judge for nothing. If APL is unavailable, the feature is
+ * print a hundred phrases to judge for nothing. If APL is unavailable, the feature is
  * unavailable — quietly substituting these would make "Create with APL" a lie, which is the one
  * thing this whole part of the application exists not to be.
  *
@@ -130,7 +130,7 @@ function shift(phrase: Phrase, semitones: number): Phrase {
 /**
  * `k⌽n`, with APL's sign convention.
  *
- * A positive left argument takes from further along the vector, so the melody appears to move
+ * A positive left argument takes from further along the vector, so the phrase appears to move
  * *earlier*. Written as one modulo rather than as a loop for the same reason the APL is one
  * glyph: the operation is a re-indexing, not a repeated shuffle.
  */

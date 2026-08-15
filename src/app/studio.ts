@@ -36,7 +36,7 @@ export const MACRO_NAMES: readonly MacroName[] = ['density', 'complexity', 'sync
  *
  * One state and one history covering Beats *and* Tones, rather than a stack each. Two stacks
  * would mean the Undo button had to decide which layer you meant, and the honest answer is that
- * nobody making music thinks in layers while they work: you transpose the melody, you dislike it,
+ * nobody making music thinks in layers while they work: you transpose the phrase, you dislike it,
  * you press Undo. Whichever thing you changed last is the thing that comes back.
  *
  * The Tone *sound* is deliberately not here, for the same reason the drum kit is not: choosing an
@@ -45,7 +45,7 @@ export const MACRO_NAMES: readonly MacroName[] = ['density', 'complexity', 'sync
  */
 export interface CreativeState {
   readonly pattern: Pattern;
-  /** The Tone melody. Sixteen numbers; see `@/tones/phrase`. */
+  /** The Tone phrase. Sixteen numbers; see `@/tones/phrase`. */
   readonly phrase: Phrase;
   readonly seed: number;
   readonly preset: PresetId;
@@ -102,7 +102,7 @@ export type StudioAction =
       readonly gesture: string;
     }
   /**
-   * One step of the melody, set by hand.
+   * One step of the Tone phrase, set by hand.
    *
    * The Tone counterpart of `setCell`, coalescing the same way: dragging a note up through five
    * semitones is one Undo, because it was one gesture.

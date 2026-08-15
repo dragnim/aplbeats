@@ -1,14 +1,14 @@
 /*
- * The four things APL does to a melody, and why they are the four.
+ * The four things APL does to a phrase, and why they are the four.
  *
  * The Beats operations act on `m`, an 8 × 16 Boolean matrix. These act on `n`, a sixteen-element
  * numeric vector — and the contrast is the entire teaching point of Stage 8. Two of the four are
- * *the same glyph doing the same thing to a different shape*: `⌽n` reverses a melody exactly as
+ * *the same glyph doing the same thing to a different shape*: `⌽n` reverses a phrase exactly as
  * `⌽m` reverses a rhythm, and `3⌽n` rotates one as `3⌽m` rotates the other. Nothing was written
  * twice to make that true. It is true because rank-polymorphism is what array languages are for,
  * and seeing it happen to your own music is worth more than a paragraph claiming it.
  *
- * The other two exist because a melody has something a rhythm has not: a *value* at each step.
+ * The other two exist because a phrase has something a rhythm has not: a *value* at each step.
  * You cannot transpose a Boolean. `n+5` is a sentence that only makes sense here, and the fact
  * that it is spelt `n+5` rather than as a loop over sixteen notes is the second half of the
  * lesson.
@@ -22,7 +22,7 @@
  *
  * **Notes stay inside the instrument.** `48⌈84⌊` holds the result within the sampled range. A
  * pitch outside it would be refused by the parser and the whole transform lost, so it is clamped
- * in APL rather than validated in JavaScript: a melody transposed up past the top of the
+ * in APL rather than validated in JavaScript: a phrase transposed up past the top of the
  * instrument keeps its top note at the top rather than failing. That is a real edge — say so in
  * the explanation rather than pretend the range is infinite.
  *
@@ -65,7 +65,7 @@ export const TONE_OPERATIONS: readonly ToneOperation[] = [
   {
     id: 'reverse',
     name: 'Reverse',
-    summary: 'Play the melody backwards.',
+    summary: 'Play the phrase backwards.',
     parameters: [],
     explanation: [
       '⌽ with nothing on its left reverses — the same glyph that reverses a rhythm, on a different shape.',
@@ -75,17 +75,17 @@ export const TONE_OPERATIONS: readonly ToneOperation[] = [
   {
     id: 'rotate',
     name: 'Rotate',
-    summary: 'Move the melody through time.',
+    summary: 'Move the phrase through time.',
     parameters: [{ key: 'amount', label: 'Steps', min: -8, max: 8, excludeZero: true, defaultValue: -2 }],
     explanation: [
-      '⌽ with a number on its left rotates. A negative amount moves the melody later, a positive one earlier.',
+      '⌽ with a number on its left rotates. A negative amount moves the phrase later, a positive one earlier.',
       'Exactly what k⌽m does to a rhythm — one expression, two kinds of music.',
     ],
   },
   {
     id: 'octave',
     name: 'Octave',
-    summary: 'Move the whole melody by whole octaves.',
+    summary: 'Move the whole phrase by whole octaves.',
     parameters: [{ key: 'amount', label: 'Octaves', min: -2, max: 2, excludeZero: true, defaultValue: 1 }],
     explanation: [
       'An octave is twelve semitones, so this is n+12×k — the same arithmetic, a musical unit.',
@@ -115,10 +115,10 @@ export interface ToneSourceRequest {
 }
 
 /**
- * The APL for one melody transform.
+ * The APL for one phrase transform.
  *
- * Four statements, the same shape as a Beats transform: set the index origin, write the melody
- * down, transform it, hand it back. There is no target — a melody is one line, so there is
+ * Four statements, the same shape as a Beats transform: set the index origin, write the phrase
+ * down, transform it, hand it back. There is no target — a phrase is one line, so there is
  * nothing to choose between "this track" and "all tracks", and the control that would have
  * offered the choice is simply absent rather than present and disabled.
  */

@@ -7,10 +7,10 @@ import { noteName } from '@/tones/phrase';
 import styles from './AplPanel.module.css';
 
 /*
- * Create with APL, for the melody.
+ * Create with APL, for the Tone phrase.
  *
  * Four controls where the Beats side has two, and the two extra ones are the point. A rhythm
- * recipe decides everything about a bar; a melody recipe decides only its *shape*, because which
+ * recipe decides everything about a bar; a Tone recipe decides only its *shape*, because which
  * notes are available is a musical decision somebody should be making rather than a decision
  * baked into four fixed tunes. Root and Scale are that decision, and between them they turn four
  * recipes into four recipes times five scales times twenty-four roots.
@@ -40,14 +40,14 @@ export function ToneCreatePanel({
   const { create, explore } = tones;
   const running = status === 'running';
 
-  /* Whose outcome this is: the melody's Generate, and not the rhythm's. */
+  /* Whose outcome this is: the Tone phrase's Generate, and not the rhythm's. */
   const mine = lastRun === 'generate' && lastDomain === 'tones';
 
   const exploreHasOwnWork = !explore.isPristine;
   const exploreIsShowingThis = explore.origin === 'create' && explore.isPristine;
 
   return (
-    <section className={styles.panel} aria-label="Create a melody with APL">
+    <section className={styles.panel} aria-label="Create a Tone phrase with APL">
       <div className={styles.header}>
         <h3 className={styles.title}>
           Create with <span className={styles.apl}>APL</span>
@@ -139,14 +139,14 @@ export function ToneCreatePanel({
           type="button"
           className={styles.secondary}
           onClick={create.newSeed}
-          title="Choose another melody seed. Makes no request."
+          title="Choose another Tone seed. Makes no request."
         >
           {/*
-            "New melody seed", so that no two seed buttons on this page share an accessible name.
+            "New Tone seed", so that no two seed buttons on this page share an accessible name.
             There are now three — the local generator's, the Beats APL one, and this — and they are
             three genuinely different seeds, so naming them apart is honest as well as necessary.
           */}
-          New melody seed
+          New Tone seed
         </button>
 
         <button
@@ -154,7 +154,7 @@ export function ToneCreatePanel({
           className={styles.apply}
           onClick={create.generate}
           disabled={running}
-          aria-label="Generate a melody with APL"
+          aria-label="Generate a Tone phrase with APL"
           aria-busy={running && mine}
         >
           {running && mine ? 'Running APL…' : 'Generate with APL'}
@@ -164,11 +164,11 @@ export function ToneCreatePanel({
       <p
         className={cx(styles.status, mine && status === 'failed' && styles.statusFailed)}
         role="status"
-        aria-label="APL melody generation"
+        aria-label="APL Tone generation"
       >
         {mine && status === 'running' && 'Running APL…'}
         {mine && status === 'applied' && (lastWasCached ? 'Generated, from cache.' : 'Generated.')}
-        {mine && status === 'unchanged' && 'That seed made no difference to this melody.'}
+        {mine && status === 'unchanged' && 'That seed made no difference to this Tone phrase.'}
         {mine && status === 'failed' && error}
       </p>
 
@@ -263,7 +263,7 @@ export function ToneCreatePanel({
                 <span className={styles.glyph}>⎕IO←0</span> keeps APL counting from zero, and{' '}
                 <span className={styles.glyph}>⎕RL←{String(create.seed)} 1</span> fixes the random source to
                 your seed using Dyalog’s first generator — which is the whole reason the same seed gives the
-                same melody. Your current melody is not sent at all: a recipe does not read it.
+                same phrase. Your current Tone phrase is not sent at all: a recipe does not read it.
               </p>
             </div>
           </div>

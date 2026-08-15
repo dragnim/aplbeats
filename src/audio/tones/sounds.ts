@@ -16,7 +16,7 @@
  *
  * The gains are the same idea as the drum kits': the recordings arrive at wildly different levels
  * — Noisy Lead peaks at 4% of full scale and Petals Piano at 100% — and a Sound selector that
- * changed how loud the melody was would be a volume control pretending to be an instrument
+ * changed how loud the Tones were would be a volume control pretending to be an instrument
  * control. Each gain brings its sound to the same working peak, and nothing else about the
  * recording is touched.
  */
@@ -66,7 +66,7 @@ export interface ToneSoundDefinition {
  * The peak every sound is brought to.
  *
  * Chosen against the drums rather than in isolation: the synthesised kit's loudest voice peaks
- * around −1.2 dBFS, and a melodic line sitting about 8 dB below that is present without being
+ * around −1.2 dBFS, and a pitched line sitting about 8 dB below that is present without being
  * the loudest thing in the bar. It is one number, applied the same way to all six, so the
  * *relative* character of the presets survives — a bright lead still reads brighter than a flute,
  * it just no longer arrives twenty times louder.
@@ -107,8 +107,8 @@ function define(id: ToneSoundId, name: string, blurb: string): ToneSoundDefiniti
  * The six, in the order they are offered.
  *
  * Petals Piano first because it is the default, and it is the default because it makes the shape
- * of a melody obvious on first play — which is the only job a default has. Then the three leads,
- * loudest and brightest to softest, then the bass, which is the one that changes what the melody
+ * of a phrase obvious on first play — which is the only job a default has. Then the three leads,
+ * loudest and brightest to softest, then the bass, which is the one that changes what the phrase
  * is *for* rather than merely how it sounds.
  */
 export const TONE_SOUNDS: readonly ToneSoundDefinition[] = [
@@ -133,17 +133,17 @@ const BY_ID: Partial<Record<string, ToneSoundDefinition>> = Object.fromEntries(
  *
  * Petals Piano, chosen by ear over every lead in the library. The default matters more than any
  * other single choice here because it decides what somebody hears the first time they open Tones,
- * and a percussive voice makes a sixteen-step melody legible in a way a sustained one does not.
+ * and a percussive voice makes a sixteen-step phrase legible in a way a sustained one does not.
  */
 export const DEFAULT_TONE_SOUND: ToneSoundId = 'petals-piano';
 
 /**
- * How loud the melody is before anybody moves the fader.
+ * How loud the Tones are before anybody moves the fader.
  *
  * Under the drums on purpose, and this is the second of the two places that judgement is made —
  * `TONE_TARGET_PEAK` above sets how loud the *recordings* are relative to each other, this sets
  * how loud the layer is relative to the kit. Kept as a control rather than baked into the gains
- * so that somebody writing a melody-led piece can turn the tune up without having to turn the
+ * so that somebody writing a Tone-led piece can turn the tune up without having to turn the
  * whole kit down.
  */
 export const DEFAULT_TONE_VOLUME = 0.7;

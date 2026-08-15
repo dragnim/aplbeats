@@ -12,7 +12,7 @@ import styles from './DomainTabs.module.css';
  *
  * **Switching is free, and that is a guarantee rather than an optimisation.** No request, no
  * fetch, no execution, no transport change. Both layers go on sounding while you look at either
- * one; the drums do not pause because you went to write a melody, and the melody does not stop
+ * one; the drums do not pause because you went to write a tune, and the Tones do not stop
  * because you went back to the kick. Anything else would make the tabs a mode, and modes in a
  * musical instrument are how you lose a take.
  *

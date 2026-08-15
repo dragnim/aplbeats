@@ -14,8 +14,8 @@
  *   includes the thing that had not been tested before Stage 8: **indexing a vector by a vector
  *   of seeded indices**, `s[?16⍴5]`, and reshape-cycling, `16⍴`;
  *   every answer is sixteen whole numbers, each a rest or a pitch this instrument can play;
- *   the same seed gives the same melody, twice in one session;
- *   a different seed gives a different melody, so the seed is not decoration.
+ *   the same seed gives the same phrase, twice in one session;
+ *   a different seed gives a different phrase, so the seed is not decoration.
  *
  * And the second:
  *
@@ -114,15 +114,15 @@ if (!dryRun) {
         if (!first?.ok || !again?.ok || !other?.ok) continue;
 
         if (phrasesEqual(first.phrase, again.phrase)) {
-          notes.push(`${recipe.name}: the same seed gave the same melody, twice in one session`);
+          notes.push(`${recipe.name}: the same seed gave the same phrase, twice in one session`);
         } else {
-          failures.push(`${recipe.name}: the same seed gave two different melodies`);
+          failures.push(`${recipe.name}: the same seed gave two different phrases`);
         }
 
         if (phrasesEqual(first.phrase, other.phrase)) {
-          failures.push(`${recipe.name}: a different seed gave the same melody — the seed does nothing`);
+          failures.push(`${recipe.name}: a different seed gave the same phrase — the seed does nothing`);
         } else {
-          notes.push(`${recipe.name}: a different seed gave a different melody`);
+          notes.push(`${recipe.name}: a different seed gave a different phrase`);
         }
       }
     }

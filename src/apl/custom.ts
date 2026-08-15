@@ -186,14 +186,14 @@ export interface ToneCustomSourceRequest {
 }
 
 /**
- * The same, for a melody.
+ * The same, for a phrase.
  *
  * Deliberately the same wrapper shape and the same four statements, because `checkCustomExpression`
  * above is doing the same job for both: everything it forbids — `⋄`, a newline, `⍝`, a leading
  * `)` — is forbidden because of what it would do to *these statements*, and the statements are
  * identical in structure. One check, one contract, two kinds of music.
  *
- * The one difference is the assignment. There is no target: a melody is one line, so the
+ * The one difference is the assignment. There is no target: a phrase is one line, so the
  * expression's result becomes the whole of `n` and there is no bracket form.
  */
 export function buildToneCustomSource({ core, phrase, randomSeed }: ToneCustomSourceRequest): AplSource {
@@ -212,7 +212,7 @@ export function buildToneCustomSource({ core, phrase, randomSeed }: ToneCustomSo
 }
 
 /**
- * What a melody expression has to produce.
+ * What a phrase expression has to produce.
  *
  * Stated as the numbers rather than as "a phrase", because that is the contract APL is actually
  * held to — and because "0 is a rest" is the one fact somebody needs to know before their first
@@ -221,5 +221,5 @@ export function buildToneCustomSource({ core, phrase, randomSeed }: ToneCustomSo
 export function toneContract(): string {
   return `Return ${String(PHRASE_LENGTH)} whole numbers: 0 for a rest, or a MIDI note from ${String(
     TONE_MIN_MIDI,
-  )} to ${String(TONE_MAX_MIDI)}. They become the melody.`;
+  )} to ${String(TONE_MAX_MIDI)}. They become the Tone phrase.`;
 }

@@ -9,7 +9,7 @@ import { expect, test, type Page } from '@playwright/test';
  * already fetched, stop no playback and lose no work. That is the kind of claim a suite testing
  * only the musical behaviour would let rot, so it is asserted here directly.
  *
- * The other half is what a melody editor can break that a rhythm editor cannot: pitches. A step
+ * The other half is what a Tone editor can break that a rhythm editor cannot: pitches. A step
  * has a *value*, so there is an editor row, arrow keys that move a note by a semitone, and a
  * vector readout that has to agree with all of it.
  *
@@ -115,13 +115,13 @@ test('each layer shows its own instrument, and only that one', async ({ page }) 
   await expect(page.locator(CELL)).toHaveCount(128);
 
   await layer(page, 'Tones').click();
-  await expect(page.getByRole('group', { name: 'Melody steps' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Tone steps' })).toBeVisible();
   // One layer at a time: the drum grid is gone, not merely hidden.
   await expect(page.locator(CELL)).toHaveCount(0);
 
   await layer(page, 'Beats').click();
   await expect(page.locator(CELL)).toHaveCount(128);
-  await expect(page.getByRole('group', { name: 'Melody steps' })).toHaveCount(0);
+  await expect(page.getByRole('group', { name: 'Tone steps' })).toHaveCount(0);
 });
 
 test('switching layers makes no request and does not stop the music', async ({ page }) => {
@@ -169,7 +169,7 @@ test('each layer remembers which tool it had open', async ({ page }) => {
 
 test('nothing is downloaded until Tones is opened, and nothing twice', async ({ page }) => {
   /*
-   * Somebody who came for the drums and never opened the melody should pay none of the sound's
+   * Somebody who came for the drums and never opened Tones should pay none of the sound's
    * 724 KB — and somebody who opened it once should not pay again for glancing back at the kick.
    */
   const samples = watchSamples(page);
@@ -189,13 +189,13 @@ test('nothing is downloaded until Tones is opened, and nothing twice', async ({ 
   expect(samples).toHaveLength(afterFirst);
 });
 
-/* ---- editing a melody ---------------------------------------------------- */
+/* ---- editing a phrase ---------------------------------------------------- */
 
 test('a step carries its pitch in its name, not only in its picture', async ({ page }) => {
   await freshVisit(page);
   await layer(page, 'Tones').click();
 
-  // The opening melody: C4 on step 1, and a rest on the backbeat.
+  // The opening phrase: C4 on step 1, and a rest on the backbeat.
   await expect(pad(page, 1)).toHaveAccessibleName('Step 1, C4');
   await expect(pad(page, 5)).toHaveAccessibleName('Step 5, rest');
 });
@@ -205,7 +205,7 @@ test('arrow keys move a note by a semitone, and the vector agrees', async ({ pag
   await layer(page, 'Tones').click();
 
   // Scoped to the Tones panel: the transport bar has readouts of its own, and a bare selector
-  // would match a tempo before it matched a melody.
+  // would match a tempo before it matched a phrase.
   const vector = page.getByRole('region', { name: 'Tones' }).locator('pre');
   await expect(vector).toContainText('60 0 0 63');
 
@@ -255,7 +255,7 @@ test('arrow keys walk the bar without leaving it', async ({ page }) => {
 
   await page.keyboard.press('End');
   await expect(pad(page, 16)).toBeFocused();
-  // The end is the end: a melody has sixteen steps and there is no seventeenth to reach.
+  // The end is the end: a phrase has sixteen steps and there is no seventeenth to reach.
   await page.keyboard.press('ArrowRight');
   await expect(pad(page, 16)).toBeFocused();
 
@@ -271,7 +271,7 @@ test('one Undo covers both layers, and takes back whatever was last', async ({ p
   const undo = page.getByRole('button', { name: 'Undo' });
   await expect(undo).toBeDisabled();
 
-  // A drum edit, then a melody edit.
+  // A drum edit, then a phrase edit.
   const cell = page.locator(CELL).nth(2);
   await cell.click();
   await expect(undo).toBeEnabled();
@@ -281,7 +281,7 @@ test('one Undo covers both layers, and takes back whatever was last', async ({ p
   await page.keyboard.press('ArrowUp');
   await expect(pad(page, 1)).toHaveAccessibleName('Step 1, C♯4');
 
-  // The melody comes back first, because it was the last thing changed.
+  // The phrase comes back first, because it was the last thing changed.
   await undo.click();
   await expect(pad(page, 1)).toHaveAccessibleName('Step 1, C4');
 
@@ -294,7 +294,7 @@ test('one Undo covers both layers, and takes back whatever was last', async ({ p
 
 /* ---- what is remembered -------------------------------------------------- */
 
-test('the melody and its instrument survive a reload', async ({ page }) => {
+test('the phrase and its instrument survive a reload', async ({ page }) => {
   await freshVisit(page);
   await layer(page, 'Tones').click();
 
@@ -313,7 +313,7 @@ test('the melody and its instrument survive a reload', async ({ page }) => {
 
 /* ---- the APL tools ------------------------------------------------------- */
 
-test('the melody has its own three APL tools, and its own Explore draft', async ({ page }) => {
+test('the phrase has its own three APL tools, and its own Explore draft', async ({ page }) => {
   await freshVisit(page);
   const apl = watchApl(page);
 
@@ -337,7 +337,7 @@ test('the melody has its own three APL tools, and its own Explore draft', async 
   expect(apl, `TryAPL requests: ${apl.join(', ')}`).toHaveLength(0);
 });
 
-test('the melody Peek shows the vector and the notes together, without a request', async ({ page }) => {
+test('the phrase Peek shows the vector and the notes together, without a request', async ({ page }) => {
   await freshVisit(page);
   const apl = watchApl(page);
 
@@ -348,7 +348,7 @@ test('the melody Peek shows the vector and the notes together, without a request
   const peek = page.locator('[id$="-peek"]').first();
   // Transpose is where the Tone transform controls start, so this is the expression on offer.
   await expect(peek).toContainText('(48⌈84⌊n+5)×0<n');
-  // The melody as APL holds it, and as a musician reads it — which is what stops "a tune is a
+  // The phrase as APL holds it, and as a musician reads it — which is what stops "a tune is a
   // vector of numbers" from being a claim somebody has to take on faith.
   await expect(peek).toContainText('60 0 0 63');
   await expect(peek).toContainText('C4');
@@ -356,7 +356,7 @@ test('the melody Peek shows the vector and the notes together, without a request
   expect(apl, `TryAPL requests: ${apl.join(', ')}`).toHaveLength(0);
 });
 
-test('the melody Create controls cost nothing until Generate is pressed', async ({ page }) => {
+test('the phrase Create controls cost nothing until Generate is pressed', async ({ page }) => {
   await freshVisit(page);
   const apl = watchApl(page);
 
@@ -366,7 +366,7 @@ test('the melody Create controls cost nothing until Generate is pressed', async 
   await page.getByLabel('Recipe').selectOption('sparse');
   await page.getByLabel('Scale').selectOption('dorian');
   await page.getByLabel('Root').selectOption('62');
-  await page.getByRole('button', { name: 'New melody seed' }).click();
+  await page.getByRole('button', { name: 'New Tone seed' }).click();
   await page.getByRole('button', { name: 'Peek at the APL' }).click();
 
   expect(apl, `TryAPL requests: ${apl.join(', ')}`).toHaveLength(0);

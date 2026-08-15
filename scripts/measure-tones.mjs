@@ -2,20 +2,20 @@
  * Render a bar with both layers and measure what comes out.
  *
  * Stage 8 puts a second instrument into a master chain that was calibrated with one in it. Whether
- * that clips, and whether the melody is audible against the kit rather than on top of it, is
+ * that clips, and whether the Tones are audible against the kit rather than on top of them, is
  * arithmetic rather than judgement — and it is the kind of arithmetic that is invisible until
  * somebody listens on good headphones and wonders why the kick went quiet.
  *
  * Three numbers matter here and each answers a different question:
  *
- *   **peak and clipped** — does adding a melody push the master chain past full scale? The
+ *   **peak and clipped** — does adding a Tone phrase push the master chain past full scale? The
  *   compressor and limiter should absorb it, and "should" is not a measurement.
  *
- *   **the drums' RMS with and without the melody** — does the melody make the *kit* quieter? It
- *   goes through the same compressor, so a loud melody would duck the drums, and a drum machine
+ *   **the drums' RMS with and without the phrase** — does the phrase make the *kit* quieter? It
+ *   goes through the same compressor, so a loud phrase would duck the drums, and a drum machine
  *   whose kick disappears when you write a tune is a broken drum machine.
  *
- *   **the melody's own RMS** — is it present at all? A layer nobody can hear is not a layer.
+ *   **the phrase's own RMS** — is it present at all? A layer nobody can hear is not a layer.
  *
  * Drives the Vite dev server so the browser imports the real sampler, the real kit and the real
  * master chain, and fetches the real prepared samples.
@@ -108,8 +108,8 @@ const results = await page.evaluate(async () => {
      *
      * This script used to pass the gain as the *note level* instead, which happened to produce the
      * right number while the product itself applied the gain nowhere at all. Measuring one thing
-     * and shipping another is how the Pad came to be fifteen times quieter than the Lead without
-     * anybody noticing.
+     * and shipping another is how the quietest sound came to be some twenty-three times below the
+     * loudest without anybody noticing.
      */
     const sampler = sound === null ? null : new ToneSampler(decoded[sound.id], sound.gain);
 
@@ -167,7 +167,7 @@ const decibels = (value) => (value <= 0 ? '-inf' : (20 * Math.log10(value)).toFi
 
 console.log('');
 console.log(
-  `The opening groove and the opening melody, at 112 BPM, Tone volume ${String(results.defaultVolume)}.`,
+  `The opening groove and the opening phrase, at 112 BPM, Tone volume ${String(results.defaultVolume)}.`,
 );
 console.log('');
 console.log(
@@ -175,7 +175,7 @@ console.log(
     `${decibels(results.drumsOnly.peak).padStart(6)} dBFS   RMS ${results.drumsOnly.rms.toFixed(4)}`,
 );
 console.log('');
-console.log('sound              gain    melody alone      both layers               at Tone volume 1');
+console.log('sound              gain     Tone alone       both layers               at Tone volume 1');
 console.log('                          peak     RMS      peak    dBFS     RMS      peak    dBFS   clipped');
 console.log('-'.repeat(91));
 

@@ -6,20 +6,20 @@ import { noteName, phraseToAplLiteral, REST, type Phrase } from '@/tones/phrase'
 import styles from './AplPanel.module.css';
 
 /*
- * Transform with APL, for the melody.
+ * Transform with APL, for the Tone phrase.
  *
- * The same panel as the Beats one, with one control fewer. There is no Target, because a melody
+ * The same panel as the Beats one, with one control fewer. There is no Target, because a Tone phrase
  * is one line and there is nothing to choose between "this track" and "all tracks" — so the
  * control is absent rather than present and disabled, which is the difference between an
  * interface that fits its data and one that was copied from something else.
  *
- * Peek shows the melody as `n`, sixteen numbers with the note names underneath. That pairing is
+ * Peek shows the phrase as `n`, sixteen numbers with the note names underneath. That pairing is
  * the whole lesson of Stage 8 in one block: `60 0 0 63` *is* the tune, and `n+5` moves it.
  */
 
 export interface ToneTransformPanelProps {
   readonly transform: TransformApi;
-  /** The melody the APL would operate on, for Peek's array view. */
+  /** The Tone phrase the APL would operate on, for Peek's array view. */
   readonly phrase: Phrase;
   /** Whether the Tones side of the shared Explore editor is open. */
   readonly exploreOpen: boolean;
@@ -44,7 +44,7 @@ export function ToneTransformPanel({
    * Whose outcome this is.
    *
    * Two checks rather than one, because there is one lane and now two layers in it. `lastRun`
-   * keeps Apply from claiming what Generate did; `lastDomain` keeps the melody from claiming what
+   * keeps Apply from claiming what Generate did; `lastDomain` keeps the Tone phrase from claiming what
    * the drums did. Either alone would let this panel announce a result it had nothing to do with.
    */
   const mine = lastRun === 'fixed' && lastDomain === 'tones';
@@ -52,7 +52,7 @@ export function ToneTransformPanel({
   const exploreIsShowingThis = explore.origin === 'transform' && explore.isPristine;
 
   return (
-    <section className={styles.panel} aria-label="Transform the melody with APL">
+    <section className={styles.panel} aria-label="Transform the Tone phrase with APL">
       <div className={styles.header}>
         <h3 className={styles.title}>
           Transform with <span className={styles.apl}>APL</span>
@@ -118,11 +118,11 @@ export function ToneTransformPanel({
       <p
         className={cx(styles.status, mine && status === 'failed' && styles.statusFailed)}
         role="status"
-        aria-label="APL melody transform"
+        aria-label="APL Tone transform"
       >
         {mine && status === 'running' && 'Running APL…'}
         {mine && status === 'applied' && (lastWasCached ? 'Applied, from cache.' : 'Applied.')}
-        {mine && status === 'unchanged' && 'That made no difference to this melody.'}
+        {mine && status === 'unchanged' && 'That made no difference to this Tone phrase.'}
         {mine && status === 'failed' && error}
       </p>
 
@@ -187,7 +187,7 @@ export function ToneTransformPanel({
             <div className={styles.peekBlock}>
               <h4 className={styles.peekHeading}>The vector it works on</h4>
               {/*
-                The melody twice: as APL holds it, and as a musician reads it.
+                The Tone phrase twice: as APL holds it, and as a musician reads it.
 
                 This is the moment the penny is supposed to drop for the second time. Beats made
                 the point that a rhythm is a Boolean matrix; this makes the sharper one, that a
@@ -203,7 +203,7 @@ export function ToneTransformPanel({
               </pre>
               <p className={styles.note}>
                 Sixteen numbers. 0 is a rest; everything else is a MIDI note, where 60 is middle C. That is
-                the whole melody — no shape prefix, because a vector does not need one.
+                the whole phrase — no shape prefix, because a vector does not need one.
               </p>
             </div>
 
@@ -214,7 +214,7 @@ export function ToneTransformPanel({
               </pre>
               <p className={styles.note}>
                 Sent to TryAPL as one line joined with <span className={styles.glyph}>⋄</span>. The first two
-                statements set the index origin and write your melody down as data; only the third is the
+                statements set the index origin and write your phrase down as data; only the third is the
                 interesting one.
               </p>
             </div>

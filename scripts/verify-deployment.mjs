@@ -15,7 +15,7 @@
  * **This makes two real requests to TryAPL**, and it is the only check that can: whether the
  * deployed origin is allowed to talk to tryapl.org is a fact about CORS and about the
  * published Content-Security-Policy, and neither can be established from a mock or from
- * localhost. One generates a rhythm and one a melody, because the two come back in different
+ * localhost. One generates a rhythm and one a Tone phrase, because the two come back in different
  * shapes and go through different parsers. Both are counted, and both are printed. Run by hand,
  * never by CI.
  */
@@ -265,9 +265,9 @@ if (checkApl) {
  * published bundle is a silent seven-404 failure — which is exactly the bug this layer shipped
  * with locally before it was caught. Costs no TryAPL request at all.
  *
- * The second is one melody generation, and it is worth its request for a reason the Beats one
+ * The second is one Tone generation, and it is worth its request for a reason the Beats one
  * does not cover: the *reply shape* is different. A rhythm comes back as eight lines of ones and
- * zeros and a melody as one line of MIDI numbers, so they go through different parsers — and a
+ * zeros and a phrase as one line of MIDI numbers, so they go through different parsers — and a
  * parser that works against a mock and not against real Dyalog's printing is a real failure mode.
  * One request, once, from the published origin.
  */
@@ -286,11 +286,11 @@ page.on('response', (response) => {
 
 await page.getByRole('tablist', { name: 'Layer' }).getByRole('tab', { name: 'Tones' }).click();
 
-const pads = page.getByRole('group', { name: 'Melody steps' });
+const pads = page.getByRole('group', { name: 'Tone steps' });
 await pads.waitFor({ timeout: 15_000 });
 const padCount = await pads.getByRole('button').count();
-console.log(`  melody steps: ${String(padCount)}`);
-if (padCount !== 16) note(`expected 16 melody steps, found ${String(padCount)}`);
+console.log(`  Tone steps: ${String(padCount)}`);
+if (padCount !== 16) note(`expected 16 Tone steps, found ${String(padCount)}`);
 
 const toneStatus = page.getByRole('status', { name: 'Tone sound' });
 
@@ -320,44 +320,44 @@ if (toneMessage !== '') note(`the Tone sound reported: ${toneMessage}`);
 
 if (checkApl) {
   const before = await page.locator('[class*="vectorValue"]').innerText();
-  console.log(`  melody before: ${before.trim()}`);
+  console.log(`  phrase before: ${before.trim()}`);
 
   await page.getByRole('tablist', { name: 'Workspace' }).getByRole('tab', { name: 'Create' }).click();
-  const tonePanel = page.getByRole('region', { name: 'Create a melody with APL' });
+  const tonePanel = page.getByRole('region', { name: 'Create a Tone phrase with APL' });
   await tonePanel.waitFor();
 
   await tonePanel.getByLabel('Recipe').selectOption('riff');
   await tonePanel.getByLabel('Seed').fill('47291');
   const requestsBefore = aplRequests;
 
-  await tonePanel.getByRole('button', { name: 'Generate a melody with APL' }).click();
+  await tonePanel.getByRole('button', { name: 'Generate a Tone phrase with APL' }).click();
 
-  const melodyStatus = page.getByRole('status', { name: 'APL melody generation' });
+  const toneStatus = page.getByRole('status', { name: 'APL Tone generation' });
   try {
-    await melodyStatus
+    await toneStatus
       .filter({ hasText: /Generated|unavailable|too long|unexpected|could not|cannot|no difference/ })
       .waitFor({ timeout: 30_000 });
   } catch {
-    note('the melody generation never reported an outcome within 30s');
+    note('the Tone generation never reported an outcome within 30s');
   }
 
-  const outcome = (await melodyStatus.innerText()).trim();
+  const outcome = (await toneStatus.innerText()).trim();
   console.log(`  ${outcome}`);
-  if (!/^Generated/u.test(outcome)) note(`the melody generation reported: ${outcome}`);
+  if (!/^Generated/u.test(outcome)) note(`the Tone generation reported: ${outcome}`);
 
   await page.getByRole('tablist', { name: 'Workspace' }).getByRole('tab', { name: 'Play' }).click();
   const after = (await page.locator('[class*="vectorValue"]').innerText()).trim();
-  console.log(`  melody after:  ${after}`);
-  if (after === before.trim()) note('the generated melody did not replace the one that was there');
+  console.log(`  phrase after:  ${after}`);
+  if (after === before.trim()) note('the generated phrase did not replace the one that was there');
 
-  console.log(`  requests spent on the melody: ${String(aplRequests - requestsBefore)}`);
+  console.log(`  requests spent on the phrase: ${String(aplRequests - requestsBefore)}`);
   if (aplRequests - requestsBefore !== 1) {
-    note(`the melody generation cost ${String(aplRequests - requestsBefore)} requests, not 1`);
+    note(`the Tone generation cost ${String(aplRequests - requestsBefore)} requests, not 1`);
   }
 
   await page.getByRole('button', { name: 'Undo' }).click();
-  const undoneMelody = (await page.locator('[class*="vectorValue"]').innerText()).trim();
-  if (undoneMelody !== before.trim()) note('Undo did not restore the melody');
+  const undonePhrase = (await page.locator('[class*="vectorValue"]').innerText()).trim();
+  if (undonePhrase !== before.trim()) note('Undo did not restore the phrase');
 }
 
 await browser.close();
@@ -369,7 +369,7 @@ if (problems.length > 0) {
 } else {
   console.log(
     checkApl
-      ? `\nThe published site loads clean, opens on its groove, plays, serves its ${String(sampleRequests)} Tone samples, and generated both a rhythm and a melody in real Dyalog APL in ${String(aplRequests)} requests.`
+      ? `\nThe published site loads clean, opens on its groove, plays, serves its ${String(sampleRequests)} Tone samples, and generated both a rhythm and a Tone phrase in real Dyalog APL in ${String(aplRequests)} requests.`
       : `\nThe published site loads clean, opens on its groove, plays and serves its ${String(sampleRequests)} Tone samples. APL was not checked.`,
   );
 }

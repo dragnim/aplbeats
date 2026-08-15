@@ -13,10 +13,10 @@ import {
 import styles from './ToneStrip.module.css';
 
 /*
- * The melody, as sixteen columns.
+ * The Tone phrase, as sixteen columns.
  *
  * Deliberately *not* a second eight-by-sixteen grid, and not a piano roll either. The whole point
- * of Tones is that a melody is a different shape of data from a rhythm — one line of numbers
+ * of Tones is that a Tone phrase is a different shape of data from a rhythm — one line of numbers
  * rather than a matrix of yes and no — and an editor that looked like the drum grid would quietly
  * argue the opposite. Sixteen steps across, one value each, and the value is a *number* you can
  * see: the note name is printed in the pad and the pad's height shows the pitch.
@@ -66,7 +66,7 @@ export function ToneStrip({
    * Which step the editor row acts on.
    *
    * Also the one step in the tab order, exactly as the drum grid does it: sixteen tab stops in a
-   * row is sixteen presses to get past the melody, and the arrow keys are what a grid is for.
+   * row is sixteen presses to get past the phrase, and the arrow keys are what a grid is for.
    */
   const [selected, setSelected] = useState(0);
   const pads = useRef<(HTMLButtonElement | null)[]>([]);
@@ -167,7 +167,7 @@ export function ToneStrip({
     const current = phrase[step] ?? REST;
 
     // A rest becomes a note; a note is only auditioned. Tapping an existing note to erase it
-    // would make the melody hard to *hear*, which is the one thing this control is for.
+    // would make the phrase hard to *hear*, which is the one thing this control is for.
     if (current === REST) {
       onEditGesture();
       change(step, DEFAULT_NEW_NOTE);
@@ -190,7 +190,7 @@ export function ToneStrip({
         behave the same way under a finger.
       */}
       <div className={styles.scroller}>
-        <div className={cx(styles.pads, 'noSelect')} role="group" aria-label="Melody steps">
+        <div className={cx(styles.pads, 'noSelect')} role="group" aria-label="Tone steps">
           {STEPS.map((step) => {
             const value = phrase[step] ?? REST;
             const sounding = value !== REST;

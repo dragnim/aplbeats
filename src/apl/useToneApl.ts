@@ -40,7 +40,7 @@ import type { RunKind } from './useApl';
  *
  * A separate file, and emphatically **not** a separate lane. It owns no client, no cache, no busy
  * flag and no request counter: it is handed `submit` by `useApl` and every request it makes goes
- * through exactly the machinery every Beats request goes through. Pressing Generate on the melody
+ * through exactly the machinery every Beats request goes through. Pressing Generate on the Tones
  * while a rhythm is in flight is refused by the same `busy` ref that refuses two rhythms, which is
  * the promise made to TryAPL and the reason this is a parameter rather than a second hook with
  * its own copy of the rules.
@@ -101,18 +101,18 @@ export interface ToneAplApi {
   readonly source: AplSource;
   readonly setOperation: (id: ToneOperationId) => void;
   readonly setParameter: (key: keyof Parameters, value: number) => void;
-  /** Applies the current melody transform. */
+  /** Applies the current phrase transform. */
   readonly apply: () => void;
   readonly create: ToneCreateApi;
   readonly explore: ToneExploreApi;
 }
 
 /**
- * What `useApl` hands down: the lane, and a live view of the melody.
+ * What `useApl` hands down: the lane, and a live view of the phrase.
  *
  * `submit` is the whole of the shared machinery. `phraseRef` is read at the moment a request is
  * built rather than captured when a callback was made, for the same reason the Beats side reads
- * `patternRef`: a melody edited between a press and its request must be the melody that is sent.
+ * `patternRef`: a phrase edited between a press and its request must be the phrase that is sent.
  */
 export interface UseToneAplOptions {
   readonly submit: (
@@ -121,7 +121,7 @@ export interface UseToneAplOptions {
     work: (service: AplService) => Promise<ToneOutcome>,
     stillCurrent?: () => boolean,
   ) => void;
-  /** The melody as it stands this render, for building the sources the panels display. */
+  /** The phrase as it stands this render, for building the sources the panels display. */
   readonly phrase: Phrase;
   readonly phraseRef: React.RefObject<Phrase>;
 }
@@ -155,9 +155,9 @@ export function useToneApl({ submit, phrase, phraseRef }: UseToneAplOptions): To
 
   const source = useMemo(
     () => buildToneSource({ operation, parameters, phrase }),
-    // The melody as it is *this render*, not through the ref: this is what Peek displays, and
+    // The phrase as it is *this render*, not through the ref: this is what Peek displays, and
     // what is displayed must be what the reader can see on the strip beside it. The ref is for
-    // the request, which is built later and must use the melody as it is then.
+    // the request, which is built later and must use the phrase as it is then.
     [operation, parameters, phrase],
   );
 
@@ -235,9 +235,9 @@ export function useToneApl({ submit, phrase, phraseRef }: UseToneAplOptions): To
       /*
        * Stale if any of the four things that decide the answer has moved.
        *
-       * `submit`'s own comparison catches an edit or an Undo to the melody. It cannot catch
+       * `submit`'s own comparison catches an edit or an Undo to the phrase. It cannot catch
        * these, because changing the recipe, the scale, the root or the seed need not change the
-       * current melody at all — and a Riff arriving after somebody switched to Sparse would be
+       * current phrase at all — and a Riff arriving after somebody switched to Sparse would be
        * the wrong tune under the right label.
        */
       () =>
@@ -295,7 +295,7 @@ export function useToneApl({ submit, phrase, phraseRef }: UseToneAplOptions): To
    * A transform expression has no use for `?` and is sent without a `⎕RL` at all, exactly as the
    * Beats side does it. A recipe does, and it must run under the same seed the Generate button
    * used — otherwise loading a recipe into the editor and pressing Run would give a different
-   * melody than the button that produced it, and Peek would be a lie.
+   * phrase than the button that produced it, and Peek would be a lie.
    */
   const exploreRandomSeed = isPristine
     ? exploreOrigin === 'create'

@@ -6,14 +6,14 @@ import panel from './AplPanel.module.css';
 import styles from './ExploreEditor.module.css';
 
 /*
- * Explore, for the melody.
+ * Explore, for the Tone phrase.
  *
  * The same editor as the Beats one, against `n` instead of `m`, and its own draft — which is the
  * whole reason it is a second component rather than the first one with a flag. Somebody halfway
  * through writing `(48⌈84⌊n+7)×0<n` must not lose it because they glanced at the drums, and the
  * two drafts live under two storage keys for exactly that reason.
  *
- * There is no "Result goes to" control. A melody is one line: the expression's answer becomes the
+ * There is no "Result goes to" control. A Tone phrase is one line: the expression's answer becomes the
  * whole of `n`, and a selector offering one option would be a control that never does anything.
  *
  * The glyph strip is a different set, too. `∨` and `∧` are Boolean operations that belong to a
@@ -80,26 +80,26 @@ export function ToneExploreEditor({ transform }: ToneExploreEditorProps): React.
     [explore],
   );
 
-  /* This editor's own outcome: a custom run, on the melody. */
+  /* This editor's own outcome: a custom run, on the Tone phrase. */
   const mine = lastRun === 'custom' && lastDomain === 'tones';
   const running = status === 'running' && mine;
   const length = [...explore.expression].length;
 
   return (
-    <section className={panel.panel} aria-label="Explore the melody APL">
+    <section className={panel.panel} aria-label="Explore the Tone APL">
       <div className={panel.header}>
         <h3 className={panel.title}>
           Explore the <span className={panel.apl}>APL</span>
         </h3>
-        <p className={panel.summary}>Edit the expression yourself, then run it on your melody.</p>
+        <p className={panel.summary}>Edit the expression yourself, then run it on your Tone phrase.</p>
       </div>
 
       <div className={styles.explore}>
         <div className={styles.intro}>
           <p className={styles.note}>
-            <code className={styles.inline}>n</code> is the current melody: sixteen numbers, where 0 is a rest
-            and everything else is a MIDI note. <code className={styles.inline}>0&lt;n</code> is the mask of
-            sounding notes, which is how you leave the rests alone. APL Beats sets{' '}
+            <code className={styles.inline}>n</code> is the current Tone phrase: sixteen numbers, where 0 is a
+            rest and everything else is a MIDI note. <code className={styles.inline}>0&lt;n</code> is the mask
+            of sounding notes, which is how you leave the rests alone. APL Beats sets{' '}
             <code className={styles.inline}>⎕IO←0</code>, so steps count from zero.
             {explore.randomSeed !== null && (
               <>
@@ -203,13 +203,13 @@ export function ToneExploreEditor({ transform }: ToneExploreEditorProps): React.
             explore.problem !== null && styles.statusFailed,
           )}
           role="status"
-          aria-label="Explore the melody"
+          aria-label="Explore the Tone phrase"
         >
           {explore.problem ?? (
             <>
               {mine && status === 'running' && 'Running APL…'}
               {mine && status === 'applied' && (lastWasCached ? 'Applied, from cache.' : 'Applied.')}
-              {mine && status === 'unchanged' && 'That ran, and the melody came back the same.'}
+              {mine && status === 'unchanged' && 'That ran, and the Tone phrase came back the same.'}
               {mine && status === 'failed' && error}
             </>
           )}

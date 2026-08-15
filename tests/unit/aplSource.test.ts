@@ -315,7 +315,7 @@ describe('the reference implementations stay out of production', () => {
      * still said "Apply with APL" — which would make the central claim of this stage false.
      * Cheaper to forbid than to review.
      *
-     * Both files, because the melody side has exactly the same temptation and exactly the same
+     * Both files, because the Tones side has exactly the same temptation and exactly the same
      * cost: a Tone transform quietly computed here would be a lie told in a nicer font.
      */
     const REFERENCES = ['reference.ts', 'toneReference.ts'];

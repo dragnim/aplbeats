@@ -174,7 +174,7 @@ for (const [category, parts] of Object.entries(CATEGORIES)) {
    * A preset is a folder of chromatically sampled AIFFs.
    *
    * The `-<key>-127` suffix is how this library names them, and a folder without it is not
-   * something a melody can be played on — which is the test, rather than the folder's name or
+   * something a phrase can be played on — which is the test, rather than the folder's name or
    * which archive it happens to live in.
    */
   const presets = new Map();

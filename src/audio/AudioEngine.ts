@@ -66,11 +66,11 @@ interface Graph {
   /**
    * Where the Tone sampler connects.
    *
-   * Into the mix bus, *before* the compressor and the limiter — so a melody is glued to the drums
+   * Into the mix bus, *before* the compressor and the limiter — so a Tone is glued to the drums
    * by the same processing rather than sitting outside it. That is the one place it could go that
    * makes Beats and Tones sound like one instrument instead of two things playing at once.
    *
-   * Its own gain, so Tone Volume attenuates the melody and nothing else. When no Tone is sounding
+   * Its own gain, so Tone Volume attenuates the Tones and nothing else. When no Tone is sounding
    * this node passes silence, which is why adding it left the drum-only output measurably
    * unchanged: a gain node with nothing connected to it contributes nothing.
    */
@@ -252,7 +252,7 @@ export class AudioEngine {
    * Cutting on a rest makes every note exactly one step long — 134 ms at the opening tempo. The
    * Lead survives that, because it is a blip anyway. The Pad does not: its attack alone is 78 ms,
    * so a one-step note is an attack and nothing else, and the sound advertised as "sustained and
-   * airy" arrives as a click. The opening melody, six notes with gaps, became six disconnected
+   * airy" arrives as a click. The opening phrase, six notes with gaps, became six disconnected
    * sixteenths instead of a line.
    *
    * Letting the note ring is also what the data says. `0` is a rest in the sense a step sequencer
@@ -294,7 +294,7 @@ export class AudioEngine {
   }
 
   /**
-   * How loud the melody is, 0 to 1.
+   * How loud the Tones are, 0 to 1.
    *
    * Its own gain on its own bus, so it attenuates the Tone layer and leaves the drums exactly
    * where they were. Held here whether or not a graph exists, so a level chosen before the audio

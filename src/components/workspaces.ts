@@ -70,21 +70,21 @@ export const DOMAINS: readonly DomainDefinition[] = [
   {
     id: 'tones',
     label: 'Tones',
-    hint: 'One melody line, sixteen steps. A numeric vector.',
+    hint: 'One Tone phrase, sixteen steps. A numeric vector.',
     variable: 'n',
   },
 ];
 
 /** The workspaces offered on the Tones side. Same four ideas, different data. */
 const TONE_WORKSPACES: readonly Workspace[] = [
-  { id: 'play', label: 'Play', hint: 'Write the melody by hand, and choose the instrument.' },
-  { id: 'create', label: 'Create', hint: 'Ask Dyalog APL for a whole new melody from a recipe and a seed.' },
+  { id: 'play', label: 'Play', hint: 'Write the phrase by hand, and choose the sound.' },
+  { id: 'create', label: 'Create', hint: 'Ask Dyalog APL for a whole new phrase from a recipe and a seed.' },
   {
     id: 'transform',
     label: 'Transform',
-    hint: 'Change the melody you have with one of four APL operations.',
+    hint: 'Change the phrase you have with one of four APL operations.',
   },
-  { id: 'explore', label: 'Explore', hint: 'Edit the APL yourself and run it against the melody.' },
+  { id: 'explore', label: 'Explore', hint: 'Edit the APL yourself and run it against the phrase.' },
 ];
 
 export function workspacesFor(domain: Domain): readonly Workspace[] {

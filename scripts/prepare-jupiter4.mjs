@@ -146,7 +146,7 @@ const SOUNDS = [
     sfz: 'Petals Piano.sfz',
     because:
       'Chosen by ear as the default. 6 ms attack at full scale decaying to about a third, so it ' +
-      'articulates sixteenths cleanly and makes the shape of a melody obvious on first play — ' +
+      'articulates sixteenths cleanly and makes the shape of a phrase obvious on first play — ' +
       'which is what a default has to do.',
   },
   {
@@ -290,7 +290,7 @@ const manifest = {
    * Established by `npm run prepare:jupiter4 -- --survey` and by the listening pass. Two of the
    * six categories contribute nothing, and the reasons are completely different:
    *
-   *   **FX** was never a candidate for a melodic voice, though not for the reason first assumed —
+   *   **FX** was never a candidate for a pitched voice, though not for the reason first assumed —
    *   its eleven folders are chromatically sampled playable presets rather than one-shots. It is
    *   excluded for scope.
    *
@@ -338,7 +338,7 @@ let mismatched = 0;
  *
  * Reads the ZIP central directory over `Range` requests and counts what kinds of file are there
  * and how many of them look chromatically sampled — the `-<key>-127` naming every playable preset
- * in this library uses. A folder with no chromatic set is not something a melody can be played on,
+ * in this library uses. A folder with no chromatic set is not something a phrase can be played on,
  * whatever it is called.
  */
 async function survey(label, parts) {

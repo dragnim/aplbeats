@@ -35,7 +35,7 @@ export const INITIAL_SEED = 16_998;
 export const INITIAL_CREATIVE_STATE: CreativeState = {
   pattern: createInitialGroove(),
   /*
-   * And a melody, for the same reason there is a groove.
+   * And a Tone phrase, for the same reason there is a groove.
    *
    * Somebody who opens Tones for the first time should hear what it is within a bar rather than
    * be handed sixteen empty steps and asked to imagine it. See `openingPhrase` for why this one.

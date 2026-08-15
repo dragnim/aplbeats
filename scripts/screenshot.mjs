@@ -47,14 +47,14 @@ async function capture(
 
   if (tones) {
     /*
-     * The melody layer, which is where the Tone samples are first fetched.
+     * The Tones layer, which is where the Tone samples are first fetched.
      *
      * `networkidle` afterwards, so the shot is of a loaded instrument rather than of one whose
      * status line still says "Loading sound…" — which would be a screenshot of the loading state
      * rather than of the feature.
      */
     await page.getByRole('tablist', { name: 'Layer' }).getByRole('tab', { name: 'Tones' }).click();
-    await page.getByRole('group', { name: 'Melody steps' }).waitFor();
+    await page.getByRole('group', { name: 'Tone steps' }).waitFor();
     await page.waitForLoadState('networkidle');
   }
 

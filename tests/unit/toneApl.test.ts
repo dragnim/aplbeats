@@ -24,7 +24,7 @@ import { DIAMOND } from '@/apl/wire';
 import { isPhraseValue, openingPhrase, REST, TONE_MAX_MIDI, TONE_MIN_MIDI } from '@/tones/phrase';
 
 /*
- * The APL that acts on a melody: what it says, and what it can be trusted not to do.
+ * The APL that acts on a phrase: what it says, and what it can be trusted not to do.
  *
  * Three separate jobs here, and they are separate on purpose.
  *
@@ -43,7 +43,7 @@ import { isPhraseValue, openingPhrase, REST, TONE_MAX_MIDI, TONE_MIN_MIDI } from
  * asserting the reference here is asserting the APL.
  */
 
-describe('the melody transforms', () => {
+describe('the phrase transforms', () => {
   it('offers the four the brief asks for', () => {
     expect(TONE_OPERATIONS.map((operation) => operation.id)).toEqual([
       'transpose',
@@ -53,7 +53,7 @@ describe('the melody transforms', () => {
     ]);
   });
 
-  it('has no target, because a melody is one line', () => {
+  it('has no target, because a phrase is one line', () => {
     // Stated as a test because the absence is a design decision rather than an oversight: the
     // Beats operations carry `allowsAllTracks` and a target, and these deliberately do not.
     for (const operation of TONE_OPERATIONS) {
@@ -134,7 +134,7 @@ describe('what the transforms mean', () => {
   it('holds a note at the edge of the instrument rather than losing the transform', () => {
     /*
      * A real edge, and worth stating rather than pretending the range is infinite: transposing a
-     * melody up past the top of the instrument keeps its top note at the top. The alternative was
+     * phrase up past the top of the instrument keeps its top note at the top. The alternative was
      * a pitch the parser would refuse, which loses the whole transform.
      */
     const high = Array.from({ length: 16 }, () => TONE_MAX_MIDI);
@@ -149,14 +149,14 @@ describe('what the transforms mean', () => {
   it('reverses the whole line, rests included', () => {
     const after = applyToneOperation(toneOperationById('reverse'), {}, subject);
     expect(after).toEqual([...subject].reverse());
-    // The opening melody is an arch, so reversing it is still an arch — which is why it was
+    // The opening phrase is an arch, so reversing it is still an arch — which is why it was
     // chosen. A phrase that turned to mush under ⌽n would make the demonstration worse.
     expect(after.filter((value) => value !== REST)).toHaveLength(6);
   });
 
   it('rotates with APL’s sign convention', () => {
     const later = applyToneOperation(toneOperationById('rotate'), { amount: -2 }, subject);
-    // A negative left argument moves the melody later: what was on step 0 is now on step 2.
+    // A negative left argument moves the phrase later: what was on step 0 is now on step 2.
     expect(later[2]).toBe(subject[0]);
 
     const earlier = applyToneOperation(toneOperationById('rotate'), { amount: 3 }, subject);
@@ -175,7 +175,7 @@ describe('what the transforms mean', () => {
 
 /* ------------------------------------------------------------------------- */
 
-describe('the melody recipes', () => {
+describe('the phrase recipes', () => {
   it('offers four, and starts on one that exists', () => {
     expect(TONE_RECIPES).toHaveLength(4);
     expect(isToneRecipeId(DEFAULT_TONE_RECIPE_ID)).toBe(true);
@@ -183,7 +183,7 @@ describe('the melody recipes', () => {
     expect(toneRecipeById('nonsense').id).toBe(TONE_RECIPES[0]!.id);
   });
 
-  it('offers five scales, and starts on the one hardest to get a bad melody out of', () => {
+  it('offers five scales, and starts on the one hardest to get a bad phrase out of', () => {
     expect(TONE_SCALES).toHaveLength(5);
     expect(isToneScaleId(DEFAULT_SCALE_ID)).toBe(true);
     // A pentatonic has no semitone steps at all, so a seeded walk through it lands on nothing
@@ -230,9 +230,9 @@ describe('the melody recipes', () => {
     expect(b.statements[1]).toBe('⎕RL←999999 1');
   });
 
-  it('sends three statements and never the current melody', () => {
+  it('sends three statements and never the current phrase', () => {
     /*
-     * Unlike a rhythm, there is nothing to preserve: Beats has locked tracks, and "lock the melody
+     * Unlike a rhythm, there is nothing to preserve: Beats has locked tracks, and "lock the phrase
      * and generate a new one" has no meaning. So the whole answer comes back from the core, and
      * the request does not mention what was there before — which is also why generating, editing a
      * note and generating again at the same settings is answered from cache.
@@ -268,7 +268,7 @@ describe('the melody recipes', () => {
     }
   });
 
-  it('always sounds on the first step, so a generated melody never comes back empty', () => {
+  it('always sounds on the first step, so a generated phrase never comes back empty', () => {
     for (const recipe of TONE_RECIPES) {
       for (const seed of [1, 2, 3, 4711, 999_999]) {
         const phrase = generatePhrase(recipe, DEFAULT_ROOT, toneScaleById('minor-pentatonic'), seed);
@@ -280,12 +280,12 @@ describe('the melody recipes', () => {
   it('makes the seed matter', () => {
     // A seed control with four answers is a seed control that appears broken on its fifth press.
     for (const recipe of TONE_RECIPES) {
-      const melodies = new Set(
+      const phrases = new Set(
         Array.from({ length: 24 }, (_unused, index) =>
           generatePhrase(recipe, DEFAULT_ROOT, toneScaleById('minor-pentatonic'), 1 + index * 4093).join(','),
         ),
       );
-      expect(melodies.size, recipe.id).toBeGreaterThan(6);
+      expect(phrases.size, recipe.id).toBeGreaterThan(6);
     }
   });
 
@@ -304,7 +304,7 @@ describe('the melody recipes', () => {
   });
 
   it('keeps every note in key', () => {
-    // Indexing the scale vector is what guarantees this, and it is the reason a seeded melody
+    // Indexing the scale vector is what guarantees this, and it is the reason a seeded phrase
     // sounds like music rather than like a random walk.
     for (const scale of TONE_SCALES) {
       const phrase = generatePhrase(toneRecipeById('pulse'), 62, scale, 8675);
@@ -338,12 +338,12 @@ describe('the melody recipes', () => {
 
 /* ------------------------------------------------------------------------- */
 
-describe('what makes two melody questions the same question', () => {
+describe('what makes two phrase questions the same question', () => {
   const scale = toneScaleById('minor-pentatonic');
   const recipe = toneRecipeById('riff');
 
-  it('separates a melody key from a rhythm key', () => {
-    // One cache, two kinds of music. A collision would hand a melody back as a rhythm.
+  it('separates a phrase key from a rhythm key', () => {
+    // One cache, two kinds of music. A collision would hand a phrase back as a rhythm.
     const key = toneCacheKey({
       operation: toneOperationById('reverse'),
       parameters: {},
@@ -373,13 +373,13 @@ describe('what makes two melody questions the same question', () => {
     );
   });
 
-  it('does not depend on the melody in hand, because a recipe never reads it', () => {
+  it('does not depend on the phrase in hand, because a recipe never reads it', () => {
     const a = toneGenerateCacheKey({ recipe, root: 60, scale, seed: 4711 });
     const b = toneGenerateCacheKey({ recipe, root: 60, scale, seed: 4711 });
     expect(a).toBe(b);
   });
 
-  it('moves the transform key when the melody it works on moves', () => {
+  it('moves the transform key when the phrase it works on moves', () => {
     const operation = toneOperationById('transpose');
     const before = toneCacheKey({ operation, parameters: { amount: 5 }, phrase: openingPhrase() });
     const after = toneCacheKey({
@@ -413,7 +413,7 @@ describe('what makes two melody questions the same question', () => {
   });
 });
 
-describe('a hand-written melody expression', () => {
+describe('a hand-written phrase expression', () => {
   it('is wrapped in the statements the built-in ones use, with no target', () => {
     const source = buildToneCustomSource({ core: '⌽n', phrase: openingPhrase() });
     expect(source.statements).toEqual(['⎕IO←0', 'n←60 0 0 63 0 67 0 0 65 0 0 63 0 60 0 0', 'n←(⌽n)', 'n']);

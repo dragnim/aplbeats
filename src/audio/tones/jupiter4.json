@@ -52,7 +52,7 @@
       "upstreamCategory": "Keys",
       "upstreamFolder": "Petals Piano-SAMPLES",
       "sfz": "Petals Piano.sfz",
-      "because": "Chosen by ear as the default. 6 ms attack at full scale decaying to about a third, so it articulates sixteenths cleanly and makes the shape of a melody obvious on first play — which is what a default has to do.",
+      "because": "Chosen by ear as the default. 6 ms attack at full scale decaying to about a third, so it articulates sixteenths cleanly and makes the shape of a phrase obvious on first play — which is what a default has to do.",
       "samples": [
         {
           "file": "petals-piano-48.wav",

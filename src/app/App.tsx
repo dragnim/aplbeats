@@ -79,7 +79,7 @@ export function App(): React.JSX.Element {
    *
    * Read separately from the session on purpose, and this is the visible consequence of that
    * decision: a session discarded because the drum generator's version moved takes the pattern
-   * with it, and leaves the melody exactly where it was. See `persistence.ts`.
+   * with it, and leaves the Tone phrase exactly where it was. See `persistence.ts`.
    */
   const restoredTones = useMemo(() => loadTones(), []);
   const restoredToneVolume = useMemo(() => loadToneVolume(), []);
@@ -118,7 +118,7 @@ export function App(): React.JSX.Element {
    * that one, choosing which music those tools act on.
    *
    * Two workspace states rather than one, because the tools mean different things on the two
-   * sides: somebody deep in an APL melody transform who glances at the drums and comes back
+   * sides: somebody deep in an APL Tone transform who glances at the drums and comes back
    * should find the transform, not be returned to Play. So each domain remembers its own tab.
    *
    * `play` first on both, and Beats first of the two, because that is what somebody is here for.
@@ -159,7 +159,7 @@ export function App(): React.JSX.Element {
    * And the same for the Tones side, which is a separate editor with a separate draft.
    *
    * Two flags rather than one, because the question each panel asks is about *its own* editor:
-   * a Beats Peek offering to load into an editor that is holding a melody would be offering to
+   * a Beats Peek offering to load into an editor that is holding a Tone phrase would be offering to
    * lose the wrong work.
    */
   const [toneExploreVisited, setToneExploreVisited] = useState(false);
@@ -280,7 +280,7 @@ export function App(): React.JSX.Element {
     [transform.explore],
   );
 
-  /** The same, for the melody's editor and the melody's workspace. */
+  /** The same, for the Tone phrase's editor and its workspace. */
   const openToneExplore = useCallback(
     (origin: ToneExploreOrigin) => {
       transform.tones.explore.follow(origin);
@@ -347,7 +347,7 @@ export function App(): React.JSX.Element {
     const handle = setTimeout(() => {
       saveSession({ creative: studio.state, bpm, swing, mixer });
       // Under its own key, on the same debounce. Two writes rather than one, which is the price
-      // of the melody surviving a generator version bump — see `persistence.ts`.
+      // of the Tone phrase surviving a generator version bump — see `persistence.ts`.
       saveTones({ phrase, soundId: tones.soundId });
     }, 500);
     return () => {
@@ -470,7 +470,7 @@ export function App(): React.JSX.Element {
 
         Switching is visual and nothing else: no request, no fetch, no execution, and above all no
         transport change. Both layers go on sounding either way — the drums do not pause because
-        somebody went to write a melody. See `DomainTabs`.
+        somebody went to write a tune. See `DomainTabs`.
       */}
       <DomainTabs active={domain} onSelect={selectDomain} panelIds={workspaceIds} />
 
@@ -504,7 +504,7 @@ export function App(): React.JSX.Element {
             </>
           ) : (
             <>
-              <h2 className="visuallyHidden">Melody</h2>
+              <h2 className="visuallyHidden">Tones</h2>
               <ToneStrip
                 phrase={phrase}
                 playheadStep={transport.playheadStep}
@@ -616,11 +616,11 @@ export function App(): React.JSX.Element {
 
       <footer className={styles.footer}>
         <p className={styles.note}>
-          Eight drum tracks and one melody line, sixteen steps each — an{' '}
+          Eight drum tracks and one Tone phrase, sixteen steps each — an{' '}
           <span className={styles.emphasis}>{TRACKS.length} × 16</span> Boolean matrix and a{' '}
           <span className={styles.emphasis}>16</span> numeric vector underneath. The instant generator and the
           timing are local; the APL tools create and transform both in Dyalog APL, through TryAPL, one whole
-          pattern or melody at a time and only when you ask.
+          pattern or phrase at a time and only when you ask.
         </p>
 
         {/*

@@ -1,13 +1,13 @@
 /*
- * The melody strip.
+ * The Tone strip.
  *
  * Sixteen columns on the same rhythm as the drum grid, so the eye reads the two as one bar — a
  * note on step 5 sits directly above the snare on step 5, at every width. What differs is the
- * pad: a drum step is on or off and is drawn as a fill, a melody step has a *value* and is drawn
+ * pad: a drum step is on or off and is drawn as a fill, a Tone step has a *value* and is drawn
  * as a column whose height is the pitch, with the note printed on it.
  *
  * Taller than a drum row on purpose. A pad tall enough to show three octaves of difference is a
- * pad tall enough to read a melody's shape from across a desk, which is most of why the height
+ * pad tall enough to read a phrase's shape from across a desk, which is most of why the height
  * mapping is here at all.
  */
 .strip {
@@ -74,7 +74,7 @@
  *
  * `--pitch` is 0 at the bottom of the instrument's range and 1 at the top, set inline by the
  * component because it is data rather than styling. A low note is a stub and a high note nearly
- * fills the pad, so the shape of a melody is visible before a single note name is read.
+ * fills the pad, so the shape of a phrase is visible before a single note name is read.
  *
  * A minimum of 12% so that the very lowest note is still plainly a note rather than an empty pad
  * — the difference between "C3" and "rest" must never come down to a few pixels.

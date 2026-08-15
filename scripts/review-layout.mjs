@@ -119,7 +119,7 @@ for (const size of WIDTHS) {
 
     const tones = await page.evaluate(() => {
       const doc = document.documentElement;
-      const strip = document.querySelector('[aria-label="Melody steps"]');
+      const strip = document.querySelector('[aria-label="Tone steps"]');
       const apl = document.querySelector('[role="tabpanel"]:not([id*="domain"])');
       const stripBox = strip?.getBoundingClientRect();
       const aplBox = apl?.getBoundingClientRect();
@@ -141,7 +141,7 @@ for (const size of WIDTHS) {
     }
     if (tones.pads !== 16) problems.push(`${where} · tones: ${String(tones.pads)} pads, expected 16`);
     if (size.width >= 1600 && !tones.beside) {
-      problems.push(`${where} · tones: the APL is stacked under the melody at ${String(size.width)}px`);
+      problems.push(`${where} · tones: the APL is stacked under the Tone strip at ${String(size.width)}px`);
     }
     if (errors.length > 0) problems.push(`${where} · tones: ${errors.join('; ')}`);
 

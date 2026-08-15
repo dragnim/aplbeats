@@ -2,12 +2,12 @@
  * A Tone phrase: sixteen numbers.
  *
  * The whole conceptual point of Stage 8 is in the type. A beat is a Boolean matrix — eight tracks
- * of sixteen yes-or-no decisions — and a melody is not. A melody is a *numeric vector*, and once
+ * of sixteen yes-or-no decisions — and a Tone phrase is not. It is a *numeric vector*, and once
  * it is one, `n+5` transposes it, `⌽n` reverses it and `2⌽n` rotates it. The contrast between `m`
  * and `n` is the thing worth teaching, so Tones is deliberately not a second 8 × 16 grid.
  *
  *     m   8 16⍴0 1 0 1 …     rhythm: does this track fire on this step?
- *     n   0 60 0 63 67 …     melody: which pitch sounds on this step, if any?
+ *     n   0 60 0 63 67 …     Tones: which pitch sounds on this step, if any?
  *
  * Zero is a rest rather than a pitch, which is a small design decision doing a lot of work: it
  * makes `0<n` the mask of sounding notes, so `n+5×0<n` transposes the notes and leaves the rests
@@ -27,7 +27,7 @@ export const PHRASE_LENGTH = 16;
  * "Rest" in the sense a step sequencer means it — *nothing is struck here* — rather than "silence
  * begins here". A note already ringing carries on and decays; only a new note takes the voice.
  * That distinction is what lets the same sixteen numbers be a legato line when they are sparse and
- * an articulated one when they are dense, and it is why the Pad is playable at all. See
+ * an articulated one when they are dense, and it is why a slow patch is playable at all. See
  * `AudioEngine.playTone`.
  */
 export const REST = 0;

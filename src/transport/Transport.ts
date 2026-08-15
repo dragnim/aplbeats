@@ -95,7 +95,7 @@ export class Transport {
          * One callback, one time, both layers.
          *
          * This is where "one transport" stops being an intention and becomes a fact. The drums
-         * and the melody are handed the *same* number, which the scheduler has already swung, so
+         * and the Tone phrase are handed the *same* number, which the scheduler has already swung, so
          * step 3 of the phrase lands on the instant step 3 of the pattern does. Neither layer has
          * a clock, a timer or a position of its own, so there is nothing that could drift.
          */
@@ -129,7 +129,7 @@ export class Transport {
   }
 
   /**
-   * Change how loud the melody is, 0 to 1.
+   * Change how loud the Tones are, 0 to 1.
    *
    * Its own bus, so this attenuates the Tone layer and leaves the drums exactly where they were.
    * Like the kit and the master volume, deliberately not a special case for "while playing".

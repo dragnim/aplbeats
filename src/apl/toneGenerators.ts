@@ -1,9 +1,9 @@
 /*
- * The recipes APL writes melodies from.
+ * The recipes APL writes Tone phrases from.
  *
  * The Beats side of this file's counterpart makes eight rows of yes and no. This makes sixteen
  * numbers — and everything that was awkward about generating a rhythm is easy here, because a
- * melody is what an array language is *actually* shaped like. There are no outer products below.
+ * phrase is what an array language is *actually* shaped like. There are no outer products below.
  * There is a scale, written as the vector it is, and there is indexing into it.
  *
  *     s←0 3 5 7 10        the scale, as intervals from the root
@@ -29,7 +29,7 @@
  * controls rather than repaired by the expression, which keeps every recipe short enough to read.
  *
  * **The first step always sounds.** Every seeded rest mask is catenated onto a leading 1. A
- * melody that opens on a rest is a perfectly good melody, and a *generated* one that opens on a
+ * phrase that opens on a rest is a perfectly good phrase, and a *generated* one that opens on a
  * rest reads as a generator that failed — and at a low density the mask could in principle come
  * back all zeroes, which would be sixteen rests and a button that appeared broken.
  *
@@ -52,7 +52,7 @@ import { DIAMOND } from './wire';
  * The version of what a recipe, a root, a scale and a seed *mean*.
  *
  * The Tone counterpart of `APL_GENERATOR_VERSION`, and separate from it: changing a rhythm
- * recipe has nothing to say about what a melody seed produces, and coupling them would throw
+ * recipe has nothing to say about what a phrase seed produces, and coupling them would throw
  * away one side's stored settings every time the other was tuned.
  */
 export const TONE_GENERATOR_VERSION = 1;
@@ -76,7 +76,7 @@ export interface ToneScale {
 /**
  * Five scales, pentatonics first.
  *
- * Ordered by how hard they are to get a bad melody out of rather than by music theory. A
+ * Ordered by how hard they are to get a bad phrase out of rather than by music theory. A
  * pentatonic has no semitone steps at all, so a random walk through it lands on nothing that
  * clashes with anything — which is exactly what you want when the notes are being chosen by a
  * seed. The seven-note scales are further down because they can produce a genuinely wrong note
@@ -174,7 +174,7 @@ export interface ToneRecipe {
    * The expression, given a root and a scale.
    *
    * A function rather than a string because the root and the scale genuinely belong in the
-   * expression — `60+0 3 5 7 10[…]` is what makes it a melody in C minor rather than a shape.
+   * expression — `60+0 3 5 7 10[…]` is what makes it a phrase in C minor rather than a shape.
    * Both arrive as numbers, from a clamped range and a table in this file, so nothing from the
    * interface is ever spliced into APL as text.
    */
@@ -194,7 +194,7 @@ export const TONE_RECIPES: readonly ToneRecipe[] = [
     name: 'Pulse',
     blurb: 'A note on every other step, chosen from the scale. Steady, and always on the beat.',
     /*
-     * The simplest thing that is unmistakably a melody.
+     * The simplest thing that is unmistakably a phrase.
      *
      * A fixed eighth-note grid — `0=2|⍳16` — with seeded degrees on it. The rhythm never moves,
      * so what the seed changes is the *tune*, which makes it the recipe to press twice when you
@@ -243,7 +243,7 @@ export const TONE_RECIPES: readonly ToneRecipe[] = [
      * Density as a seeded threshold, and the recipe that is mostly silence on purpose.
      *
      * `2>?16⍴7` is true about two times in seven, so a bar comes out with four or five notes in
-     * it. The whole point is the space: a melody that plays on every step leaves the kit nothing
+     * it. The whole point is the space: a phrase that plays on every step leaves the kit nothing
      * to say, and the most useful thing a generator can offer beside a drum machine is a line
      * that gets out of the way.
      */
@@ -270,7 +270,7 @@ export const TONE_RECIPES: readonly ToneRecipe[] = [
      * related figure rather than an unrelated one, which is exactly the opposite of what the
      * other three recipes offer and the reason this one is here.
      *
-     * Two draws rather than one because with j alone there were only four possible melodies, and
+     * Two draws rather than one because with j alone there were only four possible phrases, and
      * a seed control that has four answers is a seed control that appears broken on its fifth
      * press. A starting degree multiplies that by the length of the scale.
      *
@@ -316,12 +316,12 @@ export interface ToneGenerateSourceRequest {
 }
 
 /**
- * The full request for one generated melody.
+ * The full request for one generated phrase.
  *
  *     ⎕IO←0 ⋄ ⎕RL←47291 1 ⋄ <core>
  *
  * Three statements, and no fourth. Unlike a rhythm there is nothing to preserve from what was
- * there before — Beats has locked tracks, and a melody is one line, so "lock the melody and
+ * there before — Beats has locked tracks, and a phrase is one line, so "lock the phrase and
  * generate a new one" has no meaning. The whole answer comes back from the core.
  */
 export function buildToneGenerateSource({ recipe, root, scale, seed }: ToneGenerateSourceRequest): AplSource {
@@ -331,7 +331,7 @@ export function buildToneGenerateSource({ recipe, root, scale, seed }: ToneGener
   return { core, statements, expression: statements.join(` ${DIAMOND} `) };
 }
 
-/** The seed a generated melody has to run under to reproduce itself. Read by Explore. */
+/** The seed a generated phrase has to run under to reproduce itself. Read by Explore. */
 export function toneGeneratorRandomSeed(seed: number): number {
   return clampSeed(seed);
 }

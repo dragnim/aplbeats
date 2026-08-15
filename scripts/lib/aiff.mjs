@@ -120,7 +120,7 @@ function readExtended(buffer, at) {
  *
  * The Jupiter-4 is a monophonic-per-voice analogue synth and every SFZ region here is centred
  * (`pan=50`), so the two channels are a stereo *treatment* rather than two different signals.
- * Averaging halves the payload and loses nothing a single melodic line needs — and APL Beats
+ * Averaging halves the payload and loses nothing a single pitched line needs — and APL Beats
  * plays one Tone voice at a time through one gain, so there was nowhere for the width to go.
  */
 export function toMono(channels) {

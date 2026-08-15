@@ -60,7 +60,7 @@ export interface TransportApi {
    */
   readonly setMasterVolume: (volume: number) => void;
   /**
-   * Set how loud the melody is, 0 to 1.
+   * Set how loud the Tones are, 0 to 1.
    *
    * Its own bus, so this is genuinely a balance control between the two layers rather than a
    * second master fader. Like `setMasterVolume`, it opens no audio device.

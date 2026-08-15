@@ -12,7 +12,7 @@ import { Recorder } from '../support/recorder';
  * One transport, two layers.
  *
  * This is the file that holds Stage 8's central promise in place, and the promise is not "the
- * melody sounds about right" — it is that there is only one clock. A second sequencer for the
+ * Tones sound about right" — it is that there is only one clock. A second sequencer for the
  * Tone layer would work perfectly on a fast machine and drift apart on a slow one, or under
  * swing, or after a tempo change, and it would take somebody with good ears and a quiet room to
  * notice. So the claim is made mechanically: every Tone event is handed the same instant the drum
@@ -131,7 +131,7 @@ async function run(rig: Rig, seconds: number): Promise<void> {
 /* ------------------------------------------------------------------------- */
 
 describe('the two layers share one clock', () => {
-  it('gives the melody the same instant it gives the drums', async () => {
+  it('gives the phrase the same instant it gives the drums', async () => {
     /*
      * The whole stage in one assertion.
      *
@@ -165,7 +165,7 @@ describe('the two layers share one clock', () => {
      * The claim that would break first if there were two clocks.
      *
      * Swing delays every other sixteenth. If the Tone layer computed its own step times it would
-     * be straight while the kit swung, and the melody would sit fractionally ahead of the hats on
+     * be straight while the kit swung, and the phrase would sit fractionally ahead of the hats on
      * every other step — audible, and maddening to diagnose. Here the swung times come out of the
      * same callback, so they cannot differ.
      */
@@ -211,8 +211,8 @@ describe('the two layers share one clock', () => {
     /*
      * The behaviour that was wrong the first time, and the fix is worth a test rather than a
      * comment. Cutting on every rest makes each note exactly one step long — 134 ms at the opening
-     * tempo — which the Lead survives and the Pad does not: its attack alone is 78 ms, so the
-     * sound advertised as "sustained and airy" arrived as a click.
+     * tempo — which a bright lead survives and a slow patch does not: an attack of 78 ms alone
+     * makes a sound advertised as "sustained and airy" arrive as a click.
      */
     const harness = rig({ phrase: emptyPhrase() });
     await run(harness, 2.2);
@@ -284,7 +284,7 @@ describe('the two layers share one clock', () => {
 });
 
 describe('the Tone layer and the transport', () => {
-  it('silences the melody when the transport stops', async () => {
+  it('silences the phrase when the transport stops', async () => {
     /*
      * A drum hit is over before the button is released; a Tone note is not. Suspending the audio
      * context around a sounding sample freezes it mid-note rather than ending it, so pressing Play
@@ -308,7 +308,7 @@ describe('the Tone layer and the transport', () => {
     }).not.toThrow();
   });
 
-  it('schedules the drums identically whether or not a melody is playing', async () => {
+  it('schedules the drums identically whether or not a phrase is playing', async () => {
     /*
      * The audio-regression claim, made as a comparison rather than as an assurance.
      *
@@ -316,13 +316,13 @@ describe('the Tone layer and the transport', () => {
      * a single drum event — not its step, not its time, not its level — and the way to know that
      * is to schedule the same bar twice and compare, rather than to reason about it.
      */
-    const capture = async (withMelody: boolean): Promise<string[]> => {
-      const harness = rig({ phrase: withMelody ? openingPhrase() : emptyPhrase() });
+    const capture = async (withTones: boolean): Promise<string[]> => {
+      const harness = rig({ phrase: withTones ? openingPhrase() : emptyPhrase() });
       const seen: string[] = [];
       vi.spyOn(harness.engine, 'playStep').mockImplementation((_pattern, mixer, step, time) => {
         seen.push(`${String(step)}@${time.toFixed(9)}|${mixer.map((mix) => mix.volume).join(',')}`);
       });
-      if (withMelody) harness.transport.setToneSampler(harness.sampler);
+      if (withTones) harness.transport.setToneSampler(harness.sampler);
       await harness.transport.play();
       for (let elapsed = 0; elapsed < 2.2; elapsed += 0.025) {
         harness.recorder.currentTime += 0.025;
@@ -331,11 +331,11 @@ describe('the Tone layer and the transport', () => {
       return seen;
     };
 
-    const withoutMelody = await capture(false);
-    const withMelody = await capture(true);
+    const withoutTones = await capture(false);
+    const withTones = await capture(true);
 
-    expect(withoutMelody.length).toBeGreaterThan(10);
-    expect(withMelody).toEqual(withoutMelody);
+    expect(withoutTones.length).toBeGreaterThan(10);
+    expect(withTones).toEqual(withoutTones);
   });
 
   it('remembers the Tone level with no audio device open', () => {
@@ -347,7 +347,7 @@ describe('the Tone layer and the transport', () => {
     expect(Recorder.built).toBe(built);
   });
 
-  it('keeps the melody on its own bus, so the drums are untouched by its level', async () => {
+  it('keeps the phrase on its own bus, so the drums are untouched by its level', async () => {
     const harness = rig();
     await start(harness);
 
@@ -355,7 +355,7 @@ describe('the Tone layer and the transport', () => {
     harness.transport.setToneVolume(0.25);
 
     // Exactly one gain node was ramped, and it was ramped to the level asked for. A change that
-    // touched two would mean the melody's fader was reaching into the drums' chain.
+    // touched two would mean the phrase's fader was reaching into the drums' chain.
     const rampedTo = harness.recorder.gains.flatMap((gain, index) =>
       gain.ramps.slice(rampsBefore[index]).map(([value]) => value),
     );

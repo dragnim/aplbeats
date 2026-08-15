@@ -19,7 +19,7 @@ import {
 } from '@/tones/phrase';
 
 /*
- * The melody model.
+ * The phrase model.
  *
  * Small, and worth testing carefully anyway, because a phrase arrives from three places that are
  * all outside this module's control — `localStorage`, an APL reply, and the step editor — and
@@ -84,13 +84,13 @@ describe('a phrase', () => {
     const opening = openingPhrase();
     expect(noteCount(opening)).toBeGreaterThan(3);
     expect(opening[0]).not.toBe(REST);
-    // Every value playable, or the opening melody would fail its own validator.
+    // Every value playable, or the opening phrase would fail its own validator.
     expect(isPhrase(opening)).toBe(true);
   });
 
   it('leaves the backbeat alone', () => {
     /*
-     * Steps 4 and 12 are where the snare falls. The opening melody deliberately rests on both, so
+     * Steps 4 and 12 are where the snare falls. The opening phrase deliberately rests on both, so
      * the first thing anybody hears is a tune answering the kit rather than competing with it.
      */
     const opening = openingPhrase();
@@ -108,7 +108,7 @@ describe('a phrase', () => {
     expect(after.filter((_v, index) => index !== 2)).toEqual(before.filter((_v, index) => index !== 2));
   });
 
-  it('refuses an edit that would put something illegal in the melody', () => {
+  it('refuses an edit that would put something illegal in the phrase', () => {
     const before = openingPhrase();
     expect(setStep(before, 0, 4000)).toBe(before);
     expect(setStep(before, 0, 60.5)).toBe(before);
@@ -117,7 +117,7 @@ describe('a phrase', () => {
     expect(setStep(before, 0, before[0]!)).toBe(before);
   });
 
-  it('compares by value, so an edit and an undo are still the same melody', () => {
+  it('compares by value, so an edit and an undo are still the same phrase', () => {
     expect(phrasesEqual(openingPhrase(), openingPhrase())).toBe(true);
     expect(phrasesEqual(openingPhrase(), emptyPhrase())).toBe(false);
   });
@@ -129,7 +129,7 @@ describe('a phrase', () => {
   });
 });
 
-describe('reading a melody back from APL', () => {
+describe('reading a phrase back from APL', () => {
   it('accepts one line of sixteen whole numbers', () => {
     const result = parseAplPhrase(['60 0 0 63 0 67 0 0 65 0 0 63 0 60 0 0']);
     expect(result.ok).toBe(true);
@@ -143,7 +143,7 @@ describe('reading a melody back from APL', () => {
 
   it('refuses a reply that is nearly right', () => {
     // Each of these is a real way an expression can go wrong, and each must lose the *reply*
-    // rather than the melody the visitor already had.
+    // rather than the phrase the visitor already had.
     const cases: readonly [string[], RegExp][] = [
       [[], /empty/u],
       [['60 0 0 63'], /expected 16 values/u],
@@ -162,9 +162,9 @@ describe('reading a melody back from APL', () => {
     }
   });
 
-  it('accepts a melody of nothing but rests', () => {
+  it('accepts a phrase of nothing but rests', () => {
     // Sixteen zeroes is a valid answer, however unmusical. Refusing it would mean an expression
-    // that silenced the melody failed rather than silenced it, which is a different thing.
+    // that silenced the phrase failed rather than silenced it, which is a different thing.
     const result = parseAplPhrase(['0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0']);
     expect(result.ok).toBe(true);
   });

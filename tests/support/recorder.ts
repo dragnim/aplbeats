@@ -8,7 +8,7 @@
  * kick was scheduled through it, which is the case worth testing.
  *
  * Shared rather than copied. It was local to the master-volume tests until Stage 8 needed the same
- * graph to prove that a melody and a drum land on the same instant, and two recorders drifting
+ * graph to prove that a Tone and a drum land on the same instant, and two recorders drifting
  * apart would mean two different ideas of what Web Audio does.
  */
 

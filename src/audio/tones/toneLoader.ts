@@ -140,8 +140,8 @@ export class ToneLoader {
      * The sound is built with its own working gain, which is where that number finally lands.
      *
      * It was measured, documented and tested from the first day of Stage 8 and applied nowhere,
-     * so the Pad — whose recordings peak at 6% of full scale — played some fifteen times quieter
-     * than the Lead. Passing it here is the whole fix.
+     * so Noisy Lead — whose recordings peak at 4% of full scale — played some twenty-three times
+     * quieter than Petals Piano. Passing it here is the whole fix.
      */
     return new ToneSampler(zones, definition.gain);
   }

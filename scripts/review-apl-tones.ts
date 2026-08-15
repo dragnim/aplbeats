@@ -2,7 +2,7 @@
  * The Tone recipes and transforms, on the page, before anybody hears them.
  *
  * The same tool as `review-apl-generators.ts` and for the same reason: the tests can prove a
- * melody is sixteen numbers in the right range, and no test can tell you it is a tune. This
+ * phrase is sixteen numbers in the right range, and no test can tell you it is a tune. This
  * prints what each recipe and each transform actually produces so that a person can look at it,
  * and it does that **locally** — the APL is evaluated by a small reference interpreter in this
  * file, not by TryAPL, so reviewing costs no requests at all.
@@ -40,12 +40,12 @@ const seedCount = Number(option('seeds', '5'));
 const scale: ToneScale = toneScaleById(option('scale', 'minor-pentatonic'));
 const root = Number(option('root', String(DEFAULT_ROOT)));
 
-/** A melody as sixteen columns of note names, so its shape is visible at a glance. */
+/** A phrase as sixteen columns of note names, so its shape is visible at a glance. */
 function strip(phrase: Phrase): string {
   return phrase.map((value) => (value === REST ? '  ·' : noteName(value).padStart(3))).join(' ');
 }
 
-/** The same melody as a picture, one row per semitone band. Reading the contour is the point. */
+/** The same phrase as a picture, one row per semitone band. Reading the contour is the point. */
 function contour(phrase: Phrase): string[] {
   const sounding = phrase.filter((value) => value !== REST);
   if (sounding.length === 0) return ['(silence)'];

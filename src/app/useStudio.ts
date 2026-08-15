@@ -56,7 +56,7 @@ export interface StudioApi {
    */
   readonly applyTransform: (pattern: Pattern) => void;
   /**
-   * Begin a melody-editing gesture.
+   * Begin a Tone-editing gesture.
    *
    * The Tone counterpart of `beginEdit`, and a separate counter: dragging a note up while the
    * other hand paints drum cells should not merge the two into one Undo.
@@ -191,7 +191,7 @@ export function useStudio(initial: CreativeState): StudioApi {
   );
 }
 
-/** The melody, for anything that only needs that. */
+/** The Tone phrase, for anything that only needs that. */
 export function phraseOf(state: CreativeState): Phrase {
   return state.phrase;
 }

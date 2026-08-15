@@ -23,13 +23,13 @@
  * stayed.
  *
  * The one thing that is *not* shared is the parser, and it must not be: a rhythm is eight rows of
- * ones and zeros and a melody is one row of MIDI numbers, so there is exactly one place where the
+ * ones and zeros and a Tone phrase is one row of MIDI numbers, so there is exactly one place where the
  * two paths differ and it is the six lines that read the reply. Everything above that — when a
  * request is allowed, what makes two questions the same question, what happens when TryAPL says
  * no — is one code path on purpose.
  *
  * The answers are tagged rather than merely differently shaped. `AplOutcome` is a discriminated
- * union on `domain`, so the caller cannot install a melody as a rhythm even by accident: the
+ * union on `domain`, so the caller cannot install a Tone phrase as a rhythm even by accident: the
  * field it would have to read does not exist on the other kind.
  *
  * That is also why this is `AplService` and not `TransformService`. It stopped being a
@@ -37,7 +37,7 @@
  * that needs a comment explaining what it really does is a name that should have changed.
  *
  * Everything about *when* to call this belongs to `useApl`. What a valid rhythm looks like
- * belongs to `matrix.ts` and what a valid melody looks like belongs to `tones/phrase.ts`. This
+ * belongs to `matrix.ts` and what a valid phrase looks like belongs to `tones/phrase.ts`. This
  * is the join.
  */
 
@@ -158,7 +158,7 @@ interface OutcomeMeta {
  *
  * The `domain` tag is not decoration. Both layers run through one service, one client, one cache
  * and one busy lane — which is the design and not an accident — so the *only* thing keeping a
- * melody from being installed as a rhythm is that these two types cannot be mistaken for one
+ * phrase from being installed as a rhythm is that these two types cannot be mistaken for one
  * another. `outcome.pattern` does not exist on a Tone answer, and TypeScript says so at the one
  * place it matters: the `if` in `useApl` that decides what to do with a reply.
  */
@@ -167,7 +167,7 @@ export interface TransformOutcome extends OutcomeMeta {
   readonly pattern: Pattern;
 }
 
-/** A melody, back from APL. Sixteen numbers, already validated by `parseAplPhrase`. */
+/** A phrase, back from APL. Sixteen numbers, already validated by `parseAplPhrase`. */
 export interface ToneOutcome extends OutcomeMeta {
   readonly domain: 'tones';
   readonly phrase: Phrase;
@@ -272,9 +272,9 @@ export function generateCacheKey(request: GenerateRequest): string {
 /* ------------------------------------------------------------------------- */
 
 /**
- * A melody transform: one of the four operations, applied to the phrase in hand.
+ * A phrase transform: one of the four operations, applied to the phrase in hand.
  *
- * No target. A melody is one line, so there is nothing to choose between "this track" and "all
+ * No target. A phrase is one line, so there is nothing to choose between "this track" and "all
  * tracks" — the field that would have carried the choice is absent rather than present and
  * ignored, which is the difference between a type that describes the domain and a type that
  * describes the other domain with holes in it.
@@ -285,7 +285,7 @@ export interface ToneTransformRequest {
   readonly phrase: Phrase;
 }
 
-/** A generated melody: a recipe, a root, a scale and a seed. Needs no current phrase at all. */
+/** A generated phrase: a recipe, a root, a scale and a seed. Needs no current phrase at all. */
 export interface ToneGenerateRequest {
   readonly recipe: ToneRecipe;
   readonly root: number;
@@ -294,7 +294,7 @@ export interface ToneGenerateRequest {
   readonly seed: number;
 }
 
-/** A hand-written melody expression, from the Tones side of Explore. */
+/** A hand-written phrase expression, from the Tones side of Explore. */
 export interface ToneCustomRequest {
   /** Exactly what the editor holds, trimmed. Never rewritten. */
   readonly core: string;
@@ -303,16 +303,16 @@ export interface ToneCustomRequest {
   readonly randomSeed?: number;
 }
 
-/** A melody as cache-key text: sixteen numbers, comma separated. */
+/** A phrase as cache-key text: sixteen numbers, comma separated. */
 function phraseBits(phrase: Phrase): string {
   return phrase.join(',');
 }
 
 /**
- * The key for a melody transform.
+ * The key for a phrase transform.
  *
  * Prefixed `tone`, so nothing on this side can ever collide with a rhythm — which matters more
- * here than it looks, because the two share one cache and a collision would hand a melody back
+ * here than it looks, because the two share one cache and a collision would hand a phrase back
  * as a rhythm or the reverse.
  */
 export function toneCacheKey(request: ToneTransformRequest): string {
@@ -325,7 +325,7 @@ export function toneCacheKey(request: ToneTransformRequest): string {
 }
 
 /**
- * The key for a generated melody.
+ * The key for a generated phrase.
  *
  * Versioned, and the version is the Tone one: what a Tone recipe and seed mean has nothing to do
  * with what a rhythm recipe and seed mean, so they move independently.
@@ -341,7 +341,7 @@ export function toneGenerateCacheKey(request: ToneGenerateRequest): string {
   }|${String(clampRoot(request.root))}|${String(clampSeed(request.seed))}`;
 }
 
-/** The identity of a hand-written melody expression: the Tone half of `customIdentityKey`. */
+/** The identity of a hand-written phrase expression: the Tone half of `customIdentityKey`. */
 export function toneCustomIdentityKey(request: {
   readonly core: string;
   readonly randomSeed?: number | null;
@@ -450,24 +450,24 @@ export class AplService {
   /* ---- Tones ------------------------------------------------------------- */
 
   /**
-   * Transform a melody with APL.
+   * Transform a phrase with APL.
    *
    * The same lane as everything else — same client, same cache, same timeout, same refusal to
-   * accept a partial answer — and a different parser, because a melody is not a matrix. If it
-   * fails the caller leaves the melody exactly as it was.
+   * accept a partial answer — and a different parser, because a phrase is not a matrix. If it
+   * fails the caller leaves the phrase exactly as it was.
    */
   async runTone(request: ToneTransformRequest, signal?: AbortSignal): Promise<ToneOutcome> {
     const source = buildToneSource(request);
     return this.executeTone(toneCacheKey(request), source, signal);
   }
 
-  /** Ask a recipe for a melody. */
+  /** Ask a recipe for a phrase. */
   async runToneGenerate(request: ToneGenerateRequest, signal?: AbortSignal): Promise<ToneOutcome> {
     const source = buildToneGenerateSource(request);
     return this.executeTone(toneGenerateCacheKey(request), source, signal);
   }
 
-  /** Run a hand-written melody expression, from the Tones side of Explore. */
+  /** Run a hand-written phrase expression, from the Tones side of Explore. */
   async runToneCustom(request: ToneCustomRequest, signal?: AbortSignal): Promise<ToneOutcome> {
     const source = buildToneCustomSource(request);
     return this.executeTone(toneCustomCacheKey(request), source, signal);
@@ -530,7 +530,7 @@ export class AplService {
     if (!parsed.ok) {
       throw new AplError(
         'badResponse',
-        'APL sent something unexpected. Your melody was not changed.',
+        'APL sent something unexpected. Your Tone phrase was not changed.',
         parsed.reason,
       );
     }
@@ -570,7 +570,7 @@ export class AplService {
     return this.cache.has(generateCacheKey(request));
   }
 
-  /** The same three, for melodies. */
+  /** The same three, for phrases. */
   hasTone(request: ToneTransformRequest): boolean {
     return this.cache.has(toneCacheKey(request));
   }
@@ -608,7 +608,7 @@ export function isStillApplicable(basedOn: Pattern, current: Pattern): boolean {
   return patternsEqual(basedOn, current);
 }
 
-/** The same rule, for a melody. Compared by value, for the same reason. */
+/** The same rule, for a phrase. Compared by value, for the same reason. */
 export function isPhraseStillApplicable(basedOn: Phrase, current: Phrase): boolean {
   return phrasesEqual(basedOn, current);
 }

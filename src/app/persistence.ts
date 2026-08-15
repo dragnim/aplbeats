@@ -97,23 +97,23 @@ const CREATE_SCHEMA_VERSION = 1;
 /*
  * The Tone layer, under its own key.
  *
- * The melody could have gone inside the session record next to the pattern — it is creative state,
+ * The Tone phrase could have gone inside the session record next to the pattern — it is creative state,
  * it is in the same Undo history, and one key would have been less code. It is separate because of
  * what the session key means: a session is discarded outright whenever `GENERATOR_VERSION` changes,
- * since a stored *seed* describes a different rhythm under a different generator. A melody is
+ * since a stored *seed* describes a different rhythm under a different generator. A phrase is
  * sixteen stored numbers that describe themselves. Tuning the drum generator has nothing to say
  * about somebody's tune, and throwing it away because an unrelated version number moved would be
  * losing work for no reason at all.
  *
  * The consequence is worth stating plainly: after a generator bump the drums restart from the
- * opening groove and the melody is exactly where it was left. That is the intended behaviour, and
+ * opening groove and the Tone phrase is exactly where it was left. That is the intended behaviour, and
  * `tests/unit/persistence.test.ts` holds it in place.
  */
 const TONES_STORAGE_KEY = 'aplbeats.tones.v1';
 const TONES_SCHEMA_VERSION = 1;
 
 /*
- * How loud the melody is, under its own key, exactly as the master level is.
+ * How loud the Tones are, under their own key, exactly as the master level is.
  *
  * The balance between the drums and the tune is a listening decision about a room and a pair of
  * speakers. Not creative state, not in Undo, and not the session's business.
@@ -125,7 +125,7 @@ const TONE_VOLUME_SCHEMA_VERSION = 1;
  * The Tone Create controls and the Tones side of the Explore draft, each under their own key.
  *
  * Mirrors of `aplbeats.apl-create.v1` and `aplbeats.explore.v1`, and separate from them on
- * purpose. Which melody recipe somebody was working with has nothing to do with which rhythm
+ * purpose. Which Tone recipe somebody was working with has nothing to do with which rhythm
  * recipe they were working with, and the two Explore drafts are separate programs against
  * separate data — see `loadToneExploreDraft`.
  */
@@ -140,7 +140,7 @@ const MAX_DRAFT_LENGTH = 1000;
 /**
  * The half of the creative state the session key holds.
  *
- * Everything except the melody, which lives under `aplbeats.tones.v1` and outlives a generator
+ * Everything except the Tone phrase, which lives under `aplbeats.tones.v1` and outlives a generator
  * bump — see `TONES_STORAGE_KEY`. Spelled as an omission rather than as its own interface so that
  * a field added to `CreativeState` is a compile error here until somebody decides which key it
  * belongs under, rather than quietly going unsaved.
@@ -455,11 +455,11 @@ export interface StoredTones {
 }
 
 /**
- * The melody and the instrument it was played on, or nothing.
+ * The Tone phrase and the sound it was played on, or nothing.
  *
  * `isPhrase` does the validating, and it is strict: sixteen values, each a rest or a pitch this
  * instrument can actually play. A stored phrase that fails any part of that is discarded whole
- * rather than repaired, because a repaired melody is not the melody anybody wrote — and because
+ * rather than repaired, because a repaired phrase is not the phrase anybody wrote — and because
  * `localStorage` is editable by anyone with the developer tools open, so a pitch of 4000 reaching
  * the sampler must be impossible rather than merely unlikely.
  *
@@ -480,7 +480,7 @@ export function loadTones(): StoredTones | null {
     return {
       phrase: parsed.phrase,
       // A withdrawn or misspelt sound falls back rather than failing, exactly as a kit does:
-      // losing a whole melody because its instrument was renamed would be a poor trade.
+      // losing a whole phrase because its sound was renamed would be a poor trade.
       soundId: isToneSoundId(parsed.soundId) ? parsed.soundId : DEFAULT_TONE_SOUND,
     };
   } catch {
@@ -488,7 +488,7 @@ export function loadTones(): StoredTones | null {
   }
 }
 
-/** Remember the melody and its instrument. Failure is ignored, as everywhere else in this file. */
+/** Remember the Tone phrase and its sound. Failure is ignored, as everywhere else in this file. */
 export function saveTones(tones: StoredTones): void {
   try {
     globalThis.localStorage?.setItem(
@@ -505,12 +505,12 @@ export function saveTones(tones: StoredTones): void {
 }
 
 /**
- * How loud the melody is, or a sensible default.
+ * How loud the Tones are, or a sensible default.
  *
  * Defaults to 0.7 rather than to 1, which is the one place a Tone control differs from its Beats
  * counterpart. The master level defaults loud because a silent drum machine is indistinguishable
  * from a broken one; the Tone level defaults *below* the drums because Stage 8's promise is that
- * the groove keeps playing underneath, and a melody arriving on top of it at full level the first
+ * the groove keeps playing underneath, and a Tone arriving on top of it at full level the first
  * time somebody opens Tones would read as the drums having got quieter.
  */
 export function loadToneVolume(): number {
@@ -530,7 +530,7 @@ export function loadToneVolume(): number {
   }
 }
 
-/** Remember how loud the melody is. Failure is ignored, as everywhere else in this file. */
+/** Remember how loud the Tones are. Failure is ignored, as everywhere else in this file. */
 export function saveToneVolume(volume: number): void {
   try {
     const safe = Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : DEFAULT_TONE_VOLUME;
@@ -560,7 +560,7 @@ export interface ToneCreateSettings {
  * from here to a request.
  *
  * The Tone generator version is checked, and it is the Tone one. Recipe plus scale plus root plus
- * seed describes a melody, so under a different set of recipe expressions the same four values
+ * seed describes a phrase, so under a different set of recipe expressions the same four values
  * would describe a different one — but what the *rhythm* recipes do has nothing to say about
  * that, which is exactly why the two versions are separate numbers.
  */
@@ -623,7 +623,7 @@ export interface ToneExploreDraft {
  * one with the other when somebody changed tab would destroy work on every switch. Two keys, two
  * drafts, and switching layers costs neither of them.
  *
- * No target, unlike the Beats draft. A melody is one line; there is nothing to choose.
+ * No target, unlike the Beats draft. A Tone phrase is one line; there is nothing to choose.
  */
 export function loadToneExploreDraft(): ToneExploreDraft | null {
   try {

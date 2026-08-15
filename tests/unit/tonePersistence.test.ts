@@ -25,11 +25,11 @@ import { emptyPhrase, openingPhrase, REST, setStep } from '@/tones/phrase';
 /*
  * What is remembered, where, and what happens when one of the keys goes bad.
  *
- * The interesting property is the *separation*. Stage 8 could have put the melody in the session
+ * The interesting property is the *separation*. Stage 8 could have put the phrase in the session
  * record next to the pattern — it is creative state, it is in the same Undo history, and one key
  * would have been less code. It is separate because of what the session key means: a session is
  * discarded outright whenever the drum generator's version changes, since a stored seed describes
- * a different rhythm under a different generator. A melody is sixteen numbers that describe
+ * a different rhythm under a different generator. A phrase is sixteen numbers that describe
  * themselves, and tuning the drum generator has nothing to say about somebody's tune.
  *
  * So the claim these tests hold in place is: **the keys are independent**. Losing one must never
@@ -40,7 +40,7 @@ beforeEach(() => {
   clearSession();
 });
 
-describe('the melody, under its own key', () => {
+describe('the phrase, under its own key', () => {
   it('comes back exactly as it was left', () => {
     const phrase = setStep(openingPhrase(), 7, 72);
     saveTones({ phrase, soundId: 'four-bass' });
@@ -53,7 +53,7 @@ describe('the melody, under its own key', () => {
   it('survives a drum generator version bump that discards the session', () => {
     /*
      * The whole reason for the separate key, and the behaviour worth stating plainly: after a
-     * generator bump the drums restart from the opening groove and the melody is exactly where it
+     * generator bump the drums restart from the opening groove and the phrase is exactly where it
      * was left.
      */
     saveTones({ phrase: emptyPhrase(), soundId: 'fake-flute' });
@@ -74,17 +74,17 @@ describe('the melody, under its own key', () => {
     expect(loadTones()?.soundId).toBe('fake-flute');
   });
 
-  it('discards a melody that has been tampered with, rather than repairing it', () => {
+  it('discards a phrase that has been tampered with, rather than repairing it', () => {
     /*
      * `localStorage` is editable by anyone with the developer tools open, so a pitch of 4000
      * reaching the sampler must be impossible rather than merely unlikely — and a *repaired*
-     * melody is not the melody anybody wrote.
+     * phrase is not the phrase anybody wrote.
      */
     const bad = [
       { phrase: Array.from({ length: 16 }, () => 4000), soundId: 'chunky' },
       { phrase: Array.from({ length: 17 }, () => 60), soundId: 'chunky' },
       { phrase: [60.5, ...Array.from({ length: 15 }, () => REST)], soundId: 'chunky' },
-      { phrase: 'not a melody', soundId: 'chunky' },
+      { phrase: 'not a phrase', soundId: 'chunky' },
     ];
 
     for (const record of bad) {
@@ -93,8 +93,8 @@ describe('the melody, under its own key', () => {
     }
   });
 
-  it('keeps a valid melody when only its instrument has gone', () => {
-    // Losing a whole melody because its sound was renamed would be the wrong trade.
+  it('keeps a valid phrase when only its instrument has gone', () => {
+    // Losing a whole phrase because its sound was renamed would be the wrong trade.
     globalThis.localStorage.setItem(
       'aplbeats.tones.v1',
       JSON.stringify({ schema: 1, phrase: [...openingPhrase()], soundId: 'trombone' }),
@@ -105,7 +105,7 @@ describe('the melody, under its own key', () => {
     expect(restored?.soundId).toBe('petals-piano');
   });
 
-  it('carries a melody across the sound-set rename', () => {
+  it('carries a phrase across the sound-set rename', () => {
     /*
      * The migration that actually happens to somebody.
      *
@@ -115,8 +115,8 @@ describe('the melody, under its own key', () => {
      *
      * There is deliberately no translation table. Two of the four sounds are *gone* rather than
      * renamed, so mapping `lead` to a lead would hand somebody an instrument they never chose; and
-     * a schema bump would throw the melody away, which is the one thing worth keeping. So the
-     * melody is restored and the sound falls back to the new default, which is exactly what the
+     * a schema bump would throw the phrase away, which is the one thing worth keeping. So the
+     * phrase is restored and the sound falls back to the new default, which is exactly what the
      * unknown-identifier path already did.
      */
     for (const stale of ['lead', 'bass', 'keys', 'pad']) {
@@ -177,7 +177,7 @@ describe('the Tone Create controls', () => {
       JSON.stringify({ ...parsed, toneGeneratorVersion: 99 }),
     );
 
-    // Recipe plus scale plus root plus seed describes a melody. Under a different set of recipe
+    // Recipe plus scale plus root plus seed describes a phrase. Under a different set of recipe
     // expressions the same four values would describe a different one.
     expect(loadToneCreateSettings()).toBeNull();
   });
@@ -250,7 +250,7 @@ describe('one history, both layers', () => {
 
   it('undoes whichever thing was changed last', () => {
     /*
-     * Nobody making music thinks in layers while they work: you transpose the melody, you dislike
+     * Nobody making music thinks in layers while they work: you transpose the phrase, you dislike
      * it, you press Undo. Two stacks would mean the button had to guess which layer you meant.
      */
     let state = createStudio(start());
@@ -276,11 +276,11 @@ describe('one history, both layers', () => {
 
     expect(state.present.phrase[0]).toBe(65);
     state = studioReducer(state, { type: 'undo' });
-    // One gesture, one Undo: back to where the melody started rather than to 64.
+    // One gesture, one Undo: back to where the phrase started rather than to 64.
     expect(state.present.phrase[0]).toBe(60);
   });
 
-  it('banks no history for a melody transform that changed nothing', () => {
+  it('banks no history for a phrase transform that changed nothing', () => {
     // An Undo entry that appears to do nothing is worse than no Undo entry. Reversing a
     // palindrome is still a success as far as the caller is concerned.
     let state = createStudio(start());
@@ -295,7 +295,7 @@ describe('one history, both layers', () => {
     expect(state.present.phrase).toBe(before);
   });
 
-  it('leaves the melody alone when the rhythm is regenerated', () => {
+  it('leaves the phrase alone when the rhythm is regenerated', () => {
     // Generating a rhythm has no opinion about somebody's tune, and vice versa.
     let state = createStudio(start());
     state = studioReducer(state, { type: 'newSeed', seed: 4711 });

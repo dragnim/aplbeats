@@ -202,7 +202,7 @@ export interface TransformState {
    * Which layer the current status belongs to.
    *
    * Checked alongside `lastRun` by every panel before it claims a result. One lane means one
-   * status, and a Beats panel announcing a melody it did not ask for would be a small lie told
+   * status, and a Beats panel announcing a Tone phrase it did not ask for would be a small lie told
    * constantly.
    */
   readonly lastDomain: AplDomain;
@@ -238,9 +238,9 @@ export interface UseAplOptions {
   readonly lockedRows: LockedRows;
   /** Install a validated result. Exactly one Undo entry. */
   readonly onApply: (pattern: Pattern) => void;
-  /** The melody a Tone transform would be applied to. */
+  /** The phrase a Tone transform would be applied to. */
   readonly phrase: Phrase;
-  /** Install a validated melody. Exactly one Undo entry, in the same history as the rhythm. */
+  /** Install a validated phrase. Exactly one Undo entry, in the same history as the rhythm. */
   readonly onApplyPhrase: (phrase: Phrase) => void;
   /** Swapped for a fake in tests. Defaults to the real TryAPL client. */
   readonly client?: AplClient;
@@ -286,7 +286,7 @@ export function useApl({
    * Which layer the current status belongs to.
    *
    * One lane means one status, and one status shared between two layers would mean the Beats
-   * Transform panel announcing that a melody had been generated. Every panel checks the pair —
+   * Transform panel announcing that a phrase had been generated. Every panel checks the pair —
    * this and `lastRun` — before it claims anything, exactly as the three Beats panels already
    * check `lastRun` before claiming each other's results.
    */
@@ -431,7 +431,7 @@ export function useApl({
       if (service === null) return;
 
       // A second press while one is in flight is dropped, not queued. Queueing would let a
-      // held-down key become a request storm. One lane, both layers: a melody being generated
+      // held-down key become a request storm. One lane, both layers: a Tone phrase being generated
       // means a rhythm cannot be, which is exactly the promise TryAPL was made.
       if (busy.current) return;
 
@@ -461,8 +461,8 @@ export function useApl({
            * dropped and nothing is claimed about it.
            *
            * Each layer is checked against *its own* music, and that is the point of splitting
-           * here. Editing a drum cell while a melody is being generated is a perfectly reasonable
-           * thing to do, and throwing the melody away because the rhythm moved would be
+           * here. Editing a drum cell while a phrase is being generated is a perfectly reasonable
+           * thing to do, and throwing the phrase away because the rhythm moved would be
            * punishing somebody for using two hands.
            */
           if (!stillCurrent()) {
@@ -915,7 +915,7 @@ export function useApl({
    * The Tones half of the lane.
    *
    * Given `submit` rather than building its own, which is the whole architectural claim of this
-   * stage restated in one argument: there is one execution lane, and the melody runs in it.
+   * stage restated in one argument: there is one execution lane, and Tones run in it.
    */
   const tones = useToneApl({ submit, phrase, phraseRef });
 
