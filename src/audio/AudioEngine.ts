@@ -246,8 +246,23 @@ export class AudioEngine {
    * that number, so a Tone on step 3 is swung exactly as the snare on step 3 is, and neither can
    * drift from the other because neither has a clock of its own.
    *
-   * A rest releases whatever is sounding. That is not the same as doing nothing: a note left
-   * ringing through a rest would turn every phrase into a legato smear.
+   * **A rest strikes nothing; it does not cut what is ringing.** That is the one decision here
+   * with a musical consequence, and the first version had it the other way round.
+   *
+   * Cutting on a rest makes every note exactly one step long — 134 ms at the opening tempo. The
+   * Lead survives that, because it is a blip anyway. The Pad does not: its attack alone is 78 ms,
+   * so a one-step note is an attack and nothing else, and the sound advertised as "sustained and
+   * airy" arrives as a click. The opening melody, six notes with gaps, became six disconnected
+   * sixteenths instead of a line.
+   *
+   * Letting the note ring is also what the data says. `0` is a rest in the sense a step sequencer
+   * means it — *no trigger on this step* — and `0<n` is still exactly the mask of struck notes,
+   * which is what every Tone expression is written against. Nothing about the APL changes.
+   *
+   * The note ends on its own: the recordings are trimmed to 1.2 s with a fade at the boundary, so
+   * a phrase of one note and fifteen rests decays and stops rather than droning. A new note takes
+   * the voice from the old one, because the sampler is monophonic — which is what makes a dense
+   * phrase articulate and a sparse one legato, from the same sixteen numbers.
    */
   playTone(phrase: Phrase, step: number, time: number, level: number): void {
     const graph = this.graph;
@@ -255,10 +270,7 @@ export class AudioEngine {
     if (graph === null || sampler === null) return;
 
     const value = phrase[step] ?? REST;
-    if (value === REST || level <= 0) {
-      sampler.release(graph.context, time);
-      return;
-    }
+    if (value === REST || level <= 0) return;
 
     sampler.play({ context: graph.context, destination: graph.toneBus }, time, value, level);
   }

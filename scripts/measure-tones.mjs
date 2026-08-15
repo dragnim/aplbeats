@@ -115,9 +115,10 @@ const results = await page.evaluate(async () => {
       }
 
       if (sampler !== null) {
+        // A rest strikes nothing and does not cut what is ringing — exactly as the engine does
+        // it, or this would be measuring a different instrument.
         const value = phrase[step] ?? REST;
-        if (value === REST) sampler.release(context, time);
-        else sampler.play({ context, destination: toneBus }, time, value, sound.gain);
+        if (value !== REST) sampler.play({ context, destination: toneBus }, time, value, sound.gain);
       }
     }
 

@@ -207,14 +207,53 @@ describe('the two layers share one clock', () => {
     }
   });
 
-  it('schedules nothing for a rest, and releases the voice instead', async () => {
+  it('strikes nothing for a rest, and does not cut what is ringing', async () => {
+    /*
+     * The behaviour that was wrong the first time, and the fix is worth a test rather than a
+     * comment. Cutting on every rest makes each note exactly one step long — 134 ms at the opening
+     * tempo — which the Lead survives and the Pad does not: its attack alone is 78 ms, so the
+     * sound advertised as "sustained and airy" arrived as a click.
+     */
     const harness = rig({ phrase: emptyPhrase() });
-    await start(harness);
+    await run(harness, 2.2);
 
     expect(harness.sampler.played).toHaveLength(0);
-    // A rest is an instruction to stop, not an absence of instruction: without the release a note
-    // would ring through every rest in the bar.
-    expect(harness.sampler.released.length).toBeGreaterThan(0);
+    expect(harness.sampler.released).toHaveLength(0);
+  });
+
+  it('lets a note ring through the rests after it, and cuts it on the next note', async () => {
+    const phrase: Phrase = [
+      60,
+      REST,
+      REST,
+      REST,
+      67,
+      REST,
+      REST,
+      REST,
+      REST,
+      REST,
+      REST,
+      REST,
+      REST,
+      REST,
+      REST,
+      REST,
+    ];
+    const harness = rig({ phrase });
+    await run(harness, 2.2);
+
+    /*
+     * Two strikes in the bar, and nothing in between asked the voice to stop.
+     *
+     * Windowed to the first bar because the loop comes round: a bar at 120 BPM is two seconds, and
+     * the run above deliberately goes past that to prove the second bar starts.
+     */
+    const bar = 2;
+    const struck = harness.sampler.played.filter((note) => note.time < bar);
+    expect(struck.map((note) => note.midi)).toEqual([60, 67]);
+    expect(harness.sampler.played.length).toBeGreaterThan(struck.length);
+    expect(harness.sampler.released).toHaveLength(0);
   });
 
   it('plays a note for every sounding step and nothing for the others', async () => {

@@ -261,6 +261,13 @@ A phrase is **sixteen integers**. `0` is a rest; anything else is a MIDI note, w
 C. The playable range is 48 to 84 — three octaves, C3 to C6 — and that comes from the recordings
 rather than from taste: it is the span the four shipped sounds have in common.
 
+"Rest" means what it means in a step sequencer: **nothing is struck here**. A note already ringing
+carries on and decays; only a new note takes the voice. That is not a detail — the first version
+cut the note on every rest, which makes each one exactly 134 ms at the opening tempo. The Lead
+survives that because it is a blip anyway; the Pad, whose attack alone is 78 ms, arrived as a
+click. Letting it ring is what makes the same sixteen numbers a legato line when they are sparse
+and an articulated one when they are dense.
+
 Zero-as-rest is a small decision doing a lot of work. It makes `0<n` the mask of sounding notes,
 so `(48⌈84⌊n+5)×0<n` transposes the notes and leaves the rests alone — one expression, no
 conditionals, and it reads as what it does. Without the `×0<n`, `n+5` would turn every rest into
@@ -1005,8 +1012,9 @@ either. None of the following exists:
   a stand-in for one.
 - **Polyphony.** Tones is one voice. A chord is not expressible, and a second melody line is not
   either.
-- **Per-note length, velocity or probability.** A drum step fires or it does not; a Tone note lasts
-  one step.
+- **Per-note length, velocity or probability.** A drum step fires or it does not; a Tone note rings
+  until the next one or until its recording runs out, and there is no way to say "shorter than
+  that".
 - Sharing, WAV export, MIDI, accounts.
 - More than one bar; variable track lengths; song arrangement.
 - Effects, sample uploads.
@@ -1642,7 +1650,7 @@ across every preset, peaks sit between −0.4 and −0.9 dBFS with no clipped sa
 Stage 8 put a second instrument into a chain that was calibrated with one in it, so
 `npm run measure:tones` asks the same question of both layers together. The opening groove alone
 peaks at −1.9 dBFS; with a melody over it that becomes −1.8 to −1.6, and **nothing clips even with
-Tone volume at 100%**. Each sound adds between +0.2 and +1.0 dB of RMS to the bar — present
+Tone volume at 100%**. Each sound adds between +0.85 and +2.0 dB of RMS to the bar — present
 without becoming the loudest thing in it, which is what the layer promised.
 
 ## Review tooling

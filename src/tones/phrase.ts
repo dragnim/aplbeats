@@ -21,7 +21,15 @@
 /** How many steps a phrase has. The same bar the drums play. */
 export const PHRASE_LENGTH = 16;
 
-/** Silence. Not a pitch, and deliberately the value APL's `0<n` filters out. */
+/**
+ * No note on this step. Not a pitch, and deliberately the value APL's `0<n` filters out.
+ *
+ * "Rest" in the sense a step sequencer means it — *nothing is struck here* — rather than "silence
+ * begins here". A note already ringing carries on and decays; only a new note takes the voice.
+ * That distinction is what lets the same sixteen numbers be a legato line when they are sparse and
+ * an articulated one when they are dense, and it is why the Pad is playable at all. See
+ * `AudioEngine.playTone`.
+ */
 export const REST = 0;
 
 /**
