@@ -142,8 +142,8 @@ describe('the four sounds', () => {
 /** A fetch that answers from a table, and counts what it was asked for. */
 function fakeFetch(answers: Record<string, boolean>): { impl: typeof fetch; calls: string[] } {
   const calls: string[] = [];
-  const impl = ((input: RequestInfo | URL) => {
-    const url = String(input);
+  const impl = ((input: string) => {
+    const url = input;
     calls.push(url);
     const ok = answers[url] ?? true;
     return Promise.resolve({
@@ -199,9 +199,9 @@ describe('loading a sound', () => {
 
   it('lets a retry really retry', async () => {
     let failing = true;
-    const impl = ((input: RequestInfo | URL) =>
+    const impl = ((input: string) =>
       Promise.resolve({
-        ok: !(failing && String(input).endsWith('-48.wav')),
+        ok: !(failing && input.endsWith('-48.wav')),
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
       } as Response)) as typeof fetch;
 

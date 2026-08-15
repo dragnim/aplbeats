@@ -307,14 +307,18 @@ describe('aplNumber', () => {
 describe('the reference implementations stay out of production', () => {
   it('are imported by no module under src/', () => {
     /*
-     * The test that keeps Stage 3 honest.
+     * The test that keeps Stage 3 honest, and Stage 8 with it.
      *
-     * `src/apl/reference.ts` contains TypeScript that does what the APL does, and it exists so
-     * tests can assert what the expressions mean. If any module under `src/` ever imported it,
-     * a transform could silently be computed locally while the button still said "Apply with
-     * APL" — which would make the central claim of this stage false. Cheaper to forbid than
-     * to review.
+     * `src/apl/reference.ts` and `src/apl/toneReference.ts` contain TypeScript that does what the
+     * APL does, and they exist so tests can assert what the expressions mean. If any module under
+     * `src/` ever imported one, a transform could silently be computed locally while the button
+     * still said "Apply with APL" — which would make the central claim of this stage false.
+     * Cheaper to forbid than to review.
+     *
+     * Both files, because the melody side has exactly the same temptation and exactly the same
+     * cost: a Tone transform quietly computed here would be a lie told in a nicer font.
      */
+    const REFERENCES = ['reference.ts', 'toneReference.ts'];
     const offenders: string[] = [];
 
     const walk = (directory: string): void => {
@@ -325,12 +329,12 @@ describe('the reference implementations stay out of production', () => {
           continue;
         }
         if (!/\.tsx?$/u.test(entry)) continue;
-        if (path.endsWith(join('apl', 'reference.ts'))) continue;
+        if (REFERENCES.some((name) => path.endsWith(join('apl', name)))) continue;
 
         const contents = readFileSync(path, 'utf8');
         if (
-          /from\s+['"][^'"]*apl\/reference['"]/u.test(contents) ||
-          /['"]\.\/reference['"]/u.test(contents)
+          /from\s+['"][^'"]*apl\/(tone)?[Rr]eference['"]/u.test(contents) ||
+          /['"]\.\/(tone)?[Rr]eference['"]/u.test(contents)
         ) {
           offenders.push(path);
         }

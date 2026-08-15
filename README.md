@@ -1,16 +1,26 @@
 # APL Beats
 
-**Make beats first. Discover array programming second.**
+**Make music first. Discover array programming second.**
 
-A generative rhythm machine in the browser. Eight tracks, sixteen steps, a groove already
-loaded — press Play, then press Randomise.
+A generative drum machine and melody sequencer in the browser. Eight drum tracks and one
+melody line, sixteen steps each, a groove and a tune already loaded — press Play, then press
+Randomise.
 
 Live site: <https://dragnim.github.io/aplbeats/>
 
-Underneath the grid is an 8 × 16 matrix of Booleans, which is not an implementation detail
-but the whole idea. A rhythm is a rectangular array, array languages are good at rectangular
-arrays — and pressing **Apply with APL** sends that matrix to real
-[Dyalog APL](https://www.dyalog.com/) and plays back the matrix that comes home.
+Underneath the grid is an 8 × 16 matrix of Booleans, and underneath the melody is a
+sixteen-element vector of numbers. That is not an implementation detail but the whole idea —
+and the _contrast_ between the two is the sharpest thing here:
+
+```
+m   8 16⍴0 1 0 1 …     rhythm: does this track fire on this step?
+n   0 60 0 63 67 …     melody: which pitch sounds on this step, if any?
+```
+
+A rhythm is a rectangular array and a melody is a vector. Array languages are good at both —
+and pressing **Apply with APL** sends whichever one you are working on to real
+[Dyalog APL](https://www.dyalog.com/) and plays back what comes home. `⌽m` reverses your beat;
+`⌽n` reverses your tune. Same glyph, different music.
 
 The whole product is three steps, and they are meant to be taken in order:
 
@@ -28,11 +38,11 @@ of a sixteenth. Then realise the number was never the only thing you could chang
 > project will not do.
 >
 > The **APL tools** are the other half. Dyalog APL, remotely, via [TryAPL](https://tryapl.org/),
-> runs three things, and only when you press a button: **Create with APL** generates a whole new
-> 8 × 16 rhythm from a recipe and a seed, **Apply with APL** transforms the one you have, and
-> **Run this APL** runs whatever you wrote yourself.
+> runs three things on each of the two layers, and only when you press a button: **Create with APL**
+> generates a whole new rhythm or melody from a recipe and a seed, **Apply with APL** transforms the
+> one you have, and **Run this APL** runs whatever you wrote yourself.
 >
-> There is no local fallback for any of them. If APL is unavailable, nothing happens and the beat
+> There is no local fallback for any of them. If APL is unavailable, nothing happens and your music
 > is left alone — an interface that says "Generate with APL" and quietly computed the answer itself
 > would be lying. See [Create with APL](#create-with-apl) and
 > [Transform with APL](#transform-with-apl).
@@ -40,16 +50,17 @@ of a sixteenth. Then realise the number was never the only thing you could chang
 ```
         instant TypeScript generator ─┐
                                       ↓
-        Boolean 8 × 16 pattern  ⇄  real Dyalog APL, through TryAPL
-                ↓                  create a rhythm, transform one, or run your own
+        Boolean 8 × 16 pattern   m  ⇄  real Dyalog APL, through TryAPL
+        numeric 16 vector        n     create, transform, or run your own
                 ↓
-        Web Audio scheduler
+        one Web Audio scheduler — one clock, both layers
                 ↓
-        the selected drum machine — synthesised, or sampled
+        the drum machine, and the Tone sound
 ```
 
-The drum machine is a **rendering** choice. It decides what the pattern sounds like and nothing
-else: APL sees the same matrix whichever machine is playing it.
+The drum machine and the Tone sound are **rendering** choices. They decide what the music sounds
+like and nothing else: APL sees the same matrix and the same vector whichever instruments are
+playing them.
 
 ![The APL Beats sequencer and generator, playing](docs/screenshot-playing.png)
 
@@ -59,6 +70,7 @@ else: APL sees the same matrix whichever machine is playing it.
 
 - [What it does](#what-it-does)
 - [The workspace](#the-workspace)
+- [Tones](#tones)
 - [Create with APL](#create-with-apl)
 - [Transform with APL](#transform-with-apl)
 - [Explore the APL](#explore-the-apl)
@@ -89,19 +101,29 @@ else: APL sees the same matrix whichever machine is playing it.
 
 ## What it does
 
+- **Two layers, one transport.** **Beats** is eight drum tracks; **Tones** is one melody line.
+  Switching between them is a change of view and nothing else — both keep playing, on one clock,
+  through one scheduler.
 - **A wide workspace, in dark or light.** The sequencer and the APL sit side by side on a
   desktop, with a rail of four tabs — Play, Create, Transform, Explore — choosing which tool is
-  open beside the grid. Change an expression, run it, and the beat changes in front of you.
+  open beside the grid. Change an expression, run it, and the music changes in front of you.
 - **Eight tracks, sixteen steps.** Kick, Snare, Closed Hat, Open Hat, Clap, Low Perc, High
   Perc and Rim, across one bar of four-four in sixteenth notes.
+- **A melody line, sixteen steps.** One pitched voice over the same bar, played by one of four
+  Roland Jupiter-4 presets — Lead, Bass, Keys or Pad — from a public-domain sample release.
 - **Ten drum machines, plus the synthesised kit.** TR-808, TR-909, LinnDrum LM-2, CR-8000,
   Drumtraks, Casio RZ-1, MFB-512, Yamaha MR10, 808 Mini and Casio SK-1 — changing machine changes
   the sound and never the rhythm.
 - **Four recipes that create a whole rhythm in APL.** Four on Floor, Broken, Halves and Cross —
   one deliberate press, one request, an 8 × 16 matrix generated by real Dyalog APL from a seed you
   choose. The same recipe and seed give the same beat.
+- **Four recipes that create a whole melody in APL.** Pulse, Riff, Sparse and Climb, over a Root
+  and a Scale you choose — sixteen numbers from real Dyalog APL, and the same settings give the
+  same tune.
 - **Four transformations, executed in APL.** Rotate, Reverse, Periodic and Euclidean, on one
   track or on the whole matrix — with the expression that ran on show if you want to see it.
+- **Four more for the melody.** Transpose, Reverse, Rotate and Octave. Two of them are the same
+  glyph the drums use on a different shape, which is the point.
 - **And then you can edit that expression.** Write your own APL against the current rhythm and
   run it. Real Dyalog, real errors, your beat.
 - **Randomise.** A new take on the groove you have, as far away as Variation allows.
@@ -111,14 +133,16 @@ else: APL sees the same matrix whichever machine is playing it.
 - **Eight presets**, which change how the generator behaves rather than loading a fixed
   pattern.
 - **A lock per track.** The generator may not touch a locked row; you still can.
-- **Undo**, thirty deep, over every creative action.
+- **Undo**, thirty deep, over every creative action — in one history covering both layers, so it
+  takes back whichever thing you changed last.
 - **A groove on arrival.** Audio does not autoplay, so the first press of Play is the first
   sound.
 - **Play and Pause**, live tempo and swing, master volume, mute and a fader per track.
 - **Editing by click, tap, drag or keyboard**, unchanged from Stage 1.
-- **Your session comes back** when you do — pattern, seed, preset, macros, locks, tempo,
-  swing and mixer. It never starts playing on its own.
-- **Undo covers transforms too**, so an operation you did not like costs one button.
+- **Your session comes back** when you do — pattern, melody, seed, preset, macros, locks, tempo,
+  swing, mixer, Tone sound and Tone volume. It never starts playing on its own.
+- **Undo covers transforms too**, on either layer, so an operation you did not like costs one
+  button.
 
 On a phone the whole bar stays on screen: each track's name, fader, lock and mute move
 above its steps rather than beside them.
@@ -132,22 +156,28 @@ beat change. Until Stage 7 that moment involved scrolling: the sequencer was at 
 page and the four APL panels were stacked underneath it, so the cause and the effect were rarely
 on screen together.
 
-They are now. On a desktop the page is three columns:
+They are now. On a desktop the page is three columns, under two rows of layer tabs:
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │ brand · Undo · theme                                         │
 │ Play · drum machine · tempo · swing · master                 │  sticky
+├──────────────────────────────────────────────────────────────┤
+│ [ Beats m ] [ Tones n ]                                      │
 ├──────┬─────────────────────────────┬─────────────────────────┤
 │ Play │                             │                         │
-│ Crea │  the sequencer              │  the active APL         │  sticky
-│ Tran │  (the instrument)           │  workspace              │  column
-│ Expl │                             │                         │
+│ Crea │  the sequencer, or          │  the active APL         │  sticky
+│ Tran │  the melody strip           │  workspace              │  column
+│ Expl │  (the instrument)           │                         │
 └──────┴─────────────────────────────┴─────────────────────────┘
 ```
 
 The APL column is sticky and scrolls inside itself, so a long Peek or a tall editor never pushes
-the grid off the screen.
+the instrument off the screen.
+
+The two tabs at the top choose which **layer** you are working on; the rail below chooses which
+**tool** acts on it. Each layer remembers its own tab, so glancing at the drums and coming back
+returns you to the melody transform you were in the middle of.
 
 ### The four workspaces
 
@@ -206,7 +236,207 @@ one: the pads reach WCAG 2.2's target-spacing exception by their _pitch_, and a 
 padding took that from 24.25px to 23.4px and broke it.
 
 `npm run review:layout` measures all of this — horizontal overflow, cell count, and whether the
-APL is beside the grid or under it — at seven widths in both themes, and can write screenshots.
+APL is beside the grid or under it — at seven widths in both themes, in both layers, and can write
+screenshots.
+
+## Tones
+
+Stage 8 added a second layer of music, and the reason is not "a drum machine needs a bass line".
+It is that a melody is a **different shape of data** from a rhythm, and the difference is the most
+useful thing an array language has to teach.
+
+```
+m   8 16⍴0 1 0 1 …     rhythm: does this track fire on this step?
+n   0 60 0 63 67 …     melody: which pitch sounds on this step, if any?
+```
+
+`m` needs `8 16⍴` to say what shape it is. `n` is just numbers. Everything below follows from
+that.
+
+![The Tones layer: a melody strip, the Sound selector, and the melody as a numeric vector](docs/screenshot-tones.png)
+
+### The data model
+
+A phrase is **sixteen integers**. `0` is a rest; anything else is a MIDI note, where 60 is middle
+C. The playable range is 48 to 84 — three octaves, C3 to C6 — and that comes from the recordings
+rather than from taste: it is the span the four shipped sounds have in common.
+
+Zero-as-rest is a small decision doing a lot of work. It makes `0<n` the mask of sounding notes,
+so `(48⌈84⌊n+5)×0<n` transposes the notes and leaves the rests alone — one expression, no
+conditionals, and it reads as what it does. Without the `×0<n`, `n+5` would turn every rest into
+MIDI 5: an inaudible sub-bass note where there had been silence, which is exactly the bug this
+model makes easy to write and easy to prevent.
+
+### One transport, two layers
+
+**There is one clock.** The Tone layer has no sequencer, no timer and no position of its own. The
+scheduler's single `onStep` callback hands both layers the same instant:
+
+```ts
+onStep: (step, time) => {
+  this.engine.playStep(this.getPattern(), this.getMixer(), step, time);
+  this.engine.playTone(this.getPhrase(), step, time, 1);
+},
+```
+
+So a note on step 3 sounds at the instant the snare on step 3 does — including when swing has
+moved that instant, and including after a tempo change. Nothing can drift, because there is
+nothing to keep in step with anything.
+
+That claim is not left to inspection. `tests/unit/toneTransport.test.ts` compares every Tone event
+against the drum event for its own step, straight and swung; adding a tenth of a millisecond to the
+Tone call fails it.
+
+**Switching layers is visual and nothing else.** No request, no fetch, no execution, no transport
+change. Both layers go on sounding whichever one you are looking at — the drums do not pause
+because you went to write a melody. Anything else would make the tabs a mode, and modes in a
+musical instrument are how you lose a take.
+
+### Writing a melody by hand
+
+The Tones Play view is sixteen columns on the same rhythm as the drum grid, so a note on step 5
+sits above the snare on step 5 at every width. What differs is the pad: a drum step is on or off,
+and a melody step has a _value_. The note name is printed on it and the height of the fill shows
+the pitch.
+
+| Gesture                          | What it does                |
+| -------------------------------- | --------------------------- |
+| Click a rest                     | gives it a note at middle C |
+| Click a note                     | selects it, and plays it    |
+| **↑** / **↓**                    | up or down a semitone       |
+| **Page Up** / **Page Down**      | up or down an octave        |
+| **Backspace**, **Delete**, **0** | makes it a rest             |
+| **←** / **→**, **Home**, **End** | walk the bar                |
+
+The editor row below the strip is the same operations as buttons — −12, −1, +1, +12 and Rest —
+because a touchscreen has no arrow keys. It acts on the selected step, which is named beside it,
+so "Up" is never an instruction without an object.
+
+**Every change is heard**, whether the transport is running or not. A drum step you switch on is
+heard a fraction of a bar later anyway; a note moved from G to A♭ might not sound again for fifteen
+steps, and choosing a pitch by ear means hearing the pitch when you choose it.
+
+Under the strip, the panel shows the melody as APL holds it: `60 0 0 63 0 67 0 0 65 0 0 63 0 60 0
+0`. It costs nothing to show and it is the whole lesson — the Beats side needs a Peek to show the
+same thing.
+
+### The sound
+
+Four presets from a public-domain Roland Jupiter-4 sample release, one from each category upstream
+publishes as audio:
+
+| Sound    | Preset          | Why this one                                                                                                                                          |
+| -------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Lead** | `Blip Lead`     | The brightest candidate by a factor of four, and the only one at full scale. A lead has to cut through a drum kit.                                    |
+| **Bass** | `4 Bass`        | 58 ms attack and a level sustain — bright enough to be heard under a kick without competing with it.                                                  |
+| **Keys** | `Petals Piano`  | Percussive enough to articulate sixteenths, where the organs would have washed.                                                                       |
+| **Pad**  | `jp4 - Shimmer` | The fastest-attacking pad with a real sustain. The swelling pads take 300–400 ms to arrive, which is longer than a sixteenth at any tempo this plays. |
+
+**These were chosen by measurement, not by listening.** Attack time, peak level, sustain-to-attack
+energy and brightness were computed for every candidate in each category and the numbers decided
+it. That is an honest limitation rather than a claim of taste: the reasoning is recorded per sound
+in [`src/audio/tones/jupiter4.json`](src/audio/tones/jupiter4.json), and a preset that turns out to
+sound wrong under the kit is a thing to change.
+
+Seven recordings per sound, roughly every six semitones, played back at
+`2^((midi − root) / 12)` from the nearest one — so nothing is ever shifted more than three
+semitones, which is about where a shifted analogue sample stops sounding like a note and starts
+sounding like a shifted sample. The sampler is **monophonic**: one voice, a new note releases the
+previous one, and a rest releases whatever is sounding.
+
+Each sound is brought to the same working peak, so the selector changes the timbre and not the
+level — the recordings arrive at wildly different levels, and a Sound selector that changed how
+loud the melody was would be a volume control pretending to be an instrument control. **Tone
+volume** is a separate fader on its own bus, and it starts below the drums on purpose: the promise
+of this layer is that the groove keeps playing underneath.
+
+Nothing is downloaded until you open Tones for the first time. A visitor who came for the drums
+pays none of its 2.9 MB.
+
+Full provenance — the licence in full, what was done to the audio, and how 2.9 MB was obtained from
+a 10.4 GB release — is in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+### Create a melody with APL
+
+Four recipes, over a Root and a Scale you choose. The recipes decide _rhythm and contour_; Root and
+Scale decide which notes are available, because that is a musical decision a person should be
+making rather than one baked into four fixed tunes.
+
+| Recipe     | What it makes                                                                        |
+| ---------- | ------------------------------------------------------------------------------------ |
+| **Pulse**  | A note on every other step, drawn from the scale. Steady, and always on the beat.    |
+| **Riff**   | A four-step cell repeated four times. The one that sounds written rather than drawn. |
+| **Sparse** | A few notes with room around them, for phrases that answer the drums.                |
+| **Climb**  | An arpeggio walking up the scale and wrapping round.                                 |
+
+The whole idiom is four lines, and Riff is the shortest one worth reading:
+
+```apl
+16⍴(60+(0 3 5 7 10)[?4⍴5])×1,0<?3⍴3
+```
+
+`?4⍴5` draws a four-step cell of scale degrees; indexing `0 3 5 7 10` turns them into intervals;
+adding 60 turns them into pitches; and `16⍴` **cycles** — four values asked to fill sixteen repeat
+four times. Repetition is what makes a sequence of notes into a riff, and it costs one glyph.
+
+Five scales are offered, pentatonics first: they have no semitone steps at all, so a seeded walk
+through one lands on nothing that clashes. The seven-note scales are further down the list because
+they can produce a genuinely wrong note against a bass line, and somebody should reach them on
+purpose.
+
+The seed lives in the wrapper as `⎕RL←<seed> 1`, exactly as it does for the rhythm recipes, so Peek
+shows one expression rather than one per seed and Explore can re-run a recipe unchanged.
+
+### Transform a melody with APL
+
+| Operation     | Expression           | What it does                         |
+| ------------- | -------------------- | ------------------------------------ |
+| **Transpose** | `(48⌈84⌊n+5)×0<n`    | Every note up or down, in semitones. |
+| **Reverse**   | `⌽n`                 | The melody backwards.                |
+| **Rotate**    | `¯2⌽n`               | The melody through time.             |
+| **Octave**    | `(48⌈84⌊n+12×1)×0<n` | The whole melody by whole octaves.   |
+
+**Two of these are the same glyph the drums use.** `⌽n` reverses a melody exactly as `⌽m` reverses
+a rhythm, and `3⌽n` rotates one as `3⌽m` rotates the other. Nothing was written twice to make that
+true — it is true because rank-polymorphism is what array languages are for, and seeing it happen
+to your own music is worth more than a paragraph claiming it.
+
+The other two exist because a melody has something a rhythm has not: a value at each step. You
+cannot transpose a Boolean.
+
+There is **no Target control** here, and its absence is deliberate. A melody is one line, so there
+is nothing to choose between "this track" and "all tracks" — the control is missing rather than
+present and disabled.
+
+`48⌈84⌊` holds the result inside the instrument. A melody transposed up past the top keeps its top
+note at the top, which is a real edge and is stated rather than hidden: the alternative was a pitch
+the parser would refuse, which loses the whole transform.
+
+### One lane, one history
+
+Every Tone request goes through the **same** client, cache, timeout, busy flag and request counter
+as every Beats request. `useToneApl` owns state and no machinery — it is handed `submit` and
+nothing else. Generating a melody while a rhythm is in flight is refused by exactly the ref that
+refuses two rhythms, which is the promise made to TryAPL.
+
+The answers are a discriminated union on `domain`, so a melody cannot be installed as a rhythm even
+by accident: the field you would have to read does not exist on the other kind.
+
+**Undo is one history covering both layers.** Nobody making music thinks in layers while they work:
+you transpose the melody, you dislike it, you press Undo. Whichever thing you changed last is the
+thing that comes back.
+
+Explore has **two drafts**, though, under two storage keys — `⌽m` and `⌽n` are different programs
+against different data, and an editor that replaced one with the other when you changed tab would
+destroy work on every switch.
+
+### What is stored
+
+The melody lives under `aplbeats.tones.v1` rather than in the session record, and that is not
+tidiness. The session is discarded outright whenever the local generator's version changes, because
+a stored _seed_ describes a different rhythm under a different generator. A melody is sixteen
+numbers that describe themselves. So after a generator bump the drums restart from the opening
+groove and **the melody is exactly where you left it**.
 
 ## Create with APL
 
@@ -317,22 +547,26 @@ so and offers an explicit _Load this generator into Explore_ instead.
 
 ### What costs a request
 
-| Action                                                | Requests |
-| ----------------------------------------------------- | -------- |
-| Loading the page                                      | 0        |
-| Changing the recipe                                   | 0        |
-| Typing a seed, or New APL seed                        | 0        |
-| Opening or closing Peek                               | 0        |
-| Opening the editor, typing in it, changing its target | 0        |
-| Randomise, New Seed, presets, macros, locks           | 0        |
-| Playback, tempo, swing, mixer, Master, drum machine   | 0        |
-| **Generate with APL**                                 | **1**    |
+| Action                                                      | Requests |
+| ----------------------------------------------------------- | -------- |
+| Loading the page                                            | 0        |
+| Switching between Beats and Tones                           | 0        |
+| Changing the recipe, root, scale or operation               | 0        |
+| Typing a seed, or New APL seed, or New melody seed          | 0        |
+| Opening or closing Peek                                     | 0        |
+| Opening either editor, typing in it, changing its target    | 0        |
+| Randomise, New Seed, presets, macros, locks                 | 0        |
+| Editing a drum cell or a melody note                        | 0        |
+| Playback, tempo, swing, mixer, Master, Tone volume, sounds  | 0        |
+| **Generate with APL**, **Apply with APL**, **Run this APL** | **1**    |
 
-Never more than one per press, and never more than one at a time: Create, Apply and Run share a
-single execution lane. A second press while one is in flight is dropped rather than queued.
+Never more than one per press, and never more than one at a time. All six APL buttons — three on
+each layer — share a single execution lane: one client, one cache, one busy flag, one counter. A
+second press while any of them is in flight is dropped rather than queued, whichever layer it came
+from.
 
 A generated result is **one Undo**. It does not restart playback, move the playhead, or touch
-tempo, swing, the mixer, Master Volume or the drum machine.
+tempo, swing, the mixer, Master Volume, the drum machine or the other layer.
 
 ## Transform with APL
 
@@ -760,14 +994,16 @@ either. None of the following exists:
 
 - **A full APL workspace.** Explore runs one expression. No definitions, no multiple
   statements, no session commands, no files.
-- **APL generation.** The generator is still local TypeScript; only the transformations run
-  in APL. Moving it is a request-budget problem rather than a translation one — see
-  [Where APL goes next](#where-apl-goes-next).
-- **Offline transforms.** There is no local fallback, on purpose. No APL, no transform.
+- **Offline APL.** There is no local fallback for any of the six APL tools, on purpose. No APL, no
+  transform and no generation — the instant TypeScript generator is a different feature rather than
+  a stand-in for one.
+- **Polyphony.** Tones is one voice. A chord is not expressible, and a second melody line is not
+  either.
+- **Per-note length, velocity or probability.** A drum step fires or it does not; a Tone note lasts
+  one step.
 - Sharing, WAV export, MIDI, accounts.
 - More than one bar; variable track lengths; song arrangement.
-- Per-step velocity or probability. A step fires or it does not.
-- Effects, sample uploads, a light theme.
+- Effects, sample uploads.
 - Redo.
 
 ## Local setup
@@ -785,28 +1021,33 @@ npm run dev
 
 ## Development commands
 
-| Command                     | What it does                                                                         |
-| --------------------------- | ------------------------------------------------------------------------------------ |
-| `npm run dev`               | Vite dev server                                                                      |
-| `npm run build`             | Typecheck, then build to `dist/`                                                     |
-| `npm run preview`           | Serve `dist/` at the published base path                                             |
-| `npm run typecheck`         | `tsc --noEmit`                                                                       |
-| `npm run lint`              | ESLint, type-aware                                                                   |
-| `npm run format:check`      | Prettier, checking — this is what CI runs                                            |
-| `npm test`                  | Unit and component tests, once                                                       |
-| `npm run test:e2e`          | Playwright, across three browser projects                                            |
-| `npm run review:layout`     | Measure the workspace at seven widths in both themes; writes screenshots             |
-| `npm run review:patterns`   | Inspect many generated bars — see [Review tooling](#review-tooling)                  |
-| `npm run review:transforms` | Read what each transformation does to a beat, before and after                       |
-| `npm run verify:apl-live`   | **Four real TryAPL requests.** Manual, never in CI                                   |
-| `npm run screenshot`        | Capture the interface to `docs/`, against a running preview                          |
-| `npm run measure:kit`       | Render every synthesised voice and report its level and length (needs `npm run dev`) |
-| `npm run measure:kits`      | Measure every drum machine and check the calibration (needs `npm run dev`)           |
-| `npm run import:samples`    | Re-fetch the samples from the pinned upstream commit and checksum them               |
-| `npm run render:tr909`      | Re-render the TR-909 from the pinned upstream DSP; `-- --check` verifies only        |
-| `npm run verify:credits`    | Check every attribution claim against the live upstream repositories                 |
-| `npm run measure:generated` | Render generated bars through the real master chain and check for clipping           |
-| `npm run verify:deployment` | Load the published site and check it works. **One real TryAPL request**              |
+| Command                              | What it does                                                                             |
+| ------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `npm run dev`                        | Vite dev server                                                                          |
+| `npm run build`                      | Typecheck, then build to `dist/`                                                         |
+| `npm run preview`                    | Serve `dist/` at the published base path                                                 |
+| `npm run typecheck`                  | `tsc --noEmit`                                                                           |
+| `npm run lint`                       | ESLint, type-aware                                                                       |
+| `npm run format:check`               | Prettier, checking — this is what CI runs                                                |
+| `npm test`                           | Unit and component tests, once                                                           |
+| `npm run test:e2e`                   | Playwright, across three browser projects                                                |
+| `npm run review:layout`              | Measure the workspace at seven widths in both themes; writes screenshots                 |
+| `npm run review:patterns`            | Inspect many generated bars — see [Review tooling](#review-tooling)                      |
+| `npm run review:transforms`          | Read what each transformation does to a beat, before and after                           |
+| `npm run review:apl-generators`      | Judge the rhythm recipes across many seeds, locally and for nothing                      |
+| `npm run review:apl-tones`           | Judge the melody recipes and transforms across many seeds, locally and for nothing       |
+| `npm run verify:apl-live`            | **Four real TryAPL requests.** Manual, never in CI                                       |
+| `npm run verify:apl-generators-live` | **Four real TryAPL requests**, one per rhythm recipe. Manual, never in CI                |
+| `npm run verify:apl-tones-live`      | **Two real TryAPL requests** — every melody recipe and transform. Manual, never in CI    |
+| `npm run screenshot`                 | Capture the interface to `docs/`, against a running preview                              |
+| `npm run measure:kit`                | Render every synthesised voice and report its level and length (needs `npm run dev`)     |
+| `npm run measure:kits`               | Measure every drum machine and check the calibration (needs `npm run dev`)               |
+| `npm run import:samples`             | Re-fetch the samples from the pinned upstream commit and checksum them                   |
+| `npm run render:tr909`               | Re-render the TR-909 from the pinned upstream DSP; `-- --check` verifies only            |
+| `npm run prepare:jupiter4`           | Re-prepare the Tone samples from the pinned upstream release; `-- --check` verifies only |
+| `npm run verify:credits`             | Check every attribution claim against the live upstream repositories                     |
+| `npm run measure:generated`          | Render generated bars through the real master chain and check for clipping               |
+| `npm run verify:deployment`          | Load the published site and check it works. **One real TryAPL request**                  |
 
 ## How it is put together
 
@@ -820,12 +1061,17 @@ src/
     config.ts      the endpoint and the limits; refuses a non-HTTPS endpoint
     wire.ts        the TryAPL Exec format, and the eleven APL error names
     matrix.ts      a pattern → an APL literal, and eight strict lines → a pattern
-    operations.ts  the four operations: their APL, their ranges, their explanations
+    operations.ts  the four rhythm operations: their APL, ranges, explanations
+    generators.ts  the four rhythm recipes, and the seeded ⎕RL wrapper
+    toneOperations.ts  the four melody operations
+    toneGenerators.ts  the four melody recipes, the five scales, the roots
     custom.ts      wrapping a hand-written expression, and the few inputs that cannot be
     client.ts      the only network request in the application
-    transform.ts   the cache, and the staleness rule
-    useTransform.ts  when a request may happen. The whole promise lives here
-    reference.ts   what the APL means, in TypeScript — imported by tests only
+    service.ts     the cache, the staleness rules, and the six kinds of request
+    useApl.ts      when a request may happen. The whole promise lives here
+    useToneApl.ts  the melody's state — and none of the machinery, which it is handed
+    reference.ts   what the rhythm APL means, in TypeScript — imported by tests only
+    toneReference.ts  the same for the melody APL — imported by tests only
   generation/  the generator — pure, deterministic, and knows nothing of React
     prng.ts        a 32-bit PRNG; streams derived per track by hashing
     weights.ts     the metrical model and what the macros do to it
@@ -840,14 +1086,21 @@ src/
       kits.ts        the ten machines, and which sound plays on which row
       provenance.ts  where every bundled sample came from, and on what basis
       checksums.json generated: the bytes of every bundled file
+    tones/
+      jupiter4.json  generated: every prepared sample, its upstream path and its checksums
+      sounds.ts      the four Tone sounds and their measured gains
+      ToneSampler.ts one pitched voice: nearest zone, playback-rate shift, monophonic
+      toneLoader.ts  fetch, decode, cache. Never more than once, and all-or-nothing
+      useTones.ts    the chosen sound, the level, and the lazy first load
     kit.ts         the eight synthesised voices
     sampleKit.ts   a sampled kit, and the choke groups the hardware would have
     kitLoader.ts   fetch, decode, cache. Never more than once
     useDrumMachine.ts  the one identifier that is Stage 4's whole state
   pattern/     the matrix, the eight tracks, the mixer, the opening groove
-  transport/   the timing arithmetic, the look-ahead scheduler, the transport
+  tones/       the melody: sixteen numbers, and what may be one of them
+  transport/   the timing arithmetic, the look-ahead scheduler, the one transport
   audio/       the AudioContext boundary, the synthesised kit, the DSP pieces
-  components/  the sequencer grid, the generator panel, the transport bar
+  components/  the sequencer grid, the melody strip, the panels, the transport bar
   app/         the creative state and its history, persistence, the shell
   styles/      tokens and the global sheet
 ```
@@ -872,10 +1125,16 @@ meaningless.
 time T" and has no way of telling whether the answer is an oscillator or a WAV. That is why Stage 4
 needed no changes to the scheduler, the transport or the timing at all.
 
-**The APL boundary is one directory and one hook.** Nothing outside `src/apl/` can cause a
-request, and inside it only `apply` can. A test forbids any module under `src/` from importing
-`reference.ts`, so a silent fallback to the TypeScript implementations is structurally
-impossible rather than merely unintended — which is the whole credibility of this stage.
+**The APL boundary is one directory and one lane.** Nothing outside `src/apl/` can cause a
+request, and inside it only the six functions named in [What costs a request](#what-costs-a-request)
+can. A test forbids any module under `src/` from importing `reference.ts` or `toneReference.ts`, so
+a silent fallback to the TypeScript implementations is structurally impossible rather than merely
+unintended — which is the whole credibility of these stages.
+
+**There is one execution lane, and both layers run in it.** One client, one cache, one busy flag,
+one request counter. `useToneApl` is handed `submit` and owns no machinery of its own, so a melody
+request and a rhythm request are refused by the same ref — which is what makes "one request at a
+time" a property of the code rather than an agreement between six call sites.
 
 ## Master volume
 
@@ -1356,10 +1615,17 @@ cannot fail, and it is the fallback whenever a sampled kit will not load. `Kit` 
 that is exactly how the nine machines arrived — a sampled voice satisfies the same signature, so
 nothing above it changed.
 
-Stage 4 adds 473 KB of bundled audio, all of it from one credited public-domain collection, all of
-it served from this origin and none of it fetched from anywhere else at runtime. See
-[Drum machine samples and credits](#drum-machine-samples-and-credits) and
+Stage 4 adds 473 KB of bundled audio, all of it from one credited public-domain collection; Stage
+5.2 adds 252 KB rendered from an MIT-licensed DSP implementation; Stage 8 adds 2,895 KB of Tone
+samples from a public-domain release. Every byte is served from this origin, and none of it is
+fetched from anywhere else at runtime. See
+[Drum machine samples and credits](#drum-machine-samples-and-credits), [Tones](#tones) and
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+The Tone samples are the largest single addition the project has made, so it is worth being plain
+about when they cost anything: **only when you open Tones**. One sound is fetched, seven files and
+about 724 KB; the other three are fetched if and when you choose them. A visitor who never leaves
+Beats downloads none of it.
 
 The generator can now produce bars with forty-odd triggers and seven voices landing on one
 sixteenth, which the hand-written opening groove never did. `npm run measure:generated`
@@ -1468,14 +1734,15 @@ Not yet audited with an actual screen reader, which remains the honest gap.
 
 One host is contacted, by one action, carrying one thing.
 
-**What is sent**, when and only when you press Apply with APL:
+**What is sent**, when and only when you press one of the six APL buttons:
 
 ```json
 ["", 0, "", "⎕IO←0 ⋄ m←8 16⍴1 0 0 0 … ⋄ m[0;]←¯1⌽m[0;] ⋄ m"]
+["", 0, "", "⎕IO←0 ⋄ n←60 0 0 63 0 67 0 0 65 0 0 63 0 60 0 0 ⋄ n←⌽n ⋄ n"]
 ```
 
-That is the whole payload. A hundred and twenty-eight ones and zeros, four small integers, and
-some APL. About three hundred bytes.
+That is the whole payload. A hundred and twenty-eight ones and zeros, or sixteen small integers,
+and some APL. About three hundred bytes for a rhythm and about a hundred for a melody.
 
 **What is not sent, ever:** your tempo, swing, mute states or fader levels; your seed, preset or
 macro settings; anything in local storage; any identifier, cookie or account — there is no
@@ -1485,9 +1752,9 @@ carries. `credentials: 'omit'` is set explicitly, so no cookie travels even if o
 The reason the list is short is not restraint. There is nothing to send because there is nothing
 to know: the request is a rhythm and a rotation.
 
-**Your session stays on your machine.** Pattern, seed, preset, macros, locks, tempo, swing and
-mixer are kept in `localStorage` and go nowhere. Nothing about a transform is stored — the cache
-of APL answers is in memory and dies with the tab.
+**Your session stays on your machine.** Pattern, melody, seed, preset, macros, locks, tempo, swing,
+mixer, drum machine, Tone sound and Tone volume are kept in `localStorage` and go nowhere. Nothing
+about a transform is stored — the cache of APL answers is in memory and dies with the tab.
 
 **Nothing else is fetched at any time.** No CDN, no font service, no analytics, no images from
 elsewhere. The `Content-Security-Policy` in `index.html` is the enforcement rather than the

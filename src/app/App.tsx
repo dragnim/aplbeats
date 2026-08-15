@@ -441,7 +441,7 @@ export function App(): React.JSX.Element {
             <Logo />
           </h1>
           <p className={styles.tagline}>
-            Make beats first. <span className={styles.taglineSecond}>Discover array programming second.</span>
+            Make music first. <span className={styles.taglineSecond}>Discover array programming second.</span>
           </p>
           <UndoButton canUndo={studio.canUndo} onUndo={studio.undo} />
           <ThemeToggle resolved={theme.resolved} onToggle={theme.toggle} />
@@ -616,15 +616,17 @@ export function App(): React.JSX.Element {
 
       <footer className={styles.footer}>
         <p className={styles.note}>
-          Eight tracks, sixteen steps, and an <span className={styles.emphasis}>{TRACKS.length} × 16</span>{' '}
-          Boolean matrix underneath. The instant generator and the timing are local; the APL tools create and
-          transform rhythms in Dyalog APL, through TryAPL, one whole pattern at a time and only when you ask.
+          Eight drum tracks and one melody line, sixteen steps each — an{' '}
+          <span className={styles.emphasis}>{TRACKS.length} × 16</span> Boolean matrix and a{' '}
+          <span className={styles.emphasis}>16</span> numeric vector underneath. The instant generator and the
+          timing are local; the APL tools create and transform both in Dyalog APL, through TryAPL, one whole
+          pattern or melody at a time and only when you ask.
         </p>
 
         {/*
           The audio credits, in the interface rather than only in the repository.
 
-          Two sources, and the sentence keeps them apart, because they are owed different
+          Three sources, and the sentence keeps them apart, because they are owed different
           things. "Selected" for the collection, because nine of its ten packs are included and
           one is not, so "samples from" on its own would overstate what is here. André Michelle
           is named rather than only his repository, because MIT asks for the copyright holder
@@ -635,8 +637,15 @@ export function App(): React.JSX.Element {
           samples copied across. It says what was done rather than making a claim about what
           upstream's own audio resources are, which upstream does not document.
 
-          `rel="noreferrer noopener"` on external links as everywhere else, and neither
-          sentence implies that either author had anything to do with APL Beats.
+          The Tone sounds get "samples from" plainly, because that is what they are: recordings
+          of a synthesiser, copied from a public-domain release and trimmed. The dedication asks
+          for no credit at all; this is given because it is owed in the ordinary sense.
+
+          "Instruments" rather than "drum machines" in the last sentence, since Stage 8 there is
+          a synthesiser named here too, and the disclaimer has to cover it.
+
+          `rel="noreferrer noopener"` on external links as everywhere else, and no sentence
+          implies that any of the three had anything to do with APL Beats.
         */}
         <p className={styles.note}>
           Selected drum machine samples from{' '}
@@ -657,8 +666,17 @@ export function App(): React.JSX.Element {
           >
             andremichelle/tr-909
           </a>
-          , © 2022 André Michelle, MIT licensed. APL Beats is an independent project and is not affiliated
-          with or endorsed by the manufacturers of the drum machines named in it.
+          , © 2022 André Michelle, MIT licensed. The Tone sounds are Roland Jupiter-4 samples from{' '}
+          <a
+            className={styles.link}
+            href="https://github.com/publicsamples/Roland-Jupiter-4"
+            rel="noreferrer noopener"
+            target="_blank"
+          >
+            publicsamples/Roland-Jupiter-4
+          </a>
+          , released into the public domain. APL Beats is an independent project and is not affiliated with or
+          endorsed by the manufacturers of the instruments named in it.
         </p>
 
         <a

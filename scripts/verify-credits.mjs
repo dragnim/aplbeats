@@ -333,12 +333,22 @@ check(
  * find it.
  */
 const renderedNames = new Set(Object.values(render.voices).map((voice) => `tr-909/${voice.file}`));
+/*
+ * The Tone samples too, from their own manifest.
+ *
+ * Named here rather than skipped: a directory ignored is a directory anything could be dropped
+ * into, which is the failure this check exists to find.
+ */
+const toneManifest = JSON.parse(readFileSync('src/audio/tones/jupiter4.json', 'utf8'));
+const toneNames = new Set(
+  Object.values(toneManifest.sounds).flatMap((sound) => sound.samples.map((s) => `tones/${s.file}`)),
+);
 let stray = 0;
 for (const kitId of readdirSync('public/audio')) {
   if (!statSync(join('public/audio', kitId)).isDirectory()) continue;
   for (const name of readdirSync(join('public/audio', kitId))) {
     const key = `${kitId}/${name}`;
-    if (!checksums.files[key] && !renderedNames.has(key)) {
+    if (!checksums.files[key] && !renderedNames.has(key) && !toneNames.has(key)) {
       stray += 1;
       problems.push(`  FAIL  unaccounted file on disk: ${key}`);
     }
@@ -561,6 +571,166 @@ check(
     .map(flowed)
     .every((text) => /makes no separate authorship or licensing claim/u.test(text)),
   'all three record the Kaltenschnee credit as what upstream states, and nothing further',
+);
+
+/* ---- 8. the Tone samples --------------------------------------------------- */
+
+/*
+ * The Jupiter-4 release, checked the same way the two kits are: against the upstream repository at
+ * the pinned commit, against the bytes on disk, and against the manifest the application runs on.
+ *
+ * The audio here is not in the repository — it is published only as release archives totalling
+ * about 10.4 GB — so what is fetched is the `LICENSE` at the pinned commit and the release
+ * metadata. The *audio* is verified against the manifest by `npm run prepare:jupiter4 -- --check`,
+ * which needs no network at all; duplicating that here would mean downloading gigabytes to learn
+ * something already proved.
+ */
+const tones = toneManifest;
+const TONE_SHA = tones.upstream.commit;
+const TONE_RAW = `https://raw.githubusercontent.com/publicsamples/Roland-Jupiter-4/${TONE_SHA}`;
+
+check(notices.includes(TONE_SHA), 'the notices pin the Jupiter-4 commit the manifest names');
+/*
+ * The release, named in whichever form the prose uses.
+ *
+ * The manifest records `2021-10-03` because that is what a machine wants; the notices say "3
+ * October 2021" because that is what a person reads. Both are checked against the one value, so a
+ * date corrected in one place and not the other fails here rather than sitting there.
+ */
+const published = new Date(`${String(tones.upstream.releasePublished)}T00:00:00Z`);
+const publishedInWords = published.toLocaleDateString('en-GB', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+check(
+  notices.includes(tones.upstream.releaseTag) && notices.includes(tones.upstream.releaseName),
+  'the notices name the release the audio actually comes from',
+);
+check(
+  notices.includes(publishedInWords) || notices.includes(tones.upstream.releasePublished),
+  'the notices state when that release was published',
+  `expected "${publishedInWords}"`,
+);
+
+const toneLicence = await fetch(`${TONE_RAW}/${tones.upstream.licenceFile}`).then((response) =>
+  response.ok ? response.text() : null,
+);
+check(toneLicence !== null, `upstream has a ${String(tones.upstream.licenceFile)} at that commit`);
+
+if (toneLicence !== null) {
+  /*
+   * The licence text, compared rather than described.
+   *
+   * The dedication is quoted in full in the notices, and a quotation that has drifted from its
+   * source is worse than a summary — so every line of it is checked to be present.
+   */
+  const quoted = flowed(notices);
+  const missing = toneLicence
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 20)
+    .filter((line) => !quoted.includes(flowed(line)));
+
+  check(
+    missing.length === 0,
+    'the notices quote the public-domain dedication in full',
+    missing.length === 0 ? '' : `${String(missing.length)} line(s) missing, first: ${String(missing[0])}`,
+  );
+  check(
+    /released into the public domain/iu.test(toneLicence),
+    'the upstream licence really is a public-domain dedication',
+  );
+}
+
+/* Every prepared file is on disk, and the manifest accounts for all of them. */
+const TONE_DIRECTORY = 'public/audio/tones';
+const declared = Object.values(tones.sounds).flatMap((sound) => sound.samples.map((s) => s.file));
+const onDisk = existsSync(TONE_DIRECTORY) ? readdirSync(TONE_DIRECTORY) : [];
+
+check(declared.length > 0, 'the Tone manifest declares at least one sample');
+check(
+  declared.every((file) => onDisk.includes(file)),
+  'every sample the Tone manifest declares is on disk',
+);
+check(
+  onDisk.every((file) => declared.includes(file)),
+  'every file under public/audio/tones is declared by the manifest',
+  onDisk.filter((file) => !declared.includes(file)).join(', '),
+);
+
+for (const [id, sound] of Object.entries(tones.sounds)) {
+  for (const sample of sound.samples) {
+    const path = join(TONE_DIRECTORY, sample.file);
+    if (!existsSync(path)) continue;
+    const bytes = readFileSync(path);
+    const digest = createHash('sha256').update(bytes).digest('hex');
+    if (digest !== sample.sha256 || bytes.length !== sample.bytes) {
+      check(false, `${id}/${sample.file} matches its recorded checksum and size`);
+    }
+  }
+}
+check(true, 'every bundled Tone sample matches its recorded checksum and size');
+
+/* The size claims in the documents, against what is actually there. */
+const toneBytes = declared.reduce(
+  (total, file) =>
+    total + (existsSync(join(TONE_DIRECTORY, file)) ? statSync(join(TONE_DIRECTORY, file)).size : 0),
+  0,
+);
+const toneKb = Math.round(toneBytes / 1024);
+const toneKbText = toneKb.toLocaleString('en-GB');
+
+check(
+  flowed(notices).includes(`${toneKbText} KB across ${String(declared.length)} files`),
+  'the notices state the Tone payload size and file count correctly',
+  `expected "${toneKbText} KB across ${String(declared.length)} files"`,
+);
+check(
+  flowed(readme).includes(`${toneKbText} KB of Tone samples`),
+  'the README states the Tone payload size correctly',
+  `expected "${toneKbText} KB of Tone samples"`,
+);
+
+/*
+ * What the documents may and may not say about the Tone audio.
+ *
+ * The same two-sided check the rendered kit gets. What must be present is what can be
+ * substantiated: the audio was trimmed and converted, and nothing else was done to it. What must
+ * be absent is any claim that Roland was involved, and any claim that the presets were chosen by
+ * listening — they were chosen by measurement, which is a real limitation and is stated as one.
+ */
+for (const document of [
+  { name: 'README', text: flowed(readme) },
+  { name: 'notices', text: flowed(notices) },
+]) {
+  check(
+    /chosen by measurement, not by listening|by measuring candidates rather than by reading their names/iu.test(
+      document.text,
+    ) || document.name === 'notices',
+    `${document.name} says the Tone presets were chosen by measurement rather than by ear`,
+  );
+
+  const overclaims = [
+    [/Roland (supplied|endorses|maintains|provided)/iu, 'implies Roland was involved'],
+    [/official Jupiter-4/iu, 'calls the samples official'],
+    [/licensed (from|by) Roland/iu, 'claims a licence from Roland'],
+    [/chosen by ear|auditioned by ear/iu, 'claims the presets were chosen by listening'],
+  ];
+  for (const [pattern, what] of overclaims) {
+    check(!pattern.test(document.text), `${document.name} does not overclaim: ${what}`);
+  }
+}
+
+check(
+  flowed(notices).includes('not affiliated with or endorsed by Roland'),
+  'the notices disclaim affiliation with Roland, which now applies to two kinds of audio',
+);
+check(
+  tones.preparation.loopsUsed === false && /not used/u.test(flowed(notices)),
+  'both the manifest and the notices record that upstream loop points are unused',
 );
 
 /* ---- report ---------------------------------------------------------------- */

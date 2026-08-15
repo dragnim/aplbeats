@@ -5,11 +5,12 @@ documentation: nothing here is shown inside the application.
 
 ## Audio
 
-Three kinds, and they are quite different in provenance. One is generated in the browser and
+Four kinds, and they are quite different in provenance. One is generated in the browser and
 involves nobody else's work. Nine kits are somebody's **recordings, copied unchanged**. One kit is
 **rendered from somebody's DSP implementation and its audio resources**, and ships only the render.
-The obligations differ, so the three are documented separately rather than under one heading about
-"samples".
+The Tone samples are **recordings of a synthesiser, from a public-domain release, trimmed and
+converted but not otherwise altered**. The obligations differ, so the four are documented separately
+rather than under one heading about "samples".
 
 ### The synthesised kit — no third-party audio
 
@@ -333,13 +334,107 @@ Upstream classes and audio resources, all paths relative to the upstream reposit
 **There are no substitutions in this kit.** The TR-909 has a real instrument for all eight rows. Its
 mid tom, crash and ride are not used, because APL Beats has eight rows and not eleven.
 
+### The Tone samples — publicsamples/Roland-Jupiter-4
+
+Stage 8 adds a pitched layer, and it is a fourth kind of audio again: **recordings of a synthesiser,
+copied from a public-domain release, trimmed and converted but not otherwise altered**. Twenty-eight
+files, 2.9 MB, four presets at seven pitches each.
+
+- **Source:** <https://github.com/publicsamples/Roland-Jupiter-4>
+- **Commit:** `64377f813341a10a57d26df9e10f548d43f166cd` — where the `LICENSE` and the SFZ mappings
+  were read
+- **Release:** `1.0`, "Roland Jupiter 4 Audio", published 3 October 2021 — where the audio comes
+  from. Pinned by tag _and_ by per-asset SHA-256 in the manifest.
+- **Licence:** **public domain dedication** — reproduced in full below
+- **Bundled at:** [`public/audio/tones/`](public/audio/tones/), 2,895 KB across 28 files
+- **Prepared by:** [`scripts/prepare-jupiter4.mjs`](scripts/prepare-jupiter4.mjs),
+  `npm run prepare:jupiter4`
+- **Machine-readable manifest:** [`src/audio/tones/jupiter4.json`](src/audio/tones/jupiter4.json) —
+  every prepared file's upstream path, upstream SHA-256, frame count, peak and output SHA-256, plus
+  the SHA-256 of every release archive read
+
+#### The licence
+
+> This is free and unencumbered content released into the public domain.
+>
+> Anyone is free to copy, modify, publish, use, compile, sell, or
+> distribute this content, either in source code form or as a compiled
+> binary, for any purpose, commercial or non-commercial, and by any
+> means.
+>
+> In jurisdictions that recognize copyright laws, the author or authors
+> dedicate any and all copyright interest in the
+> content to the public domain. We make this dedication for the benefit
+> of the public at large and to the detriment of our heirs and
+> successors. We intend this dedication to be an overt act of
+> relinquishment in perpetuity of all present and future rights to this
+> content under copyright law.
+>
+> THE content IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+> EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+> MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+> IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+> OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+> ARISING FROM, OUT OF OR IN CONNECTION WITH THE content OR THE USE OR
+> OTHER DEALINGS IN THE content.
+
+The dedication is unconditional: it places no requirement on redistribution, attribution or notice.
+The credit here and in the application is given because it is owed in the ordinary sense, not
+because the licence asks for it.
+
+#### What is included
+
+| Sound | Preset          | Upstream folder         | Files | Size   |
+| ----- | --------------- | ----------------------- | ----- | ------ |
+| Bass  | `4 Bass`        | `4Bass`                 | 7     | 724 KB |
+| Keys  | `Petals Piano`  | `Petals Piano-SAMPLES`  | 7     | 724 KB |
+| Lead  | `Blip Lead`     | `Blip Lead-SAMPLES`     | 7     | 724 KB |
+| Pad   | `jp4 - Shimmer` | `jp4 - Shimmer-SAMPLES` | 7     | 724 KB |
+
+One preset from each of the four categories upstream publishes as audio — Bass, Keys, Lead and Pads
+— at roughly one recording every six semitones from MIDI 48 to 84. The FX and Misc folders were
+inspected and nothing from them is shipped: they are effects and one-shots rather than playable
+pitched instruments, and this layer plays melodies.
+
+The SFZ files were read for their key mappings and nothing else. SFZ is metadata about which
+recording covers which pitch; it is not a fifth category of instrument, and none of it is bundled.
+
+#### What was done to the audio
+
+| Step            | What                                                                     |
+| --------------- | ------------------------------------------------------------------------ |
+| Channels        | 24-bit stereo AIFF averaged to mono                                      |
+| Depth           | quantised to 16-bit, rounded, no dither                                  |
+| Length          | trimmed to 1.2 s, with a 40 ms fade at the boundary so nothing can click |
+| Everything else | none: no normalisation, no equalisation, no retuning, no editing         |
+
+**No level was changed.** The playback gains in
+[`src/audio/tones/sounds.ts`](src/audio/tones/sounds.ts) are applied in the browser, at play time,
+exactly as the drum kits' are — the files on disk carry the levels upstream published.
+
+The trim is the one substantive change and it is a size decision: a Tone note occupies one sequencer
+step, which is 134 ms at the opening tempo and 250 ms at the slowest, so 1.2 s covers any note this
+instrument can play plus its release. Upstream's loop points are recorded in the manifest and are
+**not used**, because every one of them begins later than 1.2 s — keeping the audio as far as its
+own loop would have cost about five times the payload for something no note reaches.
+
+#### How it was obtained
+
+The audio is published only as release archives totalling about 10.4 GB, which is not something to
+download for 2.9 MB of samples. [`scripts/lib/remote-zip.mjs`](scripts/lib/remote-zip.mjs) reads the
+ZIP central directory over HTTP `Range` requests and then fetches only the entries wanted — 9.8 MB
+of network for the whole preparation, and byte-identical output across runs. `npm run
+prepare:jupiter4 -- --check` re-verifies every file against the manifest with no network at all.
+
 ### Manufacturer names
 
-Applies to every kit above, sampled and rendered alike.
+Applies to every kit above, sampled and rendered alike, and to the Tone samples.
 
 Machine names are used textually, to identify which set of sounds is playing. **APL Beats is an
 independent project and is not affiliated with or endorsed by Roland, Linn, Sequential Circuits,
-Casio, Yamaha, MFB or any other manufacturer named here.** No logos, product artwork or trade dress
+Casio, Yamaha, MFB or any other manufacturer named here.** That applies to the Tone samples exactly
+as it does to the kits: the Jupiter-4 is named to say which synthesiser was recorded, and Roland
+neither supplied, endorses nor maintains any part of APL Beats. No logos, product artwork or trade dress
 appear in this repository or in the application.
 
 ## Code

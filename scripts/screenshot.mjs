@@ -37,13 +37,38 @@ const browser = await chromium.launch();
 /** Load the page, optionally press Play, let it settle, and shoot. */
 async function capture(
   name,
-  { play = false, contextOptions = {}, viewport, peek = false, explore = false } = {},
+  { play = false, contextOptions = {}, viewport, peek = false, explore = false, tones = false } = {},
 ) {
   const context = await browser.newContext({ ...contextOptions });
   const page = await context.newPage();
   if (viewport) await page.setViewportSize(viewport);
 
   await page.goto(url, { waitUntil: 'networkidle' });
+
+  if (tones) {
+    /*
+     * The melody layer, which is where the Tone samples are first fetched.
+     *
+     * `networkidle` afterwards, so the shot is of a loaded instrument rather than of one whose
+     * status line still says "Loading sound…" — which would be a screenshot of the loading state
+     * rather than of the feature.
+     */
+    await page.getByRole('tablist', { name: 'Layer' }).getByRole('tab', { name: 'Tones' }).click();
+    await page.getByRole('group', { name: 'Melody steps' }).waitFor();
+    await page.waitForLoadState('networkidle');
+  }
+
+  if (peek || explore) {
+    /*
+     * The Transform workspace, which is a tab rather than a card on the page.
+     *
+     * Stage 7 made the four panels tabs and only the selected one is rendered, so reaching the
+     * Transform panel now means selecting it first. Costs nothing: switching workspaces makes no
+     * request, which is exactly the property `workspace.spec.ts` asserts.
+     */
+    await page.getByRole('tablist', { name: 'Workspace' }).getByRole('tab', { name: 'Transform' }).click();
+    await transformPanel(page).waitFor();
+  }
 
   if (peek) {
     /*
@@ -87,6 +112,7 @@ await capture('screenshot-playing', { play: true, viewport: { width: 1280, heigh
 await capture('screenshot-narrow', { viewport: { width: 720, height: 900 } });
 await capture('screenshot-peek', { peek: true, viewport: { width: 1280, height: 1180 } });
 await capture('screenshot-explore', { explore: true, viewport: { width: 1280, height: 1400 } });
+await capture('screenshot-tones', { tones: true, play: true, viewport: { width: 1280, height: 860 } });
 await capture('screenshot-mobile', { play: true, contextOptions: devices['Pixel 7'] });
 await capture('screenshot-reduced-motion', {
   play: true,
