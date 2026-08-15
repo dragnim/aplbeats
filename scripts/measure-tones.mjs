@@ -103,7 +103,15 @@ const results = await page.evaluate(async () => {
     resetNoiseCursor();
     const voiceContext = { context, destination: master, noise: createNoiseBuffer(context) };
 
-    const sampler = sound === null ? null : new ToneSampler(decoded[sound.id]);
+    /*
+     * Built with the sound's working gain, exactly as the loader builds it.
+     *
+     * This script used to pass the gain as the *note level* instead, which happened to produce the
+     * right number while the product itself applied the gain nowhere at all. Measuring one thing
+     * and shipping another is how the Pad came to be fifteen times quieter than the Lead without
+     * anybody noticing.
+     */
+    const sampler = sound === null ? null : new ToneSampler(decoded[sound.id], sound.gain);
 
     for (let step = 0; step < 16; step += 1) {
       const time = 0.02 + step * secondsPerStep;
@@ -118,7 +126,7 @@ const results = await page.evaluate(async () => {
         // A rest strikes nothing and does not cut what is ringing — exactly as the engine does
         // it, or this would be measuring a different instrument.
         const value = phrase[step] ?? REST;
-        if (value !== REST) sampler.play({ context, destination: toneBus }, time, value, sound.gain);
+        if (value !== REST) sampler.play({ context, destination: toneBus }, time, value, 1);
       }
     }
 

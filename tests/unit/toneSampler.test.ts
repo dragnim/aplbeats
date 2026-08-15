@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ToneSampler, type ToneZone } from '@/audio/tones/ToneSampler';
 import {
   DEFAULT_TONE_SOUND,
@@ -70,6 +70,202 @@ describe('shifting a recording', () => {
   it('uses equal temperament, so a semitone is the twelfth root of two', () => {
     expect(ToneSampler.rateFor(61, 60)).toBeCloseTo(2 ** (1 / 12), 10);
     expect(ToneSampler.rateFor(67, 60)).toBeCloseTo(2 ** (7 / 12), 10);
+  });
+});
+
+/* ------------------------------------------------------------------------- */
+
+/**
+ * A context that records what the sampler builds, and what it asks of it.
+ *
+ * Smaller than the shared `Recorder`, because what matters here is one voice: which buffer was
+ * started, whether it was told to loop, and whether anything stopped it.
+ */
+interface Built {
+  buffer: AudioBuffer | null;
+  loop: boolean;
+  loopStart: number;
+  loopEnd: number;
+  started: number[];
+  stopped: number[];
+}
+
+function voice(): { context: BaseAudioContext; destination: AudioNode; built: Built[] } {
+  const built: Built[] = [];
+
+  const param = () => ({
+    value: 1,
+    setValueAtTime: () => undefined,
+    linearRampToValueAtTime: () => undefined,
+    cancelScheduledValues: () => undefined,
+  });
+
+  const context = {
+    currentTime: 0,
+    createBufferSource: () => {
+      const record: Built = {
+        buffer: null,
+        loop: false,
+        loopStart: 0,
+        loopEnd: 0,
+        started: [],
+        stopped: [],
+      };
+      built.push(record);
+      return {
+        set buffer(value: AudioBuffer) {
+          record.buffer = value;
+        },
+        get buffer(): AudioBuffer | null {
+          return record.buffer;
+        },
+        set loop(value: boolean) {
+          record.loop = value;
+        },
+        get loop(): boolean {
+          return record.loop;
+        },
+        set loopStart(value: number) {
+          record.loopStart = value;
+        },
+        set loopEnd(value: number) {
+          record.loopEnd = value;
+        },
+        playbackRate: param(),
+        start: (when: number) => record.started.push(when),
+        stop: (when: number) => record.stopped.push(when),
+        connect: (target: unknown) => target,
+        disconnect: () => undefined,
+        addEventListener: () => undefined,
+      };
+    },
+    createGain: () => ({
+      gain: param(),
+      connect: (target: unknown) => target,
+      disconnect: () => undefined,
+    }),
+  } as unknown as BaseAudioContext;
+
+  return { context, destination: {} as AudioNode, built };
+}
+
+describe('one monophonic voice', () => {
+  /*
+   * The four rules the runtime actually follows, pinned as tests.
+   *
+   * Worth pinning because the first version had one of them the other way round: it released on
+   * every rest, which made each note exactly one step long and turned the Pad into a click. The
+   * documentation said so too, for a while after the code stopped doing it.
+   */
+  const zones = [{ rootMidi: 60, buffer: {} as AudioBuffer }];
+
+  it('starts a note when asked for a pitch', () => {
+    const sampler = new ToneSampler(zones);
+    const rig = voice();
+
+    sampler.play(rig, 1, 60, 1);
+    expect(rig.built).toHaveLength(1);
+    expect(rig.built[0]?.started).toEqual([1]);
+  });
+
+  it('lets a new pitch take the voice from the one ringing', () => {
+    const sampler = new ToneSampler(zones);
+    const rig = voice();
+
+    sampler.play(rig, 1, 60, 1);
+    sampler.play(rig, 2, 67, 1);
+
+    expect(rig.built).toHaveLength(2);
+    // The first was stopped — monophonic — and the second is running.
+    expect(rig.built[0]?.stopped.length).toBe(1);
+    expect(rig.built[1]?.stopped).toEqual([]);
+  });
+
+  it('does not stop anything when nothing asks it to', () => {
+    /*
+     * A rest never reaches this class at all: `AudioEngine.playTone` returns early. So the
+     * sampler's own behaviour is that a note keeps ringing until something takes the voice, which
+     * is what makes a sparse phrase legato.
+     */
+    const sampler = new ToneSampler(zones);
+    const rig = voice();
+
+    sampler.play(rig, 1, 60, 1);
+    expect(rig.built[0]?.stopped).toEqual([]);
+  });
+
+  it('releases the voice when the transport stops', () => {
+    const sampler = new ToneSampler(zones);
+    const rig = voice();
+
+    sampler.play(rig, 1, 60, 1);
+    sampler.silence(rig.context);
+
+    expect(rig.built[0]?.stopped.length).toBe(1);
+  });
+
+  it('applies the sound’s working gain to every note', () => {
+    /*
+     * The bug the audition pass found. `ToneSoundDefinition.gain` was measured, documented and
+     * tested from the first day of Stage 8 and applied *nowhere*: the loader built zones from raw
+     * buffers, the transport passed level 1, and the sampler played each buffer as it was. The
+     * four sounds' source peaks are 1.000, 0.261, 1.000 and 0.066, so the shipped Pad was some
+     * fifteen times quieter than the shipped Lead.
+     */
+    const rig = voice();
+    const ramped: number[] = [];
+    const original = rig.context.createGain.bind(rig.context);
+    vi.spyOn(rig.context, 'createGain').mockImplementation(() => {
+      const node = original();
+      vi.spyOn(node.gain, 'linearRampToValueAtTime').mockImplementation((value: number) => {
+        ramped.push(value);
+        return node.gain;
+      });
+      return node;
+    });
+
+    new ToneSampler(zones, 5).play(rig, 1, 60, 0.5);
+    expect(ramped[0]).toBeCloseTo(2.5, 6);
+  });
+
+  it('plays at the level asked for when a sound has no gain of its own', () => {
+    const rig = voice();
+    const ramped: number[] = [];
+    const original = rig.context.createGain.bind(rig.context);
+    vi.spyOn(rig.context, 'createGain').mockImplementation(() => {
+      const node = original();
+      vi.spyOn(node.gain, 'linearRampToValueAtTime').mockImplementation((value: number) => {
+        ramped.push(value);
+        return node.gain;
+      });
+      return node;
+    });
+
+    new ToneSampler(zones).play(rig, 1, 60, 0.5);
+    expect(ramped[0]).toBeCloseTo(0.5, 6);
+  });
+
+  it('plays a zone once unless it carries loop points', () => {
+    const sampler = new ToneSampler(zones);
+    const rig = voice();
+
+    sampler.play(rig, 1, 60, 1);
+    // Every zone production ships is this one: no loop, and the recording decays on its own.
+    expect(rig.built[0]?.loop).toBe(false);
+  });
+
+  it('loops between upstream’s own points when a zone has them', () => {
+    // The audition bench's looped Pad variants, and nothing else. The points are upstream's; this
+    // class never invents one.
+    const sampler = new ToneSampler([
+      { rootMidi: 60, buffer: {} as AudioBuffer, loop: { start: 1.5, end: 3.25 } },
+    ]);
+    const rig = voice();
+
+    sampler.play(rig, 1, 60, 1);
+    expect(rig.built[0]?.loop).toBe(true);
+    expect(rig.built[0]?.loopStart).toBeCloseTo(1.5, 6);
+    expect(rig.built[0]?.loopEnd).toBeCloseTo(3.25, 6);
   });
 });
 

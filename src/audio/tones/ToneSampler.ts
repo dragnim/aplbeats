@@ -11,14 +11,24 @@
  * ever shifted further than three, which is about where a shifted analogue sample stops sounding
  * like a note and starts sounding like a shifted sample.
  *
- * **Monophonic.** One voice, as the brief asks. A new note releases the previous one rather than
- * layering on it, and a rest releases whatever is sounding. The release is a 12 ms ramp rather
- * than a hard stop, because stopping a source mid-waveform is a click — and a click on every
- * sixteenth is the fastest way to make an instrument sound broken.
+ * **Monophonic.** One voice. A new note takes it from whatever was ringing, and that is the only
+ * thing that does: **a rest strikes nothing and cuts nothing.** The note that was sounding carries
+ * on and decays on its own.
  *
- * **No loops.** The prepared recordings are trimmed to 1.2 seconds, which is longer than any note
- * this sequencer can play; upstream's loop points all begin later than that and are documented in
- * the manifest as unused. See `scripts/prepare-jupiter4.mjs`.
+ * That is a deliberate change from the first version, which released on every rest and so made
+ * every note exactly one step long — 134 ms at the opening tempo. A Lead survives that; a Pad
+ * whose attack alone is 78 ms arrives as a click. See `AudioEngine.playTone`, which is where the
+ * decision lives; this class only does what it is told.
+ *
+ * The stop, when something does ask for one, is a 12 ms ramp rather than a hard stop, because
+ * stopping a source mid-waveform is a click. Two things ask: `silence`, when the transport stops
+ * or the sound is swapped, and `play`, taking the voice for a new note.
+ *
+ * **Loops are optional and off by default.** A zone may carry loop points, in which case the
+ * source loops between them and rings until something stops it; without them the recording plays
+ * once and decays. Production ships no loops — the prepared recordings are trimmed to 1.2 seconds
+ * and upstream's loop points all begin later than that — and the Pad audition is what this exists
+ * for. See `scripts/prepare-jupiter4.mjs` and `scripts/prepare-audition.mjs`.
  *
  * Everything is scheduled against the audio clock, never against a timer. The sampler is handed a
  * time by the same scheduler that places the drums, so a Tone on step 3 and a snare on step 3
@@ -47,14 +57,40 @@ interface SoundingNote {
 export interface ToneZone {
   readonly rootMidi: number;
   readonly buffer: AudioBuffer;
+  /**
+   * Where the recording sustains, in **seconds**, when upstream says it does.
+   *
+   * Absent for every zone production ships. Present only for the audition bench's looped Pad
+   * variants, where the points come from upstream's own `INST`/`MARK` chunks or its SFZ mapping —
+   * never invented to make a patch sustain, which is the whole difference between honouring loop
+   * metadata and faking it.
+   *
+   * Seconds rather than frames because that is what `AudioBufferSourceNode` wants, and converting
+   * once where the numbers are known beats converting at every note.
+   */
+  readonly loop?: { readonly start: number; readonly end: number };
 }
 
 export class ToneSampler {
   private zones: readonly ToneZone[];
   private sounding: SoundingNote | null = null;
 
-  constructor(zones: readonly ToneZone[]) {
+  /**
+   * The sound's working gain, applied to every note.
+   *
+   * This is where `ToneSoundDefinition.gain` finally lands, and until the audition pass it landed
+   * nowhere at all: the gains were measured, documented and tested, and then the sampler played
+   * every buffer at the level asked for. The four sounds' source peaks are 1.000, 0.261, 1.000 and
+   * **0.066**, so the shipped Pad was some fifteen times quieter than the shipped Lead — which is
+   * most of why one sounded shrill and the other sounded absent.
+   *
+   * Exactly how a sampled drum kit does it: the file is not touched, the level is.
+   */
+  private readonly gain: number;
+
+  constructor(zones: readonly ToneZone[], gain = 1) {
     this.zones = [...zones].sort((a, b) => a.rootMidi - b.rootMidi);
+    this.gain = Number.isFinite(gain) && gain > 0 ? gain : 1;
   }
 
   /** How many recordings this sampler is holding. Read by tests. */
@@ -107,9 +143,29 @@ export class ToneSampler {
     source.buffer = zone.buffer;
     source.playbackRate.value = ToneSampler.rateFor(midi, zone.rootMidi);
 
+    /*
+     * Loop between upstream's own points, if this zone has any.
+     *
+     * The playback rate applies to the loop too, so a shifted note loops at the shifted rate and
+     * stays in tune with itself. Nothing here invents a loop: a zone without points plays once.
+     */
+    if (zone.loop !== undefined) {
+      source.loop = true;
+      source.loopStart = zone.loop.start;
+      source.loopEnd = zone.loop.end;
+    }
+
+    /*
+     * The note level and the sound's working gain, multiplied here.
+     *
+     * The caller says how hard the note was struck; the sound says how loud its recordings are
+     * relative to every other sound. Keeping them separate up to this point is what lets the
+     * Sound selector change timbre without changing level.
+     */
     const gain = context.createGain();
+    const target = level * this.gain;
     gain.gain.setValueAtTime(0, time);
-    gain.gain.linearRampToValueAtTime(level, time + ATTACK_SECONDS);
+    gain.gain.linearRampToValueAtTime(target, time + ATTACK_SECONDS);
 
     source.connect(gain).connect(destination);
     source.start(time);
@@ -134,9 +190,13 @@ export class ToneSampler {
   /**
    * Silence whatever is sounding, from `time`.
    *
-   * What a rest does, and what a new note does to its predecessor. The ramp runs from the value
-   * the gain actually holds at that moment rather than from the note's level, so releasing a note
-   * that is still in its four-millisecond attack does not jump it to full volume first.
+   * **Not what a rest does.** A rest strikes nothing and leaves the ringing note alone; this is
+   * called by `play`, taking the voice for a new note, and by `silence`, when the transport stops
+   * or the sound is swapped. Those are the only two.
+   *
+   * The ramp runs from the value the gain actually holds at that moment rather than from the
+   * note's level, so stopping a note that is still in its four-millisecond attack does not jump it
+   * to full volume first.
    */
   release(_context: BaseAudioContext, time: number): void {
     const note = this.sounding;

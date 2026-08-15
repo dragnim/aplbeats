@@ -136,7 +136,14 @@ export class ToneLoader {
       }),
     );
 
-    return new ToneSampler(zones);
+    /*
+     * The sound is built with its own working gain, which is where that number finally lands.
+     *
+     * It was measured, documented and tested from the first day of Stage 8 and applied nowhere,
+     * so the Pad — whose recordings peak at 6% of full scale — played some fifteen times quieter
+     * than the Lead. Passing it here is the whole fix.
+     */
+    return new ToneSampler(zones, definition.gain);
   }
 
   private async decodeWithOfflineContext(bytes: ArrayBuffer): Promise<AudioBuffer> {
