@@ -41,6 +41,25 @@
   outline-offset: 2px;
 }
 
+/*
+ * The sound, described.
+ *
+ * Under the selector rather than inside it, because an option element can only carry text and
+ * this needs two weights: what the sound is like, and where its recordings came from.
+ */
+.provenance {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.origin {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
 .sliderRow {
   display: flex;
   align-items: center;

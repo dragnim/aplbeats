@@ -169,8 +169,8 @@ test('each layer remembers which tool it had open', async ({ page }) => {
 
 test('nothing is downloaded until Tones is opened, and nothing twice', async ({ page }) => {
   /*
-   * Somebody who came for the drums and never opened the melody should pay none of its 2.9 MB —
-   * and somebody who opened it once should not pay again for glancing back at the kick.
+   * Somebody who came for the drums and never opened the melody should pay none of the sound's
+   * 724 KB — and somebody who opened it once should not pay again for glancing back at the kick.
    */
   const samples = watchSamples(page);
   await freshVisit(page);
@@ -301,14 +301,14 @@ test('the melody and its instrument survive a reload', async ({ page }) => {
   await pad(page, 3).click();
   await expect(pad(page, 3)).toHaveAccessibleName('Step 3, C4');
 
-  await page.getByLabel('Sound', { exact: true }).selectOption('bass');
+  await page.getByLabel('Sound', { exact: true }).selectOption('four-bass');
   // The write is debounced, so give it the half second it waits for.
   await page.waitForTimeout(800);
 
   await page.reload();
   await layer(page, 'Tones').click();
   await expect(pad(page, 3)).toHaveAccessibleName('Step 3, C4');
-  await expect(page.getByLabel('Sound', { exact: true })).toHaveValue('bass');
+  await expect(page.getByLabel('Sound', { exact: true })).toHaveValue('four-bass');
 });
 
 /* ---- the APL tools ------------------------------------------------------- */

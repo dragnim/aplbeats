@@ -697,33 +697,33 @@ check(
 /*
  * What the documents may and may not say about the Tone audio.
  *
- * The same two-sided check the rendered kit gets. What must be present is what can be
- * substantiated: the audio was trimmed and converted, and nothing else was done to it. What must
- * be absent is any claim that Roland was involved, and any claim that the presets were chosen by
- * listening — they were chosen by measurement, which is a real limitation and is stated as one.
+ * The same two-sided check the rendered kit gets, and the two sides swapped over when the sounds
+ * were re-chosen. The first version shipped four presets picked by measurement and said so, and
+ * this file forbade any claim that they had been listened to. They have now *been* listened to —
+ * every playable preset in the library, against the drum groove — so the required claim is the
+ * opposite one, and the thing that must not grow back is the old sentence.
+ *
+ * What must still be absent is any suggestion that Roland was involved.
  */
 for (const document of [
   { name: 'README', text: flowed(readme) },
   { name: 'notices', text: flowed(notices) },
 ]) {
-  check(
-    /chosen by measurement, not by listening|by measuring candidates rather than by reading their names/iu.test(
-      document.text,
-    ) || document.name === 'notices',
-    `${document.name} says the Tone presets were chosen by measurement rather than by ear`,
-  );
-
   const overclaims = [
     [/Roland (supplied|endorses|maintains|provided)/iu, 'implies Roland was involved'],
     [/official Jupiter-4/iu, 'calls the samples official'],
     [/licensed (from|by) Roland/iu, 'claims a licence from Roland'],
-    [/chosen by ear|auditioned by ear/iu, 'claims the presets were chosen by listening'],
+    [
+      /presets were chosen by measurement|chosen by measurement, not by listening/iu,
+      'still says the presets were chosen by measurement',
+    ],
   ];
   for (const [pattern, what] of overclaims) {
     check(!pattern.test(document.text), `${document.name} does not overclaim: ${what}`);
   }
 }
 
+check(/chosen by ear/iu.test(flowed(notices)), 'the notices say the shipped presets were chosen by ear');
 check(
   flowed(notices).includes('not affiliated with or endorsed by Roland'),
   'the notices disclaim affiliation with Roland, which now applies to two kinds of audio',
@@ -734,26 +734,70 @@ check(
 );
 
 /*
- * The two categories nothing is taken from.
+ * Every shipped sound, named in the notices with its real provenance.
  *
- * The survey found the opposite of what was assumed — FX and Misc are chromatically sampled
- * playable instruments, not effects — and the documents were corrected. This keeps them corrected:
- * the counts must match the manifest, and the sentence that was wrong must not grow back.
+ * Derived from the manifest rather than counted by hand, because the whole point of the rename is
+ * that the interface shows one name and the provenance records another — and two names per sound
+ * is twice as much to let drift. A preset added or removed without the notices following fails
+ * here.
+ */
+for (const [id, sound] of Object.entries(tones.sounds)) {
+  const flowedNotices = flowed(notices);
+  check(
+    flowedNotices.includes(sound.preset),
+    `the notices name the preset behind ${sound.name}`,
+    `expected "${sound.preset}" (id ${id})`,
+  );
+  check(
+    flowedNotices.includes(sound.upstreamFolder.split('/').pop()),
+    `the notices name the upstream folder for ${sound.name}`,
+  );
+  check(
+    typeof sound.upstreamCategory === 'string' && sound.upstreamCategory.length > 0,
+    `the manifest records which category ${sound.name} came from`,
+  );
+}
+
+check(
+  Object.keys(tones.sounds).length === 6,
+  'six sounds are shipped',
+  String(Object.keys(tones.sounds).length),
+);
+check(
+  !Object.values(tones.sounds).some((sound) => sound.upstreamCategory === 'Pads'),
+  'nothing shipped comes from Pads',
+);
+
+/*
+ * The two categories nothing is taken from, and the different reasons.
+ *
+ * FX was excluded for scope and never auditioned. Pads *was* auditioned — fourteen presets, three
+ * lengths each — and rejected by ear. Those are different statements and the documents have to
+ * make the difference, because "we did not look" and "we looked and none was good enough" are not
+ * interchangeable.
  */
 const notShipped = tones.categoriesNotShipped ?? {};
-for (const category of ['FX', 'Misc']) {
+for (const category of ['FX', 'Pads']) {
   const found = notShipped[category];
   check(found !== undefined, `the manifest records what was found in ${category}`);
   if (found === undefined) continue;
 
   check(
-    flowed(notices).includes(`${category} has ${String(found.chromaticFolders)} such folders`) ||
-      flowed(notices).includes(`${String(found.chromaticFolders)} across ${String(found.audioFiles)}`),
+    flowed(notices).includes(String(found.presets)) || flowed(notices).includes(String(found.audioFiles)),
     `the notices state ${category}'s real contents`,
-    `${String(found.chromaticFolders)} folders, ${String(found.audioFiles)} recordings`,
+    `${String(found.presets)} presets, ${String(found.audioFiles)} recordings`,
   );
-  check(found.chromaticFolders > 0, `${category} really was inspected rather than assumed about`);
 }
+
+check(
+  notShipped.Pads?.auditioned === 14 &&
+    /Fourteen of its sixteen|fourteen of the sixteen/iu.test(flowed(notices)),
+  'both record that Pads was auditioned in full rather than skipped',
+);
+check(
+  /excluded for scope|for scope and never auditioned/iu.test(flowed(notices)),
+  'the notices say FX was excluded for scope rather than for suitability',
+);
 
 for (const document of [
   { name: 'README', text: flowed(readme) },
@@ -762,11 +806,6 @@ for (const document of [
   check(
     !/(FX and Misc|they) are effects and one-shots rather than playable/iu.test(document.text),
     `${document.name} does not repeat the corrected claim that FX and Misc are one-shots`,
-  );
-  check(
-    // Either emphasis, since the notices bold the word and the README does not.
-    /(?:\*\*)?scope(?:\*\*)? rather than suitability/u.test(document.text),
-    `${document.name} says why FX and Misc are excluded, correctly`,
   );
 }
 

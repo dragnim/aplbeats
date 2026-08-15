@@ -12,10 +12,11 @@
  *
  * **The upstream audio is not in the repository.** `publicsamples/Roland-Jupiter-4` holds only
  * sampler programs — `.exs`, `.nki`, `.uvip` — and SFZ mappings. The recordings live in release
- * 1.0, as six ZIP archives totalling about ten gigabytes: Bass alone is 627 MB and Pads is 3.2 GB
- * across four parts.
+ * 1.0, as thirteen ZIP parts across six categories totalling about ten gigabytes: Bass alone is
+ * 627 MB and Pads is 3.2 GB across four parts. Four categories are read; Pads and FX are not.
  *
- * APL Beats needs twenty-eight of those recordings. Downloading 7 GB to keep 3 MB would make this
+ * APL Beats needs forty-two of those recordings. Downloading gigabytes to keep four megabytes would
+ * make this
  * script something nobody would run twice, so it does not: GitHub's asset host answers `Range`
  * requests, and a ZIP is readable from its end. `lib/remote-zip.mjs` reads each archive's central
  * directory — about 300 KB for a 627 MB file — and then fetches only the entries wanted. The
@@ -113,18 +114,94 @@ export const TONE_MAX_MIDI = 84;
 const ROOTS = [48, 54, 60, 66, 72, 78, 84];
 
 /**
- * One preset per category, chosen by measuring candidates rather than by name.
+ * The six sounds APL Beats ships, chosen by ear.
  *
- * What was measured, from a mid-register note of each: attack time to 90% of peak, peak level,
- * the ratio of sustain energy to attack energy, and zero-crossing rate as a proxy for brightness.
- * The rejected candidates and the reasoning are in the stage report and in THIRD_PARTY_NOTICES.
+ * Not one per category, and that is the point. Stage 8 shipped four presets picked by measurement
+ * — brightest Lead, fastest-attacking Pad — and the two picked for the most measurable reasons
+ * were the two that sounded worst. These six came out of a listening pass over every playable
+ * preset in the library, each one heard against the opening groove at the shipped tempo rather
+ * than as an isolated note.
+ *
+ * **There is no Pad.** Fourteen were auditioned and none was worth shipping. A category left
+ * unfilled is a smaller fault than a bad sound in it, and the selector offers sounds rather than
+ * categories, so nothing in the interface has a hole in it.
+ *
+ * `category` records where each recording actually came from, which is provenance and stays
+ * accurate whatever the sound is called: three come from Lead, one each from Keys and Bass, and
+ * `jp4 - Fake Flute` is from Misc. The interface shows the preset name.
+ *
+ * The measurements below are what narrowed the field to something listenable. They did not choose
+ * the winners and are recorded because they explain the working gains, not because they rank
+ * anything.
  */
 const SOUNDS = [
   {
-    id: 'bass',
-    name: 'Bass',
-    asset: ['Bass.zip'],
+    id: 'petals-piano',
+    name: 'Petals Piano',
+    category: 'Keys',
+    asset: ['Keys.zip.001', 'Keys.zip.002'],
     /** The folder inside the archive, and the preset name as upstream spells it. */
+    folder: 'Petals Piano-SAMPLES',
+    preset: 'Petals Piano',
+    sfz: 'Petals Piano.sfz',
+    because:
+      'Chosen by ear as the default. 6 ms attack at full scale decaying to about a third, so it ' +
+      'articulates sixteenths cleanly and makes the shape of a melody obvious on first play — ' +
+      'which is what a default has to do.',
+  },
+  {
+    id: 'chunky',
+    name: 'Chunky',
+    category: 'Lead',
+    asset: ['Lead.zip.001', 'Lead.zip.002'],
+    folder: 'Chunky-SAMPLES',
+    preset: 'Chunky',
+    sfz: null,
+    because:
+      'A plucked bright lead: 30 ms attack at 1171 Hz, decaying to half by two seconds. Bright ' +
+      'without the spike that made the previous Lead tiring.',
+  },
+  {
+    id: 'noisy-lead',
+    name: 'Noisy Lead',
+    category: 'Lead',
+    asset: ['Lead.zip.001', 'Lead.zip.002'],
+    folder: 'jp4 - Noisy Lead-SAMPLES',
+    preset: 'jp4 - Noisy Lead',
+    sfz: null,
+    because:
+      'Level throughout at 697 Hz — the nasal end of the range, and the one that holds its note ' +
+      'rather than decaying under it.',
+  },
+  {
+    id: 'gone-away-forever',
+    name: 'Gone Away Forever',
+    category: 'Lead',
+    asset: ['Lead.zip.001', 'Lead.zip.002'],
+    folder: 'Gone Away Forever-SAMPLES',
+    preset: 'Gone Away Forever',
+    sfz: null,
+    because:
+      'Full scale, 320 ms in, holding at five times its attack. The loud and sustained corner of ' +
+      'the library, and the closest thing here to a pad that still speaks in a sixteenth.',
+  },
+  {
+    id: 'fake-flute',
+    name: 'Fake Flute',
+    category: 'Misc',
+    asset: ['Misc.zip.001', 'Misc.zip.002'],
+    folder: 'jp4 - Fake Flute-SAMPLES',
+    preset: 'jp4 - Fake Flute',
+    sfz: null,
+    because:
+      'Filed under Misc rather than Lead, and a lead in everything but its filing: the softest ' +
+      'round voice in the library at 276 Hz, holding just under twice its attack.',
+  },
+  {
+    id: 'four-bass',
+    name: '4 Bass',
+    category: 'Bass',
+    asset: ['Bass.zip'],
     folder: '4Bass',
     preset: '4 Bass',
     sfz: '4 Bass.sfz',
@@ -132,39 +209,6 @@ const SOUNDS = [
       '58 ms attack and a level sustain, bright enough to be heard under a kick without ' +
       'competing with it. The one bass preset here with genuine loop metadata in both its SFZ ' +
       'mapping and its AIFF chunks.',
-  },
-  {
-    id: 'keys',
-    name: 'Keys',
-    asset: ['Keys.zip.001', 'Keys.zip.002'],
-    folder: 'Petals Piano-SAMPLES',
-    preset: 'Petals Piano',
-    sfz: 'Petals Piano.sfz',
-    because:
-      '6 ms attack at full scale, decaying to about a third — percussive enough to articulate ' +
-      'sixteenths where the organs, at 6% of full scale and a flat sustain, would have washed.',
-  },
-  {
-    id: 'lead',
-    name: 'Lead',
-    asset: ['Lead.zip.001', 'Lead.zip.002'],
-    folder: 'Blip Lead-SAMPLES',
-    preset: 'Blip Lead',
-    sfz: 'Blip Lead.sfz',
-    because:
-      'The brightest candidate by a factor of four and the only one at full scale with a 13 ms ' +
-      'attack. A lead has to cut through a drum kit, and the alternatives peaked at 4% of scale.',
-  },
-  {
-    id: 'pad',
-    name: 'Pad',
-    asset: ['Pads.zip.001', 'Pads.zip.002', 'Pads.zip.003', 'Pads.zip.004'],
-    folder: 'jp4 - Shimmer-SAMPLES',
-    preset: 'jp4 - Shimmer',
-    sfz: null,
-    because:
-      'The fastest-attacking pad with a real sustain: 78 ms, holding at 95%. The swelling pads ' +
-      'take 300–400 ms to arrive, which is longer than a sixteenth at any tempo this plays.',
   },
 ];
 
@@ -192,28 +236,28 @@ const ASSETS = {
   'Keys.zip.002': 788988894,
   'Lead.zip.001': 1000000000,
   'Lead.zip.002': 809393740,
-  'Pads.zip.001': 1000000000,
-  'Pads.zip.002': 1000000000,
-  'Pads.zip.003': 1000000000,
-  'Pads.zip.004': 385960488,
+  'Misc.zip.001': 1000000000,
+  'Misc.zip.002': 436061712,
 };
 
 /*
  * The two categories nothing is taken from, and their pinned sizes.
  *
- * Not shipped, and *inspected* rather than assumed — which is the difference between "we did not
- * use FX" and "FX is not a playable pitched instrument". `--survey` reads their central
- * directories over Range requests and prints what is in them; the finding is recorded in the
- * manifest below so a reader does not have to take it on trust or spend two gigabytes checking.
+ * Not shipped, and *inspected* rather than assumed. `--survey` reads their central directories
+ * over Range requests and prints what is in them; the finding is recorded in the manifest below so
+ * a reader does not have to take it on trust or spend gigabytes checking. Pads is here because it
+ * was auditioned in full and rejected by ear, which is a stronger statement than not looking.
  */
 const SURVEY_ASSETS = {
   FX: [
     ['FX.zip.001', 1000000000],
     ['FX.zip.002', 907003152],
   ],
-  Misc: [
-    ['Misc.zip.001', 1000000000],
-    ['Misc.zip.002', 436061712],
+  Pads: [
+    ['Pads.zip.001', 1000000000],
+    ['Pads.zip.002', 1000000000],
+    ['Pads.zip.003', 1000000000],
+    ['Pads.zip.004', 385960488],
   ],
 };
 
@@ -241,32 +285,40 @@ const manifest = {
     preparedBy: 'scripts/prepare-jupiter4.mjs',
   },
   /*
-   * The two categories nothing is taken from, as found rather than as assumed.
+   * What is in the library, and what is taken from it.
    *
-   * Established by `npm run prepare:jupiter4 -- --survey`, which reads their central directories
-   * over Range requests for about a megabyte. The finding is not what was expected: both are full
-   * of chromatically sampled playable instruments, exactly like the four shipped categories. So
-   * the reason nothing comes from them is scope — this layer offers four sounds — and not that
-   * they are effects. Recording the numbers keeps the documentation from restating the guess.
+   * Established by `npm run prepare:jupiter4 -- --survey` and by the listening pass. Two of the
+   * six categories contribute nothing, and the reasons are completely different:
+   *
+   *   **FX** was never a candidate for a melodic voice, though not for the reason first assumed —
+   *   its eleven folders are chromatically sampled playable presets rather than one-shots. It is
+   *   excluded for scope.
+   *
+   *   **Pads** was auditioned properly and *failed*. Fourteen of its sixteen presets were prepared
+   *   and listened to against the opening groove, and none was worth shipping. That is recorded
+   *   here rather than quietly omitted, because "we did not look" and "we looked and none was good
+   *   enough" are different statements and only one of them is true.
+   *
+   * Misc contributes one preset, `jp4 - Fake Flute`, which is a lead in everything but its filing.
    */
   categoriesNotShipped: {
     FX: {
-      entries: 1633,
-      audioFiles: 636,
-      folders: 11,
+      presets: 11,
+      audioFiles: 538,
       chromaticFolders: 11,
       finding:
         'chromatically sampled playable presets, not one-shots — excluded for scope rather than ' +
-        'for suitability',
+        'for suitability. Never auditioned.',
     },
-    Misc: {
-      entries: 4247,
-      audioFiles: 499,
-      folders: 10,
-      chromaticFolders: 10,
+    Pads: {
+      presets: 16,
+      audioFiles: 784,
+      chromaticFolders: 16,
+      auditioned: 14,
       finding:
-        'chromatically sampled playable presets, not one-shots — excluded for scope rather than ' +
-        'for suitability',
+        'fourteen of the sixteen were prepared at five roots and auditioned by ear against the ' +
+        'opening groove, in three lengths each. None was good enough to ship. APL Beats offers ' +
+        'sounds rather than categories, so the shape of the selector does not require one.',
     },
     surveyedBy: 'npm run prepare:jupiter4 -- --survey',
   },
@@ -343,7 +395,10 @@ for (const sound of SOUNDS) {
   const entry = {
     name: sound.name,
     preset: sound.preset,
+    /* Provenance, and it stays accurate whatever the selector calls the sound. */
+    upstreamCategory: sound.category,
     upstreamFolder: sound.folder,
+    sfz: sound.sfz,
     because: sound.because,
     samples: [],
   };

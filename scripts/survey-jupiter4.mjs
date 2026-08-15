@@ -5,19 +5,22 @@
  *   npm run survey:jupiter4 -- --measure     also fetch one mid note from each and measure it
  *   npm run survey:jupiter4 -- --category Lead
  *
- * Stage 8 chose its four presets by measuring a handful of candidates, and the Lead and Pad it
- * chose are the two the ear rejected. This is the first half of the fix: look at *everything*
- * first, so a shortlist is drawn from the whole library rather than from whatever was inspected
- * first.
+ * Stage 8 first chose four presets by measuring a handful of candidates, and two of the four are
+ * the ones the ear later rejected. This was the first half of the fix: look at *everything* first,
+ * so a shortlist is drawn from the whole library rather than from whatever was inspected first.
+ *
+ * It is kept because the claims the documents make about the library — how many presets FX holds,
+ * whether Pads are chromatically sampled, what a preset's recordings actually contain — should be
+ * checkable by anybody who doubts them, and `verify-credits` asserts several of those numbers. A
+ * survey nobody can re-run is an assertion, not a finding.
  *
  * The listing costs about a megabyte per category — ZIP central directories over `Range` requests,
  * no audio. `--measure` fetches one recording per preset, which is a few megabytes more and is
  * what makes it possible to say "these six are all the same kind of bright" without listening to
  * sixty.
  *
- * **The measurements narrow; they do not choose.** That distinction is the whole reason this
- * stage is being redone. Everything here is written to a JSON file so the shortlist can be argued
- * about, and `scripts/prepare-audition.mjs` turns the shortlist into something to listen to.
+ * **The measurements narrow; they do not choose.** That distinction is the whole reason the sound
+ * set was redone. The six shipped sounds were chosen by ear, from a shortlist this drew.
  *
  * No TryAPL request, ever. The pinned upstream release, and nothing else.
  */
@@ -75,7 +78,8 @@ const CATEGORIES = {
 /** The note measured from each preset. Middle C, or the nearest sampled key to it. */
 const MEASURE_AT = 60;
 
-const outPath = join(root, '.audition', 'survey.json');
+/* Into the gitignored cache, beside the other vendored upstream working files. */
+const outPath = join(root, '.cache', 'jupiter4-survey.json');
 
 /* ------------------------------------------------------------------------- */
 

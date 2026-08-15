@@ -35,5 +35,3 @@ npm-debug.log*
 # Layout review screenshots, regenerated on demand by review:layout.
 docs/review/
 
-# The Jupiter-4 audition bench: local-only, never shipped.
-.audition/

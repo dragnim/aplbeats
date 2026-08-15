@@ -88,7 +88,6 @@ playing them.
 - [Drum machines](#drum-machines)
 - [Drum machine samples and credits](#drum-machine-samples-and-credits)
 - [Sounds and licensing](#sounds-and-licensing)
-- [The Jupiter-4 audition bench — temporary](#the-jupiter-4-audition-bench--temporary)
 - [Review tooling](#review-tooling)
 - [Accessibility](#accessibility)
 - [Privacy and what leaves the browser](#privacy-and-what-leaves-the-browser)
@@ -330,27 +329,35 @@ same thing.
 
 ### The sound
 
-Four presets from a public-domain Roland Jupiter-4 sample release, one from each category upstream
-publishes as audio:
+Six presets from a public-domain Roland Jupiter-4 sample release, offered under their own names:
 
-| Sound    | Preset          | Why this one                                                                                                                                          |
-| -------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Lead** | `Blip Lead`     | The brightest candidate by a factor of four, and the only one at full scale. A lead has to cut through a drum kit.                                    |
-| **Bass** | `4 Bass`        | 58 ms attack and a level sustain — bright enough to be heard under a kick without competing with it.                                                  |
-| **Keys** | `Petals Piano`  | Percussive enough to articulate sixteenths, where the organs would have washed.                                                                       |
-| **Pad**  | `jp4 - Shimmer` | The fastest-attacking pad with a real sustain. The swelling pads take 300–400 ms to arrive, which is longer than a sixteenth at any tempo this plays. |
+| Sound                        | Upstream            | Category | What it is                                                                             |
+| ---------------------------- | ------------------- | -------- | -------------------------------------------------------------------------------------- |
+| **Petals Piano** _(default)_ | `Petals Piano`      | Keys     | Percussive and bright, so sixteenths still articulate.                                 |
+| **Chunky**                   | `Chunky`            | Lead     | A plucked bright lead, decaying rather than spiking.                                   |
+| **Gone Away Forever**        | `Gone Away Forever` | Lead     | Loud and sustained — the closest thing here to a pad that still speaks in a sixteenth. |
+| **Noisy Lead**               | `jp4 - Noisy Lead`  | Lead     | Nasal and level; it holds its note rather than decaying under it.                      |
+| **Fake Flute**               | `jp4 - Fake Flute`  | Misc     | Soft, round and breathy. The gentlest voice here.                                      |
+| **4 Bass**                   | `4 Bass`            | Bass     | Round and low, sitting under the kick rather than against it.                          |
 
-**These were chosen by measurement, not by listening.** Attack time, peak level, sustain-to-attack
-energy and brightness were computed for every candidate in each category and the numbers decided
-it. That is an honest limitation rather than a claim of taste: the reasoning is recorded per sound
-in [`src/audio/tones/jupiter4.json`](src/audio/tones/jupiter4.json), and a preset that turns out to
-sound wrong under the kit is a thing to change.
+**These were chosen by ear.** An earlier version shipped four presets — Lead, Bass, Keys, Pad —
+picked by measuring attack time, peak level, sustain and brightness, with the category names in the
+selector. Two of the four were poor, and the two picked for the most measurable reasons were the
+worst of them: the "brightest by a factor of four" Lead was shrill, and the fastest-attacking Pad
+turned out to be the one that sustained least. A listening pass over every playable preset upstream
+publishes replaced them.
 
-Four categories of the six upstream publishes. **FX and Misc were inspected and turned out to be
-chromatically sampled playable instruments too**, rather than the effects and one-shots their names
-suggest — so nothing is taken from them for reasons of scope rather than suitability. The survey is
-reproducible with `npm run prepare:jupiter4 -- --survey`, which reads about a megabyte of ZIP
-directories and downloads no audio.
+**The selector lists sounds, not categories**, and that is a product decision rather than a cosmetic
+one. Four category slots meant a Pad slot had to be filled by something, and it was. Six sounds
+under their own names have no slot to fill — so when **fourteen pads were auditioned and none was
+good enough, none shipped**. `category` above is provenance, recorded in the manifest and the
+notices, and shown as a quiet line under the selector.
+
+Nothing comes from FX either, for a different reason: its eleven folders are chromatically sampled
+playable presets rather than the one-shots the name suggests, but they were never candidates for a
+melodic voice, so they were excluded for scope and never auditioned. The survey is reproducible with
+`npm run prepare:jupiter4 -- --survey`, which reads about a megabyte of ZIP directories and
+downloads no audio.
 
 Seven recordings per sound, roughly every six semitones, played back at
 `2^((midi − root) / 12)` from the nearest one — so nothing is ever shifted more than three
@@ -362,15 +369,15 @@ Each sound is brought to the same working peak, so the selector changes the timb
 level — the recordings arrive at wildly different levels, and a Sound selector that changed how
 loud the melody was would be a volume control pretending to be an instrument control. That gain
 was measured, documented and tested from the first day of Stage 8 and applied _nowhere_ until the
-audition pass found it, so the shipped Pad — whose recordings peak at 6% of full scale — played
-some fifteen times quieter than the shipped Lead. **Tone
-volume** is a separate fader on its own bus, and it starts below the drums on purpose: the promise
+curation pass found it — Noisy Lead peaks at 4% of full scale and Petals Piano at 100%, so the
+quietest sound was playing some twenty times below the loudest. **Tone volume** is a separate
+fader on its own bus, and it starts below the drums on purpose: the promise
 of this layer is that the groove keeps playing underneath.
 
-Nothing is downloaded until you open Tones for the first time. A visitor who came for the drums
-pays none of its 2.9 MB.
+Nothing is downloaded until you open Tones for the first time, and only the sound you are using is
+fetched — seven files and about 724 KB. A visitor who came for the drums pays none of it.
 
-Full provenance — the licence in full, what was done to the audio, and how 2.9 MB was obtained from
+Full provenance — the licence in full, what was done to the audio, and how 4.2 MB was obtained from
 a 10.4 GB release — is in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ### Create a melody with APL
@@ -1073,7 +1080,6 @@ npm run dev
 | `npm run measure:generated`          | Render generated bars through the real master chain and check for clipping               |
 | `npm run measure:tones`              | Render both layers through the real master chain and check the balance                   |
 | `npm run survey:jupiter4`            | List every playable preset in the library; `-- --measure` measures one note of each      |
-| `npm run prepare:audition`           | Build the temporary audition candidates into gitignored `.audition/`                     |
 | `npm run verify:deployment`          | Load the published site and check it works. **Two real TryAPL requests**                 |
 
 ## How it is put together
@@ -1643,7 +1649,7 @@ that is exactly how the nine machines arrived — a sampled voice satisfies the 
 nothing above it changed.
 
 Stage 4 adds 473 KB of bundled audio, all of it from one credited public-domain collection; Stage
-5.2 adds 252 KB rendered from an MIT-licensed DSP implementation; Stage 8 adds 2,895 KB of Tone
+5.2 adds 252 KB rendered from an MIT-licensed DSP implementation; Stage 8 adds 4,343 KB of Tone
 samples from a public-domain release. Every byte is served from this origin, and none of it is
 fetched from anywhere else at runtime. See
 [Drum machine samples and credits](#drum-machine-samples-and-credits), [Tones](#tones) and
@@ -1651,7 +1657,7 @@ fetched from anywhere else at runtime. See
 
 The Tone samples are the largest single addition the project has made, so it is worth being plain
 about when they cost anything: **only when you open Tones**. One sound is fetched, seven files and
-about 724 KB; the other three are fetched if and when you choose them. A visitor who never leaves
+about 724 KB; the other five are fetched if and when you choose them. A visitor who never leaves
 Beats downloads none of it.
 
 The generator can now produce bars with forty-odd triggers and seven voices landing on one
@@ -1664,43 +1670,6 @@ Stage 8 put a second instrument into a chain that was calibrated with one in it,
 peaks at −1.9 dBFS; with a melody over it that becomes −1.8 to −1.6, and **nothing clips even with
 Tone volume at 100%**. Each sound adds between +0.85 and +2.0 dB of RMS to the bar — present
 without becoming the loudest thing in it, which is what the layer promised.
-
-## The Jupiter-4 audition bench — temporary
-
-**This is scaffolding, and it is meant to be deleted.** Stage 8 chose its four presets by
-measuring candidates, and the two that were chosen for the most measurable reasons — the brightest
-Lead, the fastest-attacking Pad — are the two that sound worst. The bench exists so the final Lead
-and Pad can be chosen by ear instead.
-
-```bash
-npm run survey:jupiter4 -- --measure   # every playable preset in the library, measured
-npm run prepare:audition               # build the candidates locally (~230 MB once, then cached)
-npm run dev                            # then open /aplbeats/audition.html
-```
-
-**Nothing it produces is committed.** `.audition/` is gitignored and sits outside `public/`, and
-the dev server reaches it through a plugin that does not exist during `vite build`. `audition.html`
-is not one of the build's entry points, so the published site has no such page. The final
-repository will contain only the sounds that ship.
-
-What it does:
-
-- plays the **real** opening groove through the **real** master chain at the **real** tempo and
-  swing, with the **real** monophonic sampler — the question is never "is this sample good" but
-  "does this sound good as part of APL Beats";
-- **← and →** move between candidates, and switching installs a different sampler between
-  scheduler ticks exactly as the production Sound selector does. The bar does not restart, the
-  drums do not stop, the phrase does not change;
-- brings every candidate to the same working peak, so nothing wins by being louder;
-- offers two fixed phrases — the shipped opening one, and a denser eleven-note reference — so
-  "sounds good with space" and "sounds good when sequenced" can be told apart;
-- for Pads, offers the production 1.2 s trim, a 4 s natural length, and **upstream's own sustain
-  loop** where the AIFF chunks and the SFZ mapping agree. No loop point is invented, nothing is
-  repeated to fake a sustain, and no reverb, delay or filtering is added.
-
-The measurements are still recorded and still shown — they are useful when something sounds odd —
-but they are presented as supporting information under the candidate's name, and nothing is
-ranked. That is the whole point.
 
 ## Review tooling
 

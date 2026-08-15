@@ -245,34 +245,62 @@ describe('one monophonic voice', () => {
     expect(ramped[0]).toBeCloseTo(0.5, 6);
   });
 
-  it('plays a zone once unless it carries loop points', () => {
+  it('plays a recording once and lets it decay, rather than looping it', () => {
+    /*
+     * No fake sustain.
+     *
+     * Looping a 1.2-second recording is the cheap way to make a slow patch hold a note, and it is
+     * the wrong way: it turns a recording of an instrument into a recording of a loop. Upstream's
+     * own sustain points all begin seconds after where these files end, and a note here is stopped
+     * by the next note long before either matters. Measured, not assumed — see `ToneSampler`.
+     */
     const sampler = new ToneSampler(zones);
     const rig = voice();
 
     sampler.play(rig, 1, 60, 1);
-    // Every zone production ships is this one: no loop, and the recording decays on its own.
     expect(rig.built[0]?.loop).toBe(false);
-  });
-
-  it('loops between upstream’s own points when a zone has them', () => {
-    // The audition bench's looped Pad variants, and nothing else. The points are upstream's; this
-    // class never invents one.
-    const sampler = new ToneSampler([
-      { rootMidi: 60, buffer: {} as AudioBuffer, loop: { start: 1.5, end: 3.25 } },
-    ]);
-    const rig = voice();
-
-    sampler.play(rig, 1, 60, 1);
-    expect(rig.built[0]?.loop).toBe(true);
-    expect(rig.built[0]?.loopStart).toBeCloseTo(1.5, 6);
-    expect(rig.built[0]?.loopEnd).toBeCloseTo(3.25, 6);
   });
 });
 
-describe('the four sounds', () => {
-  it('offers one preset from each upstream category', () => {
-    expect(TONE_SOUNDS).toHaveLength(4);
-    expect(TONE_SOUNDS.map((sound) => sound.id).sort()).toEqual(['bass', 'keys', 'lead', 'pad']);
+describe('the six sounds', () => {
+  it('offers six sounds, named for themselves rather than for categories', () => {
+    /*
+     * The shape of this list is a product decision, not an accident. Four category slots — Lead,
+     * Bass, Keys, Pad — meant the Pad slot had to be filled by something, and it was, by the least
+     * unsuitable pad in the library. Six sounds under their own names have no slot to fill.
+     */
+    expect(TONE_SOUNDS).toHaveLength(6);
+    expect(TONE_SOUNDS.map((sound) => sound.id)).toEqual([
+      'petals-piano',
+      'chunky',
+      'gone-away-forever',
+      'noisy-lead',
+      'fake-flute',
+      'four-bass',
+    ]);
+
+    // No name is a bare category label. That is the whole point of the rename.
+    for (const sound of TONE_SOUNDS) {
+      expect(['Lead', 'Bass', 'Keys', 'Pad'], sound.id).not.toContain(sound.name);
+    }
+  });
+
+  it('ships nothing from Pads, and says so rather than leaving a hole', () => {
+    // Fourteen were auditioned by ear and none was worth shipping. Recorded as a test because the
+    // temptation to fill the category again will outlive the memory of why it is empty.
+    expect(TONE_SOUNDS.map((sound) => sound.category)).not.toContain('Pads');
+    expect(new Set(TONE_SOUNDS.map((sound) => sound.category))).toEqual(
+      new Set(['Keys', 'Lead', 'Misc', 'Bass']),
+    );
+  });
+
+  it('records where each recording actually came from', () => {
+    // Provenance survives the rename: the selector shows a preset name, the manifest keeps the
+    // category, and the notices are generated from the same source.
+    expect(toneSoundById('fake-flute').category).toBe('Misc');
+    expect(toneSoundById('fake-flute').preset).toBe('jp4 - Fake Flute');
+    expect(toneSoundById('four-bass').category).toBe('Bass');
+    expect(toneSoundById('petals-piano').category).toBe('Keys');
   });
 
   it('starts on one that exists', () => {
@@ -358,25 +386,25 @@ describe('loading a sound', () => {
     const { impl, calls } = fakeFetch({});
     const loader = new ToneLoader({ fetchImpl: impl, decode });
 
-    const first = await loader.load('lead');
+    const first = await loader.load('chunky');
     const fetched = calls.length;
-    const again = await loader.load('lead');
+    const again = await loader.load('chunky');
 
-    expect(first.zoneCount).toBe(toneSoundById('lead').samples.length);
+    expect(first.zoneCount).toBe(toneSoundById('chunky').samples.length);
     // A sound heard once is instant ever after: no second fetch, no second decode.
     expect(again).toBe(first);
     expect(calls).toHaveLength(fetched);
-    expect(loader.isReady('lead')).toBe(true);
+    expect(loader.isReady('chunky')).toBe(true);
   });
 
   it('shares one in-flight load between concurrent callers', async () => {
     const { impl, calls } = fakeFetch({});
     const loader = new ToneLoader({ fetchImpl: impl, decode });
 
-    const [a, b] = await Promise.all([loader.load('bass'), loader.load('bass')]);
+    const [a, b] = await Promise.all([loader.load('four-bass'), loader.load('four-bass')]);
 
     expect(a).toBe(b);
-    expect(calls).toHaveLength(toneSoundById('bass').samples.length);
+    expect(calls).toHaveLength(toneSoundById('four-bass').samples.length);
   });
 
   it('installs nothing when one recording is missing', async () => {
@@ -384,12 +412,12 @@ describe('loading a sound', () => {
      * All or nothing, on purpose. Half a sampler would play some notes and silently drop the ones
      * whose zone had not arrived, which reads as a broken instrument rather than as a slow one.
      */
-    const url = toneSampleUrl(toneSoundById('keys').samples[2]!.file, '/');
+    const url = toneSampleUrl(toneSoundById('petals-piano').samples[2]!.file, '/');
     const { impl } = fakeFetch({ [url]: false });
     const loader = new ToneLoader({ fetchImpl: impl, decode });
 
-    await expect(loader.load('keys')).rejects.toBeInstanceOf(ToneLoadError);
-    expect(loader.isReady('keys')).toBe(false);
+    await expect(loader.load('petals-piano')).rejects.toBeInstanceOf(ToneLoadError);
+    expect(loader.isReady('petals-piano')).toBe(false);
     expect(loader.readyCount).toBe(0);
   });
 
@@ -402,12 +430,12 @@ describe('loading a sound', () => {
       } as Response)) as typeof fetch;
 
     const loader = new ToneLoader({ fetchImpl: impl, decode });
-    await expect(loader.load('pad')).rejects.toBeInstanceOf(ToneLoadError);
+    await expect(loader.load('fake-flute')).rejects.toBeInstanceOf(ToneLoadError);
 
     failing = false;
     // Nothing was cached on failure, so this is a genuine second attempt rather than the first
     // one's rejection handed back again.
-    await expect(loader.load('pad')).resolves.toBeInstanceOf(ToneSampler);
+    await expect(loader.load('fake-flute')).resolves.toBeInstanceOf(ToneSampler);
   });
 
   it('refuses to spend three megabytes on a browser that cannot decode', async () => {
@@ -418,15 +446,15 @@ describe('loading a sound', () => {
     // sampled sound at all. Downloading first and finding out afterwards would be somebody's data
     // spent on a certainty.
     expect(loader.canDecode).toBe(false);
-    await expect(loader.load('lead')).rejects.toMatchObject({ kind: 'unsupported' });
+    await expect(loader.load('chunky')).rejects.toMatchObject({ kind: 'unsupported' });
     expect(calls).toHaveLength(0);
   });
 
   it('says which sound failed, in a sentence', async () => {
-    const url = toneSampleUrl(toneSoundById('lead').samples[0]!.file, '/');
+    const url = toneSampleUrl(toneSoundById('chunky').samples[0]!.file, '/');
     const { impl } = fakeFetch({ [url]: false });
     const loader = new ToneLoader({ fetchImpl: impl, decode });
 
-    await expect(loader.load('lead')).rejects.toThrow(/Lead/u);
+    await expect(loader.load('chunky')).rejects.toThrow(/Chunky/u);
   });
 });

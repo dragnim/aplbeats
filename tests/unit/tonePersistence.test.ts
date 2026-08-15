@@ -43,11 +43,11 @@ beforeEach(() => {
 describe('the melody, under its own key', () => {
   it('comes back exactly as it was left', () => {
     const phrase = setStep(openingPhrase(), 7, 72);
-    saveTones({ phrase, soundId: 'bass' });
+    saveTones({ phrase, soundId: 'four-bass' });
 
     const restored = loadTones();
     expect(restored?.phrase).toEqual(phrase);
-    expect(restored?.soundId).toBe('bass');
+    expect(restored?.soundId).toBe('four-bass');
   });
 
   it('survives a drum generator version bump that discards the session', () => {
@@ -56,7 +56,7 @@ describe('the melody, under its own key', () => {
      * generator bump the drums restart from the opening groove and the melody is exactly where it
      * was left.
      */
-    saveTones({ phrase: emptyPhrase(), soundId: 'pad' });
+    saveTones({ phrase: emptyPhrase(), soundId: 'fake-flute' });
     saveSession({
       creative: INITIAL_CREATIVE_STATE,
       bpm: 112,
@@ -71,7 +71,7 @@ describe('the melody, under its own key', () => {
 
     expect(loadSession()).toBeNull();
     expect(loadTones()?.phrase).toEqual(emptyPhrase());
-    expect(loadTones()?.soundId).toBe('pad');
+    expect(loadTones()?.soundId).toBe('fake-flute');
   });
 
   it('discards a melody that has been tampered with, rather than repairing it', () => {
@@ -81,10 +81,10 @@ describe('the melody, under its own key', () => {
      * melody is not the melody anybody wrote.
      */
     const bad = [
-      { phrase: Array.from({ length: 16 }, () => 4000), soundId: 'lead' },
-      { phrase: Array.from({ length: 17 }, () => 60), soundId: 'lead' },
-      { phrase: [60.5, ...Array.from({ length: 15 }, () => REST)], soundId: 'lead' },
-      { phrase: 'not a melody', soundId: 'lead' },
+      { phrase: Array.from({ length: 16 }, () => 4000), soundId: 'chunky' },
+      { phrase: Array.from({ length: 17 }, () => 60), soundId: 'chunky' },
+      { phrase: [60.5, ...Array.from({ length: 15 }, () => REST)], soundId: 'chunky' },
+      { phrase: 'not a melody', soundId: 'chunky' },
     ];
 
     for (const record of bad) {
@@ -102,7 +102,33 @@ describe('the melody, under its own key', () => {
 
     const restored = loadTones();
     expect(restored?.phrase).toEqual(openingPhrase());
-    expect(restored?.soundId).toBe('lead');
+    expect(restored?.soundId).toBe('petals-piano');
+  });
+
+  it('carries a melody across the sound-set rename', () => {
+    /*
+     * The migration that actually happens to somebody.
+     *
+     * Stage 8 shipped four sounds identified by category — `lead`, `bass`, `keys`, `pad` — and the
+     * curation pass replaced them with six identified by preset. Anybody who used Tones has one of
+     * the old four in storage, and none of them exists any more.
+     *
+     * There is deliberately no translation table. Two of the four sounds are *gone* rather than
+     * renamed, so mapping `lead` to a lead would hand somebody an instrument they never chose; and
+     * a schema bump would throw the melody away, which is the one thing worth keeping. So the
+     * melody is restored and the sound falls back to the new default, which is exactly what the
+     * unknown-identifier path already did.
+     */
+    for (const stale of ['lead', 'bass', 'keys', 'pad']) {
+      globalThis.localStorage.setItem(
+        'aplbeats.tones.v1',
+        JSON.stringify({ schema: 1, phrase: [...openingPhrase()], soundId: stale }),
+      );
+
+      const restored = loadTones();
+      expect(restored?.phrase, stale).toEqual(openingPhrase());
+      expect(restored?.soundId, stale).toBe('petals-piano');
+    }
   });
 });
 

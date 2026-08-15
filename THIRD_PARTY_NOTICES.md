@@ -337,8 +337,8 @@ mid tom, crash and ride are not used, because APL Beats has eight rows and not e
 ### The Tone samples — publicsamples/Roland-Jupiter-4
 
 Stage 8 adds a pitched layer, and it is a fourth kind of audio again: **recordings of a synthesiser,
-copied from a public-domain release, trimmed and converted but not otherwise altered**. Twenty-eight
-files, 2.9 MB, four presets at seven pitches each.
+copied from a public-domain release, trimmed and converted but not otherwise altered**. Forty-two
+files, 4.2 MB, six presets at seven pitches each.
 
 - **Source:** <https://github.com/publicsamples/Roland-Jupiter-4>
 - **Commit:** `64377f813341a10a57d26df9e10f548d43f166cd` — where the `LICENSE` and the SFZ mappings
@@ -346,7 +346,7 @@ files, 2.9 MB, four presets at seven pitches each.
 - **Release:** `1.0`, "Roland Jupiter 4 Audio", published 3 October 2021 — where the audio comes
   from. Pinned by tag _and_ by per-asset SHA-256 in the manifest.
 - **Licence:** **public domain dedication** — reproduced in full below
-- **Bundled at:** [`public/audio/tones/`](public/audio/tones/), 2,895 KB across 28 files
+- **Bundled at:** [`public/audio/tones/`](public/audio/tones/), 4,343 KB across 42 files
 - **Prepared by:** [`scripts/prepare-jupiter4.mjs`](scripts/prepare-jupiter4.mjs),
   `npm run prepare:jupiter4`
 - **Machine-readable manifest:** [`src/audio/tones/jupiter4.json`](src/audio/tones/jupiter4.json) —
@@ -384,23 +384,35 @@ because the licence asks for it.
 
 #### What is included
 
-| Sound | Preset          | Upstream folder         | Files | Size   |
-| ----- | --------------- | ----------------------- | ----- | ------ |
-| Bass  | `4 Bass`        | `4Bass`                 | 7     | 724 KB |
-| Keys  | `Petals Piano`  | `Petals Piano-SAMPLES`  | 7     | 724 KB |
-| Lead  | `Blip Lead`     | `Blip Lead-SAMPLES`     | 7     | 724 KB |
-| Pad   | `jp4 - Shimmer` | `jp4 - Shimmer-SAMPLES` | 7     | 724 KB |
+| Sound             | Preset              | Upstream category | Upstream folder             | Files | Size   |
+| ----------------- | ------------------- | ----------------- | --------------------------- | ----- | ------ |
+| Petals Piano      | `Petals Piano`      | Keys              | `Petals Piano-SAMPLES`      | 7     | 724 KB |
+| Chunky            | `Chunky`            | Lead              | `Chunky-SAMPLES`            | 7     | 724 KB |
+| Gone Away Forever | `Gone Away Forever` | Lead              | `Gone Away Forever-SAMPLES` | 7     | 724 KB |
+| Noisy Lead        | `jp4 - Noisy Lead`  | Lead              | `jp4 - Noisy Lead-SAMPLES`  | 7     | 724 KB |
+| Fake Flute        | `jp4 - Fake Flute`  | Misc              | `jp4 - Fake Flute-SAMPLES`  | 7     | 724 KB |
+| 4 Bass            | `4 Bass`            | Bass              | `4Bass`                     | 7     | 724 KB |
 
-One preset from each of four of the six categories upstream publishes as audio — Bass, Keys, Lead
-and Pads — at roughly one recording every six semitones from MIDI 48 to 84.
+Six presets from four of the six categories upstream publishes as audio, at roughly one recording
+every six semitones from MIDI 48 to 84. The names in the first column are what the application
+shows; the second and third are what upstream calls them and where they came from, which is the
+provenance and does not change because the interface calls a sound by its own name.
 
-**FX and Misc were inspected, and the finding was not what was expected.** They are not effects and
-one-shots: both are full of chromatically sampled playable presets, exactly like the four above —
-FX has 11 such folders across 636 recordings, Misc has 10 across 499. So nothing is taken from them
-for reasons of **scope** rather than suitability: this layer offers four sounds, and a fifth and
-sixth would be another 1.4 MB for a feature nobody asked for. The numbers are recorded in the
-manifest under `categoriesNotShipped` and can be reproduced with `npm run prepare:jupiter4 --
---survey`, which reads about a megabyte of ZIP directories and downloads no audio at all.
+**These six were chosen by ear.** An earlier version shipped four presets picked by measurement —
+one per category, with the category names in the interface — and two of them were poor. The
+listening pass that replaced them covered every playable preset in the library.
+
+**Nothing comes from Pads, and that is a finding rather than an omission.** Fourteen of its sixteen
+presets were prepared and auditioned against the drum groove, in three lengths each; none was good
+enough to ship. APL Beats offers sounds rather than instrument categories, so there is no slot that
+had to be filled.
+
+**Nothing comes from FX either, for a different reason.** Its eleven folders are chromatically
+sampled playable presets rather than the one-shots their name suggests — an earlier version of this
+document said otherwise and was wrong — but they were never candidates for a melodic voice, so they
+were excluded for scope and never auditioned. Both findings are recorded in the manifest under
+`categoriesNotShipped` and can be reproduced with `npm run prepare:jupiter4 -- --survey`, which
+reads about a megabyte of ZIP directories and downloads no audio at all.
 
 The SFZ files were read for their key mappings and nothing else. SFZ is metadata about which
 recording covers which pitch; it is not a further category of instrument, and none of it is

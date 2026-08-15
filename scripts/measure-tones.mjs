@@ -175,15 +175,15 @@ console.log(
     `${decibels(results.drumsOnly.peak).padStart(6)} dBFS   RMS ${results.drumsOnly.rms.toFixed(4)}`,
 );
 console.log('');
-console.log('sound   gain    melody alone      both layers               at Tone volume 1');
-console.log('               peak     RMS      peak    dBFS     RMS      peak    dBFS   clipped');
-console.log('-'.repeat(80));
+console.log('sound              gain    melody alone      both layers               at Tone volume 1');
+console.log('                          peak     RMS      peak    dBFS     RMS      peak    dBFS   clipped');
+console.log('-'.repeat(91));
 
 let clipping = 0;
 for (const row of results.rows) {
   clipping += row.together.clipped + row.loud.clipped;
   console.log(
-    `${row.name.padEnd(7)} ${row.gain.toFixed(3)}  ` +
+    `${row.name.padEnd(18)} ${row.gain.toFixed(3).padStart(6)}  ` +
       `${row.alone.peak.toFixed(3)}  ${row.alone.rms.toFixed(4)}   ` +
       `${row.together.peak.toFixed(3)}  ${decibels(row.together.peak).padStart(6)}  ${row.together.rms.toFixed(4)}   ` +
       `${row.loud.peak.toFixed(3)}  ${decibels(row.loud.peak).padStart(6)}  ${String(row.loud.clipped).padStart(7)}`,
@@ -194,7 +194,7 @@ console.log('');
 for (const row of results.rows) {
   const change = 20 * Math.log10(row.together.rms / results.drumsOnly.rms);
   console.log(
-    `${row.name.padEnd(7)} adds ${change >= 0 ? '+' : ''}${change.toFixed(2)} dB of RMS to the bar`,
+    `${row.name.padEnd(18)} adds ${change >= 0 ? '+' : ''}${change.toFixed(2)} dB of RMS to the bar`,
   );
 }
 

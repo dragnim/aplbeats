@@ -16,19 +16,20 @@
  * on and decays on its own.
  *
  * That is a deliberate change from the first version, which released on every rest and so made
- * every note exactly one step long — 134 ms at the opening tempo. A Lead survives that; a Pad
- * whose attack alone is 78 ms arrives as a click. See `AudioEngine.playTone`, which is where the
- * decision lives; this class only does what it is told.
+ * every note exactly one step long — 134 ms at the opening tempo. A bright lead survives that; a
+ * slow patch whose attack alone is 78 ms arrives as a click. See `AudioEngine.playTone`, which is
+ * where the decision lives; this class only does what it is told.
  *
  * The stop, when something does ask for one, is a 12 ms ramp rather than a hard stop, because
  * stopping a source mid-waveform is a click. Two things ask: `silence`, when the transport stops
  * or the sound is swapped, and `play`, taking the voice for a new note.
  *
- * **Loops are optional and off by default.** A zone may carry loop points, in which case the
- * source loops between them and rings until something stops it; without them the recording plays
- * once and decays. Production ships no loops — the prepared recordings are trimmed to 1.2 seconds
- * and upstream's loop points all begin later than that — and the Pad audition is what this exists
- * for. See `scripts/prepare-jupiter4.mjs` and `scripts/prepare-audition.mjs`.
+ * **No loops.** Every recording plays once and decays. Upstream's own sustain loops begin between
+ * 4.7 and 9.1 seconds in, and a note here is stopped by the next note rather than by the end of
+ * its buffer, so the melody would have to hold a single note for some thirty-five steps to reach
+ * one. That was measured rather than assumed during the sound curation pass: against either shipped
+ * phrase, a trimmed sample, a four-second sample and a looped one are identical to five decimal
+ * places. See `scripts/prepare-jupiter4.mjs`.
  *
  * Everything is scheduled against the audio clock, never against a timer. The sampler is handed a
  * time by the same scheduler that places the drums, so a Tone on step 3 and a snare on step 3
@@ -57,18 +58,6 @@ interface SoundingNote {
 export interface ToneZone {
   readonly rootMidi: number;
   readonly buffer: AudioBuffer;
-  /**
-   * Where the recording sustains, in **seconds**, when upstream says it does.
-   *
-   * Absent for every zone production ships. Present only for the audition bench's looped Pad
-   * variants, where the points come from upstream's own `INST`/`MARK` chunks or its SFZ mapping —
-   * never invented to make a patch sustain, which is the whole difference between honouring loop
-   * metadata and faking it.
-   *
-   * Seconds rather than frames because that is what `AudioBufferSourceNode` wants, and converting
-   * once where the numbers are known beats converting at every note.
-   */
-  readonly loop?: { readonly start: number; readonly end: number };
 }
 
 export class ToneSampler {
@@ -78,11 +67,11 @@ export class ToneSampler {
   /**
    * The sound's working gain, applied to every note.
    *
-   * This is where `ToneSoundDefinition.gain` finally lands, and until the audition pass it landed
-   * nowhere at all: the gains were measured, documented and tested, and then the sampler played
-   * every buffer at the level asked for. The four sounds' source peaks are 1.000, 0.261, 1.000 and
-   * **0.066**, so the shipped Pad was some fifteen times quieter than the shipped Lead — which is
-   * most of why one sounded shrill and the other sounded absent.
+   * This is where `ToneSoundDefinition.gain` finally lands, and until the sound curation pass it
+   * landed nowhere at all: the gains were measured, documented and tested, and then the sampler
+   * played every buffer at the level asked for. The six sounds' source peaks run from **0.044** to
+   * **1.000**, so the quietest was arriving some twenty-three times below the loudest — which is
+   * most of why one sound seemed shrill and another seemed absent.
    *
    * Exactly how a sampled drum kit does it: the file is not touched, the level is.
    */
@@ -142,18 +131,6 @@ export class ToneSampler {
     const source = context.createBufferSource();
     source.buffer = zone.buffer;
     source.playbackRate.value = ToneSampler.rateFor(midi, zone.rootMidi);
-
-    /*
-     * Loop between upstream's own points, if this zone has any.
-     *
-     * The playback rate applies to the loop too, so a shifted note loops at the shifted rate and
-     * stays in tune with itself. Nothing here invents a loop: a zone without points plays once.
-     */
-    if (zone.loop !== undefined) {
-      source.loop = true;
-      source.loopStart = zone.loop.start;
-      source.loopEnd = zone.loop.end;
-    }
 
     /*
      * The note level and the sound's working gain, multiplied here.

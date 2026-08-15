@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import { cx } from '@/app/cx';
-import { TONE_SOUNDS } from '@/audio/tones/sounds';
+import { TONE_SOUNDS, toneSoundById } from '@/audio/tones/sounds';
 import type { TonesApi } from '@/audio/tones/useTones';
 import { noteCount, phraseToAplLiteral, type Phrase } from '@/tones/phrase';
 import panel from './AplPanel.module.css';
@@ -33,6 +33,7 @@ export function TonePanel({ tones, phrase }: TonePanelProps): React.JSX.Element 
   const { soundId, status, volume, setSound, setVolume, retry } = tones;
 
   const notes = noteCount(phrase);
+  const sound = toneSoundById(soundId);
 
   return (
     <section className={panel.panel} aria-label="Tones">
@@ -70,6 +71,20 @@ export function TonePanel({ tones, phrase }: TonePanelProps): React.JSX.Element 
             </option>
           ))}
         </select>
+        {/*
+          What this sound is, and where it came from.
+
+          The selector lists *sounds* rather than categories, which is the whole point of the
+          rename — so the category has to appear somewhere, quietly, or the provenance would be
+          true only in the manifest. One line, under the control, showing upstream's own spelling
+          where it differs from the name shown.
+        */}
+        <p className={styles.provenance}>
+          {sound.blurb}{' '}
+          <span className={styles.origin}>
+            {sound.preset === sound.name ? sound.category : `${sound.category} · ${sound.preset}`}
+          </span>
+        </p>
       </div>
 
       <div className={styles.field}>
