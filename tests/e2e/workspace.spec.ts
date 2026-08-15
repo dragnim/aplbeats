@@ -123,6 +123,51 @@ test('arrow keys move between tabs, as a tablist should', async ({ page }) => {
   await expect(tab(page, 'Play')).toHaveAttribute('aria-selected', 'true');
 });
 
+test('the rail reports the orientation it is actually drawn in', async ({ page }) => {
+  /*
+   * `aria-orientation` is a claim about what is on screen, and the rail has two shapes: a vertical
+   * column beside the sequencer, and a horizontal strip above the APL panel on a narrow screen. It
+   * claimed vertical in both until this was fixed.
+   *
+   * The claim is not made by React guessing a width — the stylesheet declares
+   * `--rail-orientation` in the same media query that turns the flex direction, and the component
+   * reads it back. So this test is also checking that the two cannot drift apart: it asserts the
+   * ARIA against the *computed flex direction*, which is the layout itself rather than a second
+   * copy of the breakpoint.
+   */
+  await freshVisit(page);
+  const list = page.getByRole('tablist', { name: 'Workspace' });
+
+  const drawnDirection = (): Promise<string> =>
+    list.evaluate((element) => getComputedStyle(element).flexDirection);
+
+  /*
+   * The rail turns at 61.9375rem — 991px — which is its own breakpoint and not the one where the
+   * APL column stops sitting beside the sequencer. 1024 is above it, so the rail is still a
+   * vertical column there even though the workspace has already stacked. The two widths either
+   * side of 991 are the ones worth asserting.
+   */
+  for (const [width, expected] of [
+    [1600, 'vertical'],
+    [1280, 'vertical'],
+    [1024, 'vertical'],
+    [960, 'horizontal'],
+    [390, 'horizontal'],
+  ] as const) {
+    await page.setViewportSize({ width, height: 900 });
+
+    await expect(list, `aria-orientation at ${String(width)}px`).toHaveAttribute(
+      'aria-orientation',
+      expected,
+    );
+
+    // And the layout agrees, which is the half a hard-coded breakpoint would let rot.
+    await expect
+      .poll(drawnDirection, { message: `flex direction at ${String(width)}px` })
+      .toBe(expected === 'vertical' ? 'column' : 'row');
+  }
+});
+
 test('every tab carries its word, not only a glyph', async ({ page }) => {
   await freshVisit(page);
   // Mystery-meat navigation is the failure mode a rail of icons invites. Each has both.

@@ -6,6 +6,16 @@
  * achieve that — the flex direction turns and the markers move to the bottom edge.
  */
 .rail {
+  /*
+   * The orientation, declared where the layout is decided.
+   *
+   * `aria-orientation` has to agree with what the rail actually looks like, and the only place
+   * that knows is this stylesheet — so it says so out loud rather than leaving React to guess a
+   * viewport width and hope the two breakpoints stay in step. The component reads this property
+   * back; see `WorkspaceRail.tsx`.
+   */
+  --rail-orientation: vertical;
+
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -88,6 +98,9 @@
  */
 @media (max-width: 61.9375rem) {
   .rail {
+    /* Lying down, and saying so. One media query, both facts. */
+    --rail-orientation: horizontal;
+
     flex-direction: row;
     gap: var(--space-1);
     overflow-x: auto;

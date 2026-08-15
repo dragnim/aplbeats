@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from 'react';
 import { cx } from '@/app/cx';
 import { WORKSPACES, type WorkspaceId } from './workspaces';
 import styles from './WorkspaceRail.module.css';
@@ -63,6 +64,49 @@ function Icon({ id }: { readonly id: WorkspaceId }): React.JSX.Element {
   );
 }
 
+/**
+ * Which way the rail is actually lying, according to the stylesheet.
+ *
+ * `aria-orientation` is a claim about what is on screen, and until this existed the rail claimed
+ * `vertical` in both of its shapes — including on a phone, where the CSS turns it into a
+ * horizontal strip. That is the sort of mismatch a screen-reader user meets as arrow keys behaving
+ * unlike every other tab strip they have used.
+ *
+ * The obvious fix is to `matchMedia` the same width in React. This does not, deliberately: two
+ * copies of `61.9375rem` in two languages is a value that drifts the first time somebody adjusts
+ * one of them. Instead the stylesheet declares `--rail-orientation` inside the same media query
+ * that turns the flex direction, and this reads it back — so the ARIA and the layout cannot
+ * disagree, because there is only one decision.
+ *
+ * A `ResizeObserver` rather than a resize listener: crossing the breakpoint always changes the
+ * rail's own box, and observing the element means no work at all while nothing moves. Where the
+ * observer is missing the value is read once and stays — never wrong, just not live.
+ */
+function useRenderedOrientation(element: React.RefObject<HTMLElement | null>): 'horizontal' | 'vertical' {
+  const [orientation, setOrientation] = useState<'horizontal' | 'vertical'>('vertical');
+
+  useLayoutEffect(() => {
+    const node = element.current;
+    if (node === null) return;
+
+    const read = (): void => {
+      const declared = getComputedStyle(node).getPropertyValue('--rail-orientation').trim();
+      setOrientation(declared === 'horizontal' ? 'horizontal' : 'vertical');
+    };
+
+    read();
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(read);
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+    };
+  }, [element]);
+
+  return orientation;
+}
+
 export interface WorkspaceRailProps {
   readonly active: WorkspaceId;
   readonly onSelect: (id: WorkspaceId) => void;
@@ -71,12 +115,21 @@ export interface WorkspaceRailProps {
 }
 
 export function WorkspaceRail({ active, onSelect, panelIds }: WorkspaceRailProps): React.JSX.Element {
+  const rail = useRef<HTMLDivElement | null>(null);
+  const orientation = useRenderedOrientation(rail);
+
   /**
    * Arrow keys, as a tablist is supposed to.
    *
    * Wrapping at both ends, and Home/End for the ends themselves. Selection follows focus, which
    * is the right choice here because switching costs nothing — no request, no work, just a
    * different panel — so making somebody press Enter as well would be ceremony.
+   *
+   * Both axes work in both orientations, deliberately. The tab pattern pairs up/down with a
+   * vertical list and left/right with a horizontal one, and narrowing this to match
+   * `aria-orientation` would be *correct* and would also mean the rail stopped responding to keys
+   * it had been responding to a moment earlier, at whatever width the window happened to cross.
+   * Accepting the other axis as well costs nothing and surprises nobody.
    */
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
     const keys: Record<string, number> = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 };
@@ -97,10 +150,11 @@ export function WorkspaceRail({ active, onSelect, panelIds }: WorkspaceRailProps
 
   return (
     <div
+      ref={rail}
       className={styles.rail}
       role="tablist"
       aria-label="Workspace"
-      aria-orientation="vertical"
+      aria-orientation={orientation}
       onKeyDown={onKeyDown}
     >
       {WORKSPACES.map((workspace) => {
