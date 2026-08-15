@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { openingPhrase, type Phrase } from '@/tones/phrase';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -87,9 +88,18 @@ function Harness({
   initialLocks?: readonly number[];
 }): React.JSX.Element {
   const [pattern, setPattern] = useState<Pattern>(GROOVE);
+  // The Tone layer is not what these tests are about; it is here because one lane serves both.
+  const [phrase, setPhrase] = useState<Phrase>(openingPhrase);
   const [lockedRows, setLockedRows] = useState<readonly number[]>(initialLocks);
   const [exploreOpen, setExploreOpen] = useState(false);
-  const transform = useApl({ pattern, lockedRows, client, onApply: setPattern });
+  const transform = useApl({
+    pattern,
+    lockedRows,
+    client,
+    onApply: setPattern,
+    phrase,
+    onApplyPhrase: setPhrase,
+  });
 
   return (
     <>

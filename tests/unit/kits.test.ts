@@ -83,9 +83,7 @@ const renderManifest = JSON.parse(readFileSync(RENDER_MANIFEST, 'utf8')) as Rend
 const TONE_DIRECTORY = TONE_AUDIO_DIRECTORY.replace(/^audio\//u, '');
 
 function toneFiles(): string[] {
-  return Object.values(toneManifest.sounds).flatMap((sound) =>
-    sound.samples.map((sample) => sample.file),
-  );
+  return Object.values(toneManifest.sounds).flatMap((sound) => sound.samples.map((sample) => sample.file));
 }
 
 /**

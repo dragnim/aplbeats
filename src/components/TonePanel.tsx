@@ -111,8 +111,8 @@ export function TonePanel({ tones, phrase }: TonePanelProps): React.JSX.Element 
 
       <div className={styles.vector}>
         <p className={styles.vectorLabel}>
-          The melody, as APL holds it — a numeric vector <code className={styles.variable}>n</code>, where
-          0 is a rest.
+          The melody, as APL holds it — a numeric vector <code className={styles.variable}>n</code>, where 0
+          is a rest.
         </p>
         <output className={styles.vectorValue}>{phraseToAplLiteral(phrase)}</output>
       </div>

@@ -31,9 +31,10 @@ import styles from './ToneStrip.module.css';
  * or not, which is the same bargain the drum grid makes: this is an instrument, and an instrument
  * that waits until you press Play to tell you what you did is a form.
  *
- * Sixteen steps stay on the screen at every width, exactly as the drum grid's do. On a phone the
- * pads are narrower and the note names shorten to the pitch class, because "G♯4" at 20px is a
- * smudge and "G♯" is a note.
+ * The pads keep a usable size at every width and the strip scrolls sideways when they will not
+ * all fit, which is exactly the trade the drum grid makes and for exactly the same reason. On a
+ * phone they are shorter and the note names shorten to the pitch class, because "G♯4" at that
+ * width is a smudge and "G♯" is a note.
  */
 
 const STEPS = Array.from({ length: PHRASE_LENGTH }, (_, step) => step);
@@ -179,49 +180,62 @@ export function ToneStrip({
 
   return (
     <div className={styles.strip}>
-      <div className={cx(styles.pads, 'noSelect')} role="group" aria-label="Melody steps">
-        {STEPS.map((step) => {
-          const value = phrase[step] ?? REST;
-          const sounding = value !== REST;
+      {/*
+        The pads scroll sideways rather than shrinking, exactly as the drum grid's do.
 
-          return (
-            <button
-              key={step}
-              ref={(node) => {
-                pads.current[step] = node;
-              }}
-              type="button"
-              className={cx(
-                styles.pad,
-                sounding && styles.padSounding,
-                step % STEPS_PER_BEAT === 0 && styles.beatStart,
-                step === playheadStep && styles.underPlayhead,
-                step === playheadStep && isPlaying && styles.playing,
-              )}
-              /*
-               * The pitch, in the name rather than only in the picture.
-               *
-               * "Step 4, G4" — everything the pad shows, said in the order somebody would say it.
-               * The height of the fill is decoration; this is the value.
-               */
-              aria-label={`Step ${String(step + 1)}, ${stepLabel(value)}`}
-              tabIndex={step === selected ? 0 : -1}
-              onKeyDown={(event) => {
-                onKeyDown(event, step);
-              }}
-              onClick={() => {
-                onActivate(step);
-              }}
-              style={sounding ? ({ '--pitch': String(heightFor(value)) } as React.CSSProperties) : undefined}
-            >
-              <span aria-hidden="true" className={styles.fill} />
-              <span aria-hidden="true" className={styles.note}>
-                <span className={styles.noteFull}>{sounding ? noteName(value) : '·'}</span>
-                <span className={styles.noteShort}>{sounding ? pitchClass(value) : '·'}</span>
-              </span>
-            </button>
-          );
-        })}
+        The alternative was to let sixteen pads share whatever width a phone has, which at 390px
+        is 21px each — under the 24px WCAG 2.2 target-spacing floor, and small enough that a
+        thumb hits the wrong note. A pad that keeps its size and a strip that scrolls is the
+        trade the sequencer already made, and making the same one here means the two layers
+        behave the same way under a finger.
+      */}
+      <div className={styles.scroller}>
+        <div className={cx(styles.pads, 'noSelect')} role="group" aria-label="Melody steps">
+          {STEPS.map((step) => {
+            const value = phrase[step] ?? REST;
+            const sounding = value !== REST;
+
+            return (
+              <button
+                key={step}
+                ref={(node) => {
+                  pads.current[step] = node;
+                }}
+                type="button"
+                className={cx(
+                  styles.pad,
+                  sounding && styles.padSounding,
+                  step % STEPS_PER_BEAT === 0 && styles.beatStart,
+                  step === playheadStep && styles.underPlayhead,
+                  step === playheadStep && isPlaying && styles.playing,
+                )}
+                /*
+                 * The pitch, in the name rather than only in the picture.
+                 *
+                 * "Step 4, G4" — everything the pad shows, said in the order somebody would say it.
+                 * The height of the fill is decoration; this is the value.
+                 */
+                aria-label={`Step ${String(step + 1)}, ${stepLabel(value)}`}
+                tabIndex={step === selected ? 0 : -1}
+                onKeyDown={(event) => {
+                  onKeyDown(event, step);
+                }}
+                onClick={() => {
+                  onActivate(step);
+                }}
+                style={
+                  sounding ? ({ '--pitch': String(heightFor(value)) } as React.CSSProperties) : undefined
+                }
+              >
+                <span aria-hidden="true" className={styles.fill} />
+                <span aria-hidden="true" className={styles.note}>
+                  <span className={styles.noteFull}>{sounding ? noteName(value) : '·'}</span>
+                  <span className={styles.noteShort}>{sounding ? pitchClass(value) : '·'}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/*

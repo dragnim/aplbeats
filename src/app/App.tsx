@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useApl, type ExploreOrigin } from '@/apl/useApl';
+import type { ToneExploreOrigin } from '@/apl/useToneApl';
 import { useDrumMachine } from '@/audio/useDrumMachine';
 import { DrumMachineSelect } from '@/components/DrumMachineSelect';
 import { GeneratorPanel } from '@/components/GeneratorPanel';
@@ -15,6 +16,9 @@ import { WorkspaceRail } from '@/components/WorkspaceRail';
 import { DomainTabs } from '@/components/DomainTabs';
 import { ToneStrip } from '@/components/ToneStrip';
 import { TonePanel } from '@/components/TonePanel';
+import { ToneCreatePanel } from '@/components/ToneCreatePanel';
+import { ToneTransformPanel } from '@/components/ToneTransformPanel';
+import { ToneExploreEditor } from '@/components/ToneExploreEditor';
 import type { Domain, WorkspaceId } from '@/components/workspaces';
 import { INITIAL_BPM, INITIAL_SWING } from '@/pattern/initialGroove';
 import { createMixer, effectiveLevel, setVolume, toggleMute, trackIdFor, type Mixer } from '@/pattern/mixer';
@@ -151,6 +155,14 @@ export function App(): React.JSX.Element {
    * to open an editor which already contains an edited draft would be offering to lose it.
    */
   const [exploreVisited, setExploreVisited] = useState(false);
+  /*
+   * And the same for the Tones side, which is a separate editor with a separate draft.
+   *
+   * Two flags rather than one, because the question each panel asks is about *its own* editor:
+   * a Beats Peek offering to load into an editor that is holding a melody would be offering to
+   * lose the wrong work.
+   */
+  const [toneExploreVisited, setToneExploreVisited] = useState(false);
 
   /*
    * How far down the sticky columns must start.
@@ -217,6 +229,7 @@ export function App(): React.JSX.Element {
     ...(restoredTones === null ? {} : { initialSoundId: restoredTones.soundId }),
     initialVolume: restoredToneVolume,
     enabled: tonesWanted,
+    baseUrl: import.meta.env.BASE_URL,
     install: transport.setToneSampler,
     applyVolume: transport.setToneVolume,
     phrase,
@@ -238,7 +251,13 @@ export function App(): React.JSX.Element {
    */
   const lockedRows = useMemo(() => locks.flatMap((locked, index) => (locked ? [index] : [])), [locks]);
 
-  const transform = useApl({ pattern, lockedRows, onApply: studio.applyTransform });
+  const transform = useApl({
+    pattern,
+    lockedRows,
+    onApply: studio.applyTransform,
+    phrase,
+    onApplyPhrase: studio.applyPhrase,
+  });
 
   /**
    * Open the editor, pointed at whichever panel asked.
@@ -259,6 +278,16 @@ export function App(): React.JSX.Element {
       setBeatsWorkspace('explore');
     },
     [transform.explore],
+  );
+
+  /** The same, for the melody's editor and the melody's workspace. */
+  const openToneExplore = useCallback(
+    (origin: ToneExploreOrigin) => {
+      transform.tones.explore.follow(origin);
+      setToneExploreVisited(true);
+      setTonesWorkspace('explore');
+    },
+    [transform.tones.explore],
   );
 
   /*
@@ -452,12 +481,7 @@ export function App(): React.JSX.Element {
         aria-labelledby={`${workspaceIds}-domain-tab-${domain}`}
       >
         <div className={styles.railColumn}>
-          <WorkspaceRail
-            active={workspace}
-            onSelect={setWorkspace}
-            panelIds={workspaceIds}
-            domain={domain}
-          />
+          <WorkspaceRail active={workspace} onSelect={setWorkspace} panelIds={workspaceIds} domain={domain} />
         </div>
 
         <main className={styles.main}>
@@ -549,6 +573,29 @@ export function App(): React.JSX.Element {
             )}
 
             {workspace === 'explore' && domain === 'beats' && <ExploreEditor transform={transform} />}
+
+            {workspace === 'create' && domain === 'tones' && (
+              <ToneCreatePanel
+                transform={transform}
+                exploreOpen={toneExploreVisited}
+                onEditApl={() => {
+                  openToneExplore('create');
+                }}
+              />
+            )}
+
+            {workspace === 'transform' && domain === 'tones' && (
+              <ToneTransformPanel
+                transform={transform}
+                phrase={phrase}
+                exploreOpen={toneExploreVisited}
+                onEditApl={() => {
+                  openToneExplore('transform');
+                }}
+              />
+            )}
+
+            {workspace === 'explore' && domain === 'tones' && <ToneExploreEditor transform={transform} />}
           </div>
         </div>
       </div>

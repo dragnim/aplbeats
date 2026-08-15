@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { openingPhrase, type Phrase } from '@/tones/phrase';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -128,7 +129,16 @@ function reversing(options: { readonly hold?: boolean } = {}): Counting {
 /** A harness that owns the pattern, so running really does change it. */
 function Harness({ client, initial = GROOVE }: { client: AplClient; initial?: Pattern }): React.JSX.Element {
   const [pattern, setPattern] = useState<Pattern>(initial);
-  const transform = useApl({ pattern, lockedRows: [], client, onApply: setPattern });
+  // The Tone layer is not what these tests are about; it is here because one lane serves both.
+  const [phrase, setPhrase] = useState<Phrase>(openingPhrase);
+  const transform = useApl({
+    pattern,
+    lockedRows: [],
+    client,
+    onApply: setPattern,
+    phrase,
+    onApplyPhrase: setPhrase,
+  });
   /*
    * The editor lives beside the panel rather than inside it, exactly as `App` composes them.
    * Stage 6 lifted it out so that both APL panels could feed one editor, and a harness that

@@ -32,7 +32,16 @@ import {
   type Target,
 } from './operations';
 import { buildAplSource, type AplSource } from './operations';
-import { customIdentityKey, isStillApplicable, AplService, type TransformOutcome } from './service';
+import {
+  customIdentityKey,
+  isPhraseStillApplicable,
+  isStillApplicable,
+  AplService,
+  type AplDomain,
+  type AplOutcome,
+} from './service';
+import type { Phrase } from '@/tones/phrase';
+import { useToneApl, type ToneAplApi } from './useToneApl';
 
 /*
  * When APL runs, and what the interface knows about it.
@@ -184,6 +193,14 @@ export interface TransformState {
   readonly source: AplSource;
   /** Whether Apply would do anything. */
   readonly canApply: boolean;
+  /**
+   * Which layer the current status belongs to.
+   *
+   * Checked alongside `lastRun` by every panel before it claims a result. One lane means one
+   * status, and a Beats panel announcing a melody it did not ask for would be a small lie told
+   * constantly.
+   */
+  readonly lastDomain: AplDomain;
 }
 
 export interface TransformApi extends TransformState {
@@ -194,6 +211,13 @@ export interface TransformApi extends TransformState {
   readonly apply: () => void;
   readonly explore: ExploreApi;
   readonly create: CreateApi;
+  /**
+   * The Tones half, sharing this lane.
+   *
+   * Reached through the same object rather than through a hook of its own, because it is the same
+   * request machinery: one client, one cache, one busy flag, one counter. See `useToneApl`.
+   */
+  readonly tones: ToneAplApi;
 }
 
 export interface UseAplOptions {
@@ -209,13 +233,24 @@ export interface UseAplOptions {
   readonly lockedRows: LockedRows;
   /** Install a validated result. Exactly one Undo entry. */
   readonly onApply: (pattern: Pattern) => void;
+  /** The melody a Tone transform would be applied to. */
+  readonly phrase: Phrase;
+  /** Install a validated melody. Exactly one Undo entry, in the same history as the rhythm. */
+  readonly onApplyPhrase: (phrase: Phrase) => void;
   /** Swapped for a fake in tests. Defaults to the real TryAPL client. */
   readonly client?: AplClient;
 }
 
 const FIRST_OPERATION = OPERATIONS[0]!;
 
-export function useApl({ pattern, lockedRows, onApply, client }: UseAplOptions): TransformApi {
+export function useApl({
+  pattern,
+  lockedRows,
+  onApply,
+  phrase,
+  onApplyPhrase,
+  client,
+}: UseAplOptions): TransformApi {
   /*
    * The Create controls, restored once and never executed on restore.
    *
@@ -242,6 +277,15 @@ export function useApl({ pattern, lockedRows, onApply, client }: UseAplOptions):
   const [error, setError] = useState<string | null>(null);
   const [lastWasCached, setLastWasCached] = useState(false);
   const [lastRun, setLastRun] = useState<RunKind | null>(null);
+  /*
+   * Which layer the current status belongs to.
+   *
+   * One lane means one status, and one status shared between two layers would mean the Beats
+   * Transform panel announcing that a melody had been generated. Every panel checks the pair —
+   * this and `lastRun` — before it claims anything, exactly as the three Beats panels already
+   * check `lastRun` before claiming each other's results.
+   */
+  const [lastDomain, setLastDomain] = useState<AplDomain>('beats');
   const [aplLines, setAplLines] = useState<readonly string[]>([]);
 
   /*
@@ -283,13 +327,17 @@ export function useApl({ pattern, lockedRows, onApply, client }: UseAplOptions):
     serviceRef.current = new AplService(client ?? new TryAplClient());
   }
 
-  /** The current bar and callback, read at the moment a reply arrives rather than captured. */
+  /** The current music and callbacks, read at the moment a reply arrives rather than captured. */
   const patternRef = useRef(pattern);
   const applyRef = useRef(onApply);
+  const phraseRef = useRef(phrase);
+  const applyPhraseRef = useRef(onApplyPhrase);
   useEffect(() => {
     patternRef.current = pattern;
     applyRef.current = onApply;
-  }, [pattern, onApply]);
+    phraseRef.current = phrase;
+    applyPhraseRef.current = onApplyPhrase;
+  }, [pattern, onApply, phrase, onApplyPhrase]);
 
   /** Whether a request is in flight. A ref, so `apply` can check it without being rebuilt. */
   const busy = useRef(false);
@@ -370,22 +418,26 @@ export function useApl({ pattern, lockedRows, onApply, client }: UseAplOptions):
   const submit = useCallback(
     (
       kind: RunKind,
-      work: (service: AplService) => Promise<TransformOutcome>,
+      domain: AplDomain,
+      work: (service: AplService) => Promise<AplOutcome>,
       stillCurrent: () => boolean = () => true,
     ) => {
       const service = serviceRef.current;
       if (service === null) return;
 
       // A second press while one is in flight is dropped, not queued. Queueing would let a
-      // held-down key become a request storm.
+      // held-down key become a request storm. One lane, both layers: a melody being generated
+      // means a rhythm cannot be, which is exactly the promise TryAPL was made.
       if (busy.current) return;
 
-      const basedOn = patternRef.current;
+      const basedOnPattern = patternRef.current;
+      const basedOnPhrase = phraseRef.current;
       const id = requestId.current + 1;
       requestId.current = id;
       busy.current = true;
 
       setLastRun(kind);
+      setLastDomain(domain);
       setStatus('running');
       setError(null);
       setAplLines([]);
@@ -398,12 +450,17 @@ export function useApl({ pattern, lockedRows, onApply, client }: UseAplOptions):
            * The staleness checks.
            *
            * Between asking and answering the visitor may have edited a cell, pressed Randomise,
-           * undone something — or, in Explore, rewritten the expression. A matrix computed from
-           * a bar that no longer exists must not overwrite the bar that does, and a result must
+           * undone something — or, in Explore, rewritten the expression. A result computed from
+           * music that no longer exists must not overwrite the music that does, and a result must
            * not appear beneath an expression that did not produce it. Either way the reply is
            * dropped and nothing is claimed about it.
+           *
+           * Each layer is checked against *its own* music, and that is the point of splitting
+           * here. Editing a drum cell while a melody is being generated is a perfectly reasonable
+           * thing to do, and throwing the melody away because the rhythm moved would be
+           * punishing somebody for using two hands.
            */
-          if (!isStillApplicable(basedOn, patternRef.current) || !stillCurrent()) {
+          if (!stillCurrent()) {
             setStatus('idle');
             return;
           }
@@ -415,13 +472,30 @@ export function useApl({ pattern, lockedRows, onApply, client }: UseAplOptions):
            * that happens to return the same rhythm is a perfectly good thing to have written,
            * and an Undo entry that appears to do nothing is worse than no Undo entry.
            */
-          if (isStillApplicable(outcome.pattern, patternRef.current)) {
-            setLastWasCached(outcome.cached);
-            setStatus('unchanged');
-            return;
+          if (outcome.domain === 'beats') {
+            if (!isStillApplicable(basedOnPattern, patternRef.current)) {
+              setStatus('idle');
+              return;
+            }
+            if (isStillApplicable(outcome.pattern, patternRef.current)) {
+              setLastWasCached(outcome.cached);
+              setStatus('unchanged');
+              return;
+            }
+            applyRef.current(outcome.pattern);
+          } else {
+            if (!isPhraseStillApplicable(basedOnPhrase, phraseRef.current)) {
+              setStatus('idle');
+              return;
+            }
+            if (isPhraseStillApplicable(outcome.phrase, phraseRef.current)) {
+              setLastWasCached(outcome.cached);
+              setStatus('unchanged');
+              return;
+            }
+            applyPhraseRef.current(outcome.phrase);
           }
 
-          applyRef.current(outcome.pattern);
           setLastWasCached(outcome.cached);
           setStatus('applied');
         })
@@ -449,7 +523,9 @@ export function useApl({ pattern, lockedRows, onApply, client }: UseAplOptions):
 
   const apply = useCallback(() => {
     if (!isValidTarget(operation, target)) return;
-    submit('fixed', (service) => service.run({ operation, target, parameters, pattern: patternRef.current }));
+    submit('fixed', 'beats', (service) =>
+      service.run({ operation, target, parameters, pattern: patternRef.current }),
+    );
   }, [operation, parameters, target, submit]);
 
   /* ---- Create with APL ---------------------------------------------------- */
@@ -535,6 +611,7 @@ export function useApl({ pattern, lockedRows, onApply, client }: UseAplOptions):
 
     submit(
       'generate',
+      'beats',
       (service) =>
         service.runGenerate({
           recipe: recipeById(recipeId),
@@ -783,6 +860,7 @@ export function useApl({ pattern, lockedRows, onApply, client }: UseAplOptions):
 
     submit(
       'custom',
+      'beats',
       (service) =>
         service.runCustom({
           core: valid.core,
@@ -828,6 +906,14 @@ export function useApl({ pattern, lockedRows, onApply, client }: UseAplOptions):
     ],
   );
 
+  /*
+   * The Tones half of the lane.
+   *
+   * Given `submit` rather than building its own, which is the whole architectural claim of this
+   * stage restated in one argument: there is one execution lane, and the melody runs in it.
+   */
+  const tones = useToneApl({ submit, phrase, phraseRef });
+
   return useMemo(
     () => ({
       operation,
@@ -840,12 +926,14 @@ export function useApl({ pattern, lockedRows, onApply, client }: UseAplOptions):
       aplLines,
       source,
       canApply,
+      lastDomain,
       setOperation,
       setTarget,
       setParameter,
       apply,
       explore,
       create,
+      tones,
     }),
     [
       operation,
@@ -858,12 +946,14 @@ export function useApl({ pattern, lockedRows, onApply, client }: UseAplOptions):
       aplLines,
       source,
       canApply,
+      lastDomain,
       setOperation,
       setTarget,
       setParameter,
       apply,
       explore,
       create,
+      tones,
     ],
   );
 }

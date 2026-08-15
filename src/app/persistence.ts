@@ -29,6 +29,14 @@ import {
   isToneSoundId,
   type ToneSoundId,
 } from '@/audio/tones/sounds';
+import {
+  clampRoot,
+  isToneRecipeId,
+  isToneScaleId,
+  TONE_GENERATOR_VERSION,
+  type ToneRecipeId,
+  type ToneScaleId,
+} from '@/apl/toneGenerators';
 import { isPhrase, type Phrase } from '@/tones/phrase';
 import { clampBpm, clampSwing } from '@/transport/timing';
 import { clampMacro, noLocks, type CreativeState } from './studio';
@@ -112,6 +120,19 @@ const TONES_SCHEMA_VERSION = 1;
  */
 const TONE_VOLUME_STORAGE_KEY = 'aplbeats.tone-volume.v1';
 const TONE_VOLUME_SCHEMA_VERSION = 1;
+
+/*
+ * The Tone Create controls and the Tones side of the Explore draft, each under their own key.
+ *
+ * Mirrors of `aplbeats.apl-create.v1` and `aplbeats.explore.v1`, and separate from them on
+ * purpose. Which melody recipe somebody was working with has nothing to do with which rhythm
+ * recipe they were working with, and the two Explore drafts are separate programs against
+ * separate data — see `loadToneExploreDraft`.
+ */
+const TONE_CREATE_STORAGE_KEY = 'aplbeats.apl-tone-create.v1';
+const TONE_CREATE_SCHEMA_VERSION = 1;
+const TONE_EXPLORE_STORAGE_KEY = 'aplbeats.tone-explore.v1';
+const TONE_EXPLORE_SCHEMA_VERSION = 1;
 
 /** How much hand-written APL is worth remembering. Comfortably past the editor's own limit. */
 const MAX_DRAFT_LENGTH = 1000;
@@ -203,6 +224,8 @@ export function clearSession(): void {
     globalThis.localStorage?.removeItem(CREATE_STORAGE_KEY);
     globalThis.localStorage?.removeItem(TONES_STORAGE_KEY);
     globalThis.localStorage?.removeItem(TONE_VOLUME_STORAGE_KEY);
+    globalThis.localStorage?.removeItem(TONE_CREATE_STORAGE_KEY);
+    globalThis.localStorage?.removeItem(TONE_EXPLORE_STORAGE_KEY);
   } catch {
     // See above.
   }
@@ -514,6 +537,130 @@ export function saveToneVolume(volume: number): void {
     globalThis.localStorage?.setItem(
       TONE_VOLUME_STORAGE_KEY,
       JSON.stringify({ schema: TONE_VOLUME_SCHEMA_VERSION, volume: safe }),
+    );
+  } catch {
+    // See above.
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+
+export interface ToneCreateSettings {
+  readonly recipeId: ToneRecipeId;
+  readonly scaleId: ToneScaleId;
+  readonly root: number;
+  readonly seed: number;
+}
+
+/**
+ * The Tone Create controls, or nothing.
+ *
+ * Loading this **never executes anything** — the same guarantee the Beats Create settings carry,
+ * and for the same reason: it restores three selectors and a number, and there is no code path
+ * from here to a request.
+ *
+ * The Tone generator version is checked, and it is the Tone one. Recipe plus scale plus root plus
+ * seed describes a melody, so under a different set of recipe expressions the same four values
+ * would describe a different one — but what the *rhythm* recipes do has nothing to say about
+ * that, which is exactly why the two versions are separate numbers.
+ */
+export function loadToneCreateSettings(): ToneCreateSettings | null {
+  try {
+    const raw = globalThis.localStorage?.getItem(TONE_CREATE_STORAGE_KEY) ?? null;
+    if (raw === null) return null;
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return null;
+    if (parsed.schema !== TONE_CREATE_SCHEMA_VERSION) return null;
+    if (parsed.toneGeneratorVersion !== TONE_GENERATOR_VERSION) return null;
+
+    const { recipeId, scaleId, root, seed } = parsed;
+    if (!isToneRecipeId(recipeId)) return null;
+    if (!isToneScaleId(scaleId)) return null;
+    if (typeof root !== 'number' || typeof seed !== 'number') return null;
+    if (!Number.isFinite(root) || !Number.isFinite(seed)) return null;
+
+    return { recipeId, scaleId, root: clampRoot(root), seed: clampSeed(seed) };
+  } catch {
+    return null;
+  }
+}
+
+/** Remember the Tone Create controls. Failure is ignored, as everywhere else in this file. */
+export function saveToneCreateSettings(settings: ToneCreateSettings): void {
+  try {
+    globalThis.localStorage?.setItem(
+      TONE_CREATE_STORAGE_KEY,
+      JSON.stringify({
+        schema: TONE_CREATE_SCHEMA_VERSION,
+        toneGeneratorVersion: TONE_GENERATOR_VERSION,
+        recipeId: settings.recipeId,
+        scaleId: settings.scaleId,
+        root: clampRoot(settings.root),
+        seed: clampSeed(settings.seed),
+      }),
+    );
+  } catch {
+    // See above.
+  }
+}
+
+/** The seed a Tone Explore draft has to run under to mean what it meant. */
+export interface ToneExploreContext {
+  readonly randomSeed?: number;
+}
+
+export interface ToneExploreDraft {
+  readonly expression: string;
+  readonly context?: ToneExploreContext;
+}
+
+/**
+ * The Tones side of the Explore draft, under its own key.
+ *
+ * A genuinely separate draft rather than a second field in the Beats one, and that is the whole
+ * point: `⌽m` and `⌽n` are different programs against different data, and an editor that replaced
+ * one with the other when somebody changed tab would destroy work on every switch. Two keys, two
+ * drafts, and switching layers costs neither of them.
+ *
+ * No target, unlike the Beats draft. A melody is one line; there is nothing to choose.
+ */
+export function loadToneExploreDraft(): ToneExploreDraft | null {
+  try {
+    const raw = globalThis.localStorage?.getItem(TONE_EXPLORE_STORAGE_KEY) ?? null;
+    if (raw === null) return null;
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return null;
+    if (parsed.schema !== TONE_EXPLORE_SCHEMA_VERSION) return null;
+
+    const { expression } = parsed;
+    if (typeof expression !== 'string' || expression.length === 0) return null;
+    if (expression.length > MAX_DRAFT_LENGTH) return null;
+
+    const context = readExploreContext(parsed.context);
+    return context === null ? { expression } : { expression, context };
+  } catch {
+    return null;
+  }
+}
+
+/** Remember the Tone Explore draft. Failure is ignored, as everywhere else in this file. */
+export function saveToneExploreDraft(draft: ToneExploreDraft | null): void {
+  try {
+    if (draft === null) {
+      // This one key, and no other — including not the Beats draft, which is the entire reason
+      // there are two of them.
+      globalThis.localStorage?.removeItem(TONE_EXPLORE_STORAGE_KEY);
+      return;
+    }
+    globalThis.localStorage?.setItem(
+      TONE_EXPLORE_STORAGE_KEY,
+      JSON.stringify({
+        schema: TONE_EXPLORE_SCHEMA_VERSION,
+        expression: draft.expression.slice(0, MAX_DRAFT_LENGTH),
+        ...(draft.context === undefined ? {} : { context: draft.context }),
+      }),
     );
   } catch {
     // See above.

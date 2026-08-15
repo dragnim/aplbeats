@@ -150,20 +150,25 @@ export function phraseToAplLiteral(phrase: Phrase): string {
  * visitor had is left alone.
  */
 export type PhraseParseResult =
-  | { readonly ok: true; readonly phrase: Phrase }
-  | { readonly ok: false; readonly reason: string };
+  { readonly ok: true; readonly phrase: Phrase } | { readonly ok: false; readonly reason: string };
 
 export function parseAplPhrase(outputLines: readonly string[]): PhraseParseResult {
   const lines = outputLines.map((line) => line.trim()).filter((line) => line !== '');
 
   if (lines.length === 0) return { ok: false, reason: 'the reply was empty' };
   if (lines.length > 1) {
-    return { ok: false, reason: `expected one line of ${String(PHRASE_LENGTH)} numbers, received ${String(lines.length)}` };
+    return {
+      ok: false,
+      reason: `expected one line of ${String(PHRASE_LENGTH)} numbers, received ${String(lines.length)}`,
+    };
   }
 
   const tokens = (lines[0] ?? '').split(/\s+/u);
   if (tokens.length !== PHRASE_LENGTH) {
-    return { ok: false, reason: `expected ${String(PHRASE_LENGTH)} values, received ${String(tokens.length)}` };
+    return {
+      ok: false,
+      reason: `expected ${String(PHRASE_LENGTH)} values, received ${String(tokens.length)}`,
+    };
   }
 
   const phrase: number[] = [];

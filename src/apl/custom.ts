@@ -35,6 +35,7 @@ import { clampSeed } from '@/generation/prng';
 import { patternToAplLiteral } from './matrix';
 import { aplNumber, IO_ORIGIN, type Target, type AplSource } from './operations';
 import { STEP_COUNT, TRACK_COUNT, type Pattern } from '@/pattern/pattern';
+import { phraseToAplLiteral, PHRASE_LENGTH, TONE_MAX_MIDI, TONE_MIN_MIDI, type Phrase } from '@/tones/phrase';
 import { DIAMOND } from './wire';
 
 /**
@@ -172,4 +173,53 @@ export function customContract(target: Target): string {
 /** Every target Explore accepts. Unlike the built-in operations, all of them. */
 export function everyTarget(): Target[] {
   return ['all', ...Array.from({ length: TRACK_COUNT }, (_unused, index) => index)];
+}
+
+/* ------------------------------------------------------------------------- */
+
+export interface ToneCustomSourceRequest {
+  /** What the visitor typed. Trimmed, never otherwise altered. */
+  readonly core: string;
+  readonly phrase: Phrase;
+  /** The seed `⎕RL` is fixed to, when the expression came from a Tone recipe. */
+  readonly randomSeed?: number;
+}
+
+/**
+ * The same, for a melody.
+ *
+ * Deliberately the same wrapper shape and the same four statements, because `checkCustomExpression`
+ * above is doing the same job for both: everything it forbids — `⋄`, a newline, `⍝`, a leading
+ * `)` — is forbidden because of what it would do to *these statements*, and the statements are
+ * identical in structure. One check, one contract, two kinds of music.
+ *
+ * The one difference is the assignment. There is no target: a melody is one line, so the
+ * expression's result becomes the whole of `n` and there is no bracket form.
+ */
+export function buildToneCustomSource({ core, phrase, randomSeed }: ToneCustomSourceRequest): AplSource {
+  const trimmed = core.trim();
+  const random = randomSeed === undefined ? [] : [`⎕RL←${String(clampSeed(randomSeed))} 1`];
+
+  const statements = [
+    `⎕IO←${String(IO_ORIGIN)}`,
+    ...random,
+    `n←${phraseToAplLiteral(phrase)}`,
+    `n←(${trimmed})`,
+    'n',
+  ];
+
+  return { core: trimmed, statements, expression: statements.join(` ${DIAMOND} `) };
+}
+
+/**
+ * What a melody expression has to produce.
+ *
+ * Stated as the numbers rather than as "a phrase", because that is the contract APL is actually
+ * held to — and because "0 is a rest" is the one fact somebody needs to know before their first
+ * expression, and the one nothing else in the editor would tell them.
+ */
+export function toneContract(): string {
+  return `Return ${String(PHRASE_LENGTH)} whole numbers: 0 for a rest, or a MIDI note from ${String(
+    TONE_MIN_MIDI,
+  )} to ${String(TONE_MAX_MIDI)}. They become the melody.`;
 }

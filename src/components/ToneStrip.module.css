@@ -17,11 +17,28 @@
   min-width: 0;
 }
 
+/*
+ * The same scroller the drum grid has, for the same reason.
+ *
+ * `min-width: min-content` on the pads is what makes it necessary rather than incidental: the
+ * columns have a floor, so below a certain width the strip stops shrinking and starts scrolling
+ * instead of squeezing sixteen pads down to something a thumb cannot hit.
+ */
+.scroller {
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Vertical panning still belongs to the page; only sideways is ours. */
+  touch-action: pan-x pan-y;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  padding-bottom: var(--space-1);
+}
+
 .pads {
   display: grid;
   grid-template-columns: repeat(16, minmax(var(--cell-min), 1fr));
   gap: var(--cell-gap);
-  min-width: 0;
+  min-width: min-content;
 }
 
 .pad {
@@ -35,6 +52,7 @@
   border: 1px solid var(--line);
   background: var(--cell);
   overflow: hidden;
+  scroll-snap-align: start;
   touch-action: pan-x pan-y;
   transition:
     background-color var(--motion-fast) var(--ease),
@@ -60,12 +78,18 @@
  *
  * A minimum of 12% so that the very lowest note is still plainly a note rather than an empty pad
  * — the difference between "C3" and "rest" must never come down to a few pixels.
+ *
+ * It stops at 70%, and that is the note name's doing. The first version filled the whole pad and
+ * put the label in the middle of it, which meant the label sat on the accent for high notes and on
+ * the pad for low ones — dark text on a dark background for half the instrument's range. Leaving
+ * the top third of every pad clear costs nothing legible about the pitch and buys a label that is
+ * readable at every note.
  */
 .fill {
   position: absolute;
   inset-inline: 0;
   bottom: 0;
-  height: calc(12% + 88% * var(--pitch, 0));
+  height: calc(12% + 58% * var(--pitch, 0));
   background: transparent;
   transition:
     height var(--motion-fast) var(--ease),
@@ -85,27 +109,28 @@
 }
 
 /*
- * The note name, over the column.
+ * The note name, above the column.
  *
- * Centred rather than sitting on top of the fill, so it does not move as the pitch changes — a
- * label that slid up and down while you held Up would be unreadable exactly when you were reading
- * it. High contrast against both the filled and unfilled parts of the pad.
+ * Pinned to the top rather than centred, so it never moves as the pitch changes — a label that
+ * slid up and down while you held Up would be unreadable exactly when you were reading it — and
+ * so it is always on the pad's own background rather than on the accent. One text colour for
+ * every note, and it is the one the rest of the interface uses.
  */
 .note {
   position: absolute;
-  inset: 0;
+  inset: 0 0 auto;
   display: grid;
   place-items: center;
+  padding-top: var(--space-2);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   color: var(--text-dim);
-  text-shadow: 0 1px 2px rgb(0 0 0 / 45%);
 }
 
 .padSounding .note {
-  color: var(--on-accent);
+  color: var(--text);
 }
 
 /* The full name on anything wider than a phone; the pitch class alone below that. */

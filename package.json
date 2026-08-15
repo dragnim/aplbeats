@@ -40,7 +40,9 @@
     "review:transforms": "tsx scripts/review-transforms.ts",
     "review:apl-generators": "tsx scripts/review-apl-generators.ts",
     "review:layout": "node scripts/review-layout.mjs",
-    "measure:generated": "node scripts/measure-generated.mjs"
+    "measure:generated": "node scripts/measure-generated.mjs",
+    "review:apl-tones": "tsx scripts/review-apl-tones.ts",
+    "verify:apl-tones-live": "tsx scripts/verify-apl-tones-live.ts"
   },
   "dependencies": {
     "react": "^19.2.8",

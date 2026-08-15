@@ -49,6 +49,8 @@ export interface UseTonesOptions {
   readonly applyVolume: (volume: number) => void;
   /** The melody, so that changing sound can be persisted alongside it. */
   readonly phrase: Phrase;
+  /** Where the samples are served from. Defaults to the published base path. */
+  readonly baseUrl?: string;
   /** Injected by tests, which have neither a network nor an audio decoder. */
   readonly loader?: ToneLoader;
 }
@@ -70,8 +72,15 @@ export function useTones(options: UseTonesOptions): TonesApi {
   const [volume, setVolumeState] = useState(() => clamp(options.initialVolume ?? DEFAULT_TONE_VOLUME));
   const [status, setStatus] = useState<ToneStatus>({ kind: 'idle' });
 
-  // One loader for the life of the page, so a sound heard once is instant ever after.
-  const fallbackLoader = useMemo(() => new ToneLoader(), []);
+  /*
+   * One loader for the life of the page, so a sound heard once is instant ever after.
+   *
+   * The base path matters and is easy to get wrong: APL Beats is published under /aplbeats/, so a
+   * loader defaulting to / asks for /audio/tones/lead-48.wav and gets seven 404s and a sound that
+   * will not play. The drum machine passes the same value for the same reason.
+   */
+  const baseUrl = options.baseUrl;
+  const fallbackLoader = useMemo(() => new ToneLoader(baseUrl === undefined ? {} : { baseUrl }), [baseUrl]);
   const loader = options.loader ?? fallbackLoader;
 
   /*

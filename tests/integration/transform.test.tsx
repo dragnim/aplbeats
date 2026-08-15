@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { openingPhrase, type Phrase } from '@/tones/phrase';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -90,10 +91,14 @@ function Harness({
   initial?: Pattern;
 }): React.JSX.Element {
   const [pattern, setPattern] = useState<Pattern>(initial);
+  // The Tone layer is not what these tests are about; it is here because one lane serves both.
+  const [phrase, setPhrase] = useState<Phrase>(openingPhrase);
   const transform = useApl({
     pattern,
     lockedRows: [],
     client,
+    phrase,
+    onApplyPhrase: setPhrase,
     onApply: (next) => {
       setPattern(next);
       onApplied?.(next);
@@ -352,10 +357,14 @@ describe('a stale reply', () => {
 
     function Racing(): React.JSX.Element {
       const [pattern, setPattern] = useState<Pattern>(GROOVE);
+      // The Tone layer is not what these tests are about; it is here because one lane serves both.
+      const [phrase, setPhrase] = useState<Phrase>(openingPhrase);
       const transform = useApl({
         pattern,
         lockedRows: [],
         client,
+        phrase,
+        onApplyPhrase: setPhrase,
         onApply: (next) => {
           setPattern(next);
           onApplied(next);

@@ -60,7 +60,9 @@ for (const size of WIDTHS) {
     const seen = await page.evaluate(() => {
       const doc = document.documentElement;
       const grid = document.querySelector('button[data-track][data-step]')?.closest('main');
-      const apl = document.querySelector('[role="tabpanel"]');
+      // Two tabpanels since Stage 8: the layer panel wraps the whole workspace, and the
+      // workspace panel is the APL column inside it. The APL one is the one without 'domain'.
+      const apl = document.querySelector('[role="tabpanel"]:not([id*="domain"])');
       const gridBox = grid?.getBoundingClientRect();
       const aplBox = apl?.getBoundingClientRect();
 
@@ -101,6 +103,50 @@ for (const size of WIDTHS) {
 
     if (shotsAt !== null && shotsAt !== undefined) {
       await page.screenshot({ path: `${shotsAt}/${size.name}-${theme}.png`, fullPage: false });
+    }
+
+    /*
+     * The same page again, with Tones open.
+     *
+     * Stage 8 added a second thing to look at, and it has its own ways of being wrong: sixteen
+     * pads that must all stay on screen, an editor row that must not push the page sideways, and
+     * a panel that must still sit beside the strip rather than under it on a wide monitor.
+     *
+     * Switching layers is a click and nothing else — no request, no reload — so this costs one
+     * click per width and theme rather than a second page load.
+     */
+    await page.getByRole('tab', { name: 'Tones' }).click();
+
+    const tones = await page.evaluate(() => {
+      const doc = document.documentElement;
+      const strip = document.querySelector('[aria-label="Melody steps"]');
+      const apl = document.querySelector('[role="tabpanel"]:not([id*="domain"])');
+      const stripBox = strip?.getBoundingClientRect();
+      const aplBox = apl?.getBoundingClientRect();
+
+      return {
+        overflow: doc.scrollWidth - doc.clientWidth,
+        pads: strip?.querySelectorAll('button').length ?? 0,
+        beside: (aplBox?.left ?? 0) >= (stripBox?.right ?? 0) - 4,
+      };
+    });
+
+    console.log(
+      `${`${size.name} · tones`.padEnd(17)}${theme.padEnd(7)}${String(tones.overflow).padStart(9)}` +
+        `${String(tones.pads).padStart(7)}${(tones.beside ? 'beside' : 'stacked').padStart(11)}`,
+    );
+
+    if (tones.overflow > 1) {
+      problems.push(`${where} · tones: page scrolls sideways by ${String(tones.overflow)}px`);
+    }
+    if (tones.pads !== 16) problems.push(`${where} · tones: ${String(tones.pads)} pads, expected 16`);
+    if (size.width >= 1600 && !tones.beside) {
+      problems.push(`${where} · tones: the APL is stacked under the melody at ${String(size.width)}px`);
+    }
+    if (errors.length > 0) problems.push(`${where} · tones: ${errors.join('; ')}`);
+
+    if (shotsAt !== null && shotsAt !== undefined) {
+      await page.screenshot({ path: `${shotsAt}/${size.name}-${theme}-tones.png`, fullPage: false });
     }
 
     await page.close();
