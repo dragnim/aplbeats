@@ -226,14 +226,25 @@ export function ToneMatrix({
    * A ref rather than state: nothing on screen looks different because a stroke is open, and a
    * re-render per pointer sample would be a re-render for nothing. It carries three things —
    *
-   *   `mode`   decided once, at pointer-down, from what was under it. Starting on a note erases;
-   *            starting on empty ground draws. Deciding it per cell instead would make a stroke
-   *            flicker between drawing and rubbing out as it crossed its own line.
-   *   `anchor` the octave every empty column in this stroke lands in, frozen at pointer-down so a
-   *            line drawn across the grid cannot wander octaves.
-   *   `last`   the cell the pointer is in, so staying inside one cell writes once.
+   *   `mode`    decided once, at pointer-down, from what was under it. Starting on a note erases;
+   *             starting on empty ground draws. Deciding it per cell instead would make a stroke
+   *             flicker between drawing and rubbing out as it crossed its own line.
+   *   `anchor`  the octave every empty column in this stroke lands in, frozen at pointer-down so a
+   *             line drawn across the grid cannot wander octaves.
+   *   `written` the columns this stroke has already decided. One write each, first row reached
+   *             wins, and every later crossing of that column is ignored.
+   *
+   * That last rule is the whole of the diagonal fix, and it was a real bug on the published site.
+   * Letting the newest crossing win sounds obvious and is wrong, because a pointer leaving a
+   * column on the way up-and-right clips the cells *above* the one it was aimed at on the way out.
+   * A smooth diagonal drawn from C to G came back C♯ D♯ F♯ G — every column a semitone or two
+   * sharp, and even the cell that was pressed did not keep the note it was pressed on.
+   *
+   * Committing on entry also makes the gesture honest: a note appears the instant you cross into
+   * its column and never moves again while you draw. Nothing you have already placed changes under
+   * your hand.
    */
-  const stroke = useRef<{ mode: 'draw' | 'erase'; anchor: number; last: string } | null>(null);
+  const stroke = useRef<{ mode: 'draw' | 'erase'; anchor: number; written: Set<number> } | null>(null);
 
   /** Which cell is under a point, by hit test — the only thing that survives a fast drag. */
   const cellUnder = (clientX: number, clientY: number): { row: number; step: number } | null => {
@@ -246,21 +257,18 @@ export function ToneMatrix({
   };
 
   /**
-   * Paint or erase one cell, if it is not the one already being painted.
+   * Decide one column, once.
    *
-   * Two guards, and they answer different questions. `last` stops a pointer sitting still inside a
-   * cell from rewriting it sixty times a second. The value comparison stops a redundant write
-   * whenever the answer is the answer already there — which is also what keeps one note from being
-   * previewed twice as a hand wobbles across a boundary and back.
+   * The column is claimed before anything is written, so a pointer sitting still inside a cell
+   * cannot rewrite it, a hand wobbling back across a boundary cannot re-trigger its preview, and —
+   * the reason this exists — the cells clipped on the way *out* of a column cannot overwrite the
+   * note the stroke entered it with.
    */
   const paintCell = useCallback(
     (row: number, step: number) => {
       const open = stroke.current;
-      if (open === null) return;
-
-      const key = `${String(row)}:${String(step)}`;
-      if (open.last === key) return;
-      open.last = key;
+      if (open === null || open.written.has(step)) return;
+      open.written.add(step);
 
       const current = phrase[step] ?? REST;
 
@@ -324,7 +332,7 @@ export function ToneMatrix({
     stroke.current = {
       mode: current !== REST && pitchClassOf(current) === row ? 'erase' : 'draw',
       anchor: workingPitch,
-      last: '',
+      written: new Set<number>(),
     };
     paintCell(row, step);
   };

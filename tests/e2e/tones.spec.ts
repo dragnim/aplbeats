@@ -380,55 +380,52 @@ function requireRoomToDraw(): void {
 /* ---- drawing with a pointer ---------------------------------------------- */
 
 /**
- * Drag from one cell to another, through every cell between them.
+ * Draw a stroke that genuinely enters each target column at its target row.
  *
- * The real thing rather than a synthetic sequence: a press, a run of moves along the line, and a
- * release. The moves are what the component hit-tests, so a drag written as "down here, up there"
- * would prove nothing at all — it is the crossing that has to paint.
+ * The first version of this moved centre to centre with two interpolation steps, and that is how a
+ * production bug got past it. Two steps skip the cells between, so the path never exercised the
+ * geometry that actually breaks; with dense sampling the same test fails, and on the published
+ * site a smooth C-to-G diagonal came back C♯ D♯ F♯ G.
+ *
+ * So each leg is drawn in two moves, densely sampled. First vertically, *inside the column already
+ * decided*, to the row the next column wants. Then horizontally across the boundary — which is
+ * therefore crossed at exactly that row. It is both the precise thing to test and what a careful
+ * hand does anyway, and it leaves no room for a lucky pass: every intermediate cell really is
+ * visited.
  */
 async function drawThrough(page: Page, path: readonly (readonly [number, number])[]): Promise<void> {
-  /*
-   * Scrolled into view first, and that is not a nicety.
-   *
-   * `click()` scrolls to its target; `page.mouse` does not — it fires at whatever coordinates it
-   * is given. On a phone-sized viewport the grid sits below the fold, so boxes computed without
-   * this describe a cell at y=738 in a 664px window, the press lands on nothing, and the failure
-   * reads as "the note never appeared" rather than "the test aimed off the screen".
-   */
   const [firstRow, firstStep] = path[0] ?? [0, 0];
   await cell(page, firstRow, firstStep).scrollIntoViewIfNeeded();
 
-  const boxes = [];
+  const points = [];
   for (const [row, step] of path) {
     const box = await cell(page, row, step).boundingBox();
     if (box === null) throw new Error(`no box for row ${String(row)} step ${String(step)}`);
-    /*
-     * The grid scrolls sideways on a phone, so a step past the fold has a box the pointer can
-     * never reach. Left unchecked that surfaces as a baffling assertion failure about a note that
-     * did not appear; caught here it says which step the path asked for and could not have.
-     */
     const view = page.viewportSize();
     const offScreen =
       view !== null &&
       (box.x < 0 || box.y < 0 || box.x + box.width > view.width || box.y + box.height > view.height);
     if (offScreen) {
       throw new Error(
-        `row ${String(row)} step ${String(step + 1)} is outside the viewport — a stroke cannot reach it`,
+        `row ${String(row)} step ${String(step)} is outside the viewport — a stroke cannot reach it`,
       );
     }
-    boxes.push({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    points.push({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
   }
 
-  const first = boxes[0];
+  const first = points[0];
   if (first === undefined) return;
 
   await page.mouse.move(first.x, first.y);
   await page.mouse.down();
-  for (const point of boxes.slice(1)) {
-    // Two samples per cell, so the test also exercises "already inside, do not rewrite".
-    await page.mouse.move(point.x, point.y, { steps: 2 });
-    await page.mouse.move(point.x, point.y);
+
+  let at = first;
+  for (const target of points.slice(1)) {
+    await page.mouse.move(at.x, target.y, { steps: 10 });
+    await page.mouse.move(target.x, target.y, { steps: 10 });
+    at = target;
   }
+
   await page.mouse.up();
 }
 
@@ -483,6 +480,201 @@ test('a diagonal drag changes pitch class with every step', async ({ page }) => 
 
   // Drawing is local arithmetic and must cost nothing.
   expect(apl, `TryAPL requests: ${apl.join(', ')}`).toHaveLength(0);
+});
+
+/**
+ * A straight drag from one cell to another, with no staircase and no mercy.
+ *
+ * The shape of gesture that broke on the published site: a hand moving in one smooth line rather
+ * than stepping carefully from cell to cell. Densely sampled, so every cell the line passes
+ * through is genuinely visited — which is the whole point, since the bug lived in the cells a
+ * stroke clips on its way *out* of a column.
+ */
+async function dragStraight(
+  page: Page,
+  from: readonly [number, number],
+  to: readonly [number, number],
+): Promise<void> {
+  await cell(page, from[0], from[1]).scrollIntoViewIfNeeded();
+  const start = await cell(page, from[0], from[1]).boundingBox();
+  const end = await cell(page, to[0], to[1]).boundingBox();
+  if (start === null || end === null) throw new Error('a cell has no box');
+
+  await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, { steps: 40 });
+  await page.mouse.up();
+}
+
+test('a smooth diagonal keeps the note it was pressed on', async ({ page }) => {
+  /*
+   * The production failure, reproduced exactly.
+   *
+   * Drawn C to G in one smooth line, the published site returned C♯ D♯ F♯ G — every column a
+   * semitone or two sharp, *including the one under the press*, because a pointer leaving a column
+   * up-and-right clips the cells above the one it was aimed at. The pressed cell is the sharpest
+   * statement of it: whatever else a stroke does, the note you put your finger on has to stay.
+   */
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  await dragStraight(page, [0, 2], [7, 5]);
+
+  await expect(sounding(page, 2)).toHaveAccessibleName('Step 2, C4');
+
+  /*
+   * The column released on is *not* asserted to be the row released on, and that is the policy
+   * rather than a gap. Committing on entry means the last column is decided the moment the line
+   * crosses into it, so a smooth drag that keeps rising after it arrives leaves that column a row
+   * or two below the fingertip. The trade is deliberate: nothing already drawn moves under your
+   * hand. Aiming exactly is what the staircase tests below cover.
+   */
+  await expect(sounding(page, 5)).toHaveCount(1);
+});
+
+test('a smooth diagonal never doubles back on a column it has decided', async ({ page }) => {
+  /*
+   * Every column a stroke writes must hold a *rising* note, because the line only ever rises. The
+   * old rule let the exit path overwrite a column with a higher row than the one entered, which
+   * showed up as pitches that outran the line — 66 where the aim was 64.
+   */
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  await dragStraight(page, [0, 2], [7, 5]);
+
+  const drawn = await page.evaluate(() =>
+    [...document.querySelectorAll('[aria-pressed="true"]')]
+      .map((el) => ({
+        step: Number(el.getAttribute('data-step')),
+        row: Number(el.getAttribute('data-row')),
+      }))
+      .filter((n) => n.step >= 1 && n.step <= 4)
+      .sort((a, b) => a.step - b.step),
+  );
+
+  expect(drawn).toHaveLength(4);
+
+  /*
+   * The pressed column is the sharp end of this. On the published site it came back row 1 — the
+   * stroke overwrote the note under the press on its way out of the column — and that single
+   * assertion is what would have caught the bug at the time.
+   */
+  expect(drawn[0]?.row, 'the pressed column keeps the row it was pressed on').toBe(0);
+
+  for (let at = 0; at < drawn.length; at += 1) {
+    const current = drawn[at]?.row ?? -1;
+    expect(current, `step ${String(at + 2)} stays inside the line`).toBeGreaterThanOrEqual(0);
+    expect(current, `step ${String(at + 2)} does not outrun the line`).toBeLessThanOrEqual(7);
+    if (at > 0) {
+      expect(current, `step ${String(at + 2)} rises`).toBeGreaterThan(drawn[at - 1]?.row ?? -1);
+    }
+  }
+});
+
+test('a rising staircase writes exactly the notes it was aimed at', async ({ page }) => {
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  // C, E, G, B across steps 2 to 5 — every column entered at its own row.
+  await drawThrough(page, [
+    [0, 2],
+    [4, 3],
+    [7, 4],
+    [11, 5],
+  ]);
+
+  await expect(sounding(page, 2)).toHaveAccessibleName('Step 2, C4');
+  await expect(sounding(page, 3)).toHaveAccessibleName('Step 3, E4');
+  await expect(sounding(page, 4)).toHaveAccessibleName('Step 4, G4');
+  await expect(sounding(page, 5)).toHaveAccessibleName('Step 5, B4');
+});
+
+test('a falling staircase writes exactly the notes it was aimed at', async ({ page }) => {
+  // The same in the other direction, because the clipped cells are then *below* the aim.
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  await drawThrough(page, [
+    [11, 2],
+    [7, 3],
+    [4, 4],
+    [0, 5],
+  ]);
+
+  await expect(sounding(page, 2)).toHaveAccessibleName('Step 2, B4');
+  await expect(sounding(page, 3)).toHaveAccessibleName('Step 3, G4');
+  await expect(sounding(page, 4)).toHaveAccessibleName('Step 4, E4');
+  await expect(sounding(page, 5)).toHaveAccessibleName('Step 5, C4');
+});
+
+test('a diagonal across existing notes gives each column its own octave', async ({ page }) => {
+  /*
+   * Step 4 opens on D♯4 and steps 3 and 5 are rests. Drawn through on three different rows, the
+   * two rests take the octave the stroke began in and the note keeps its own — which is what lets
+   * a line be drawn over a phrase without transposing what was already there.
+   */
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+  await expect(sounding(page, 4)).toHaveAccessibleName('Step 4, D♯4');
+
+  await drawThrough(page, [
+    [0, 3],
+    [7, 4],
+    [11, 5],
+  ]);
+
+  await expect(sounding(page, 3)).toHaveAccessibleName('Step 3, C4');
+  await expect(sounding(page, 4)).toHaveAccessibleName('Step 4, G4');
+  await expect(sounding(page, 5)).toHaveAccessibleName('Step 5, B4');
+});
+
+test('a column decided early in a stroke is not changed by a later crossing', async ({ page }) => {
+  /*
+   * Out along one row and back along another. Every column was decided on the way out, so the
+   * return journey — which crosses all of them again at a different pitch — must change nothing.
+   * A note appears when you cross into its column and then stays put while you draw.
+   */
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  await drawThrough(page, [
+    [2, 2],
+    [2, 3],
+    [2, 4],
+    [9, 4],
+    [9, 3],
+    [9, 2],
+  ]);
+
+  for (const step of [2, 3, 4]) {
+    await expect(sounding(page, step), `step ${String(step)}`).toHaveAccessibleName(
+      `Step ${String(step)}, D4`,
+    );
+  }
+});
+
+test('one Undo restores a whole diagonal stroke', async ({ page }) => {
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  const undo = page.getByRole('button', { name: 'Undo' });
+  await expect(undo).toBeDisabled();
+  const before = await vectorOf(page);
+
+  await dragStraight(page, [0, 2], [11, 7]);
+  expect(await vectorOf(page)).not.toBe(before);
+
+  await undo.click();
+  expect(await vectorOf(page)).toBe(before);
+  await expect(undo).toBeDisabled();
 });
 
 test('a stroke stays in the octave it began in', async ({ page }) => {
