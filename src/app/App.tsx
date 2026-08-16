@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { cx } from '@/app/cx';
 import { useApl, type ExploreOrigin } from '@/apl/useApl';
 import type { ToneExploreOrigin } from '@/apl/useToneApl';
 import { useDrumMachine } from '@/audio/useDrumMachine';
@@ -484,7 +485,16 @@ export function App(): React.JSX.Element {
           <WorkspaceRail active={workspace} onSelect={setWorkspace} panelIds={workspaceIds} domain={domain} />
         </div>
 
-        <main className={styles.main}>
+        {/*
+          Beats keeps its card; Tones does not.
+
+          The drum grid is one of several things in this column — the grid, the track controls, the
+          mixer — and a card is what holds them together. The Tone matrix is the only thing here,
+          and a card around a single object is furniture: it made a sequencer look like a widget
+          sitting in a dashboard. So the panel treatment is Beats-only, and the matrix sits on the
+          page.
+        */}
+        <main className={cx(styles.main, domain === 'tones' && styles.mainOpen)}>
           {domain === 'beats' ? (
             <>
               <h2 className="visuallyHidden">Pattern</h2>

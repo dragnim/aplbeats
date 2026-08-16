@@ -10,7 +10,7 @@ import { expect, test, type Page } from '@playwright/test';
  * only the musical behaviour would let rot, so it is asserted here directly.
  *
  * The other half is what a Tone editor can break that a rhythm editor cannot: pitches. A step
- * has a *value*, so there is an editor row, arrow keys that move a note by a semitone, and a
+ * has a *value*, so there is a keyboard down the left, arrow keys that walk the grid, and a
  * vector readout that has to agree with all of it.
  *
  * What is not tested here is sound. Playwright cannot hear, and a test that asserted an
@@ -287,7 +287,13 @@ test('a rest becomes a note, and a note becomes a rest', async ({ page }) => {
   await expect(sounding(page, 2)).toHaveCount(0);
 });
 
-test('the editor row acts on the step you selected', async ({ page }) => {
+test('the strip below offers octaves, and only octaves', async ({ page }) => {
+  /*
+   * The one thing the grid cannot say. A click chooses a pitch *class*, so the octave has to come
+   * from somewhere else — while the semitone buttons the strip used to carry are what the grid is
+   * *for*: the row above is one semitone, and offering a button for it was admitting the grid did
+   * not work.
+   */
   await freshVisit(page);
   await layer(page, 'Tones').click();
 
@@ -297,7 +303,14 @@ test('the editor row acts on the step you selected', async ({ page }) => {
   await page.getByRole('button', { name: 'Step 2 up an octave' }).click();
   await expect(sounding(page, 2)).toHaveAccessibleName('Step 2, C5');
 
-  await page.getByRole('button', { name: 'Step 2 down a semitone' }).click();
+  await page.getByRole('button', { name: 'Step 2 down an octave' }).click();
+  await expect(sounding(page, 2)).toHaveAccessibleName('Step 2, C4');
+
+  // A semitone is a row, not a button.
+  await expect(page.getByRole('button', { name: /semitone/u })).toHaveCount(0);
+
+  // And the row below C is B, an actual semitone down, reached by clicking it.
+  await cell(page, 11, 2).click();
   await expect(sounding(page, 2)).toHaveAccessibleName('Step 2, B4');
 });
 

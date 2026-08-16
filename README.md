@@ -330,9 +330,17 @@ for, and they are the only place the octave is ever named.
 step, so at most one cell in a column can be lit — the monophonic sampler showing through the shape
 of the data. Trying to place a second note in a column teaches that in about a second.
 
-The editor row below the matrix is −12, −1, +1, +12 and Rest as buttons, because a touchscreen has
-no arrow keys and because the grid alone cannot say which octave. It acts on the selected step,
-which is named beside it, so "up an octave" is never an instruction without an object.
+Under the matrix is one strip: the step you have selected, an octave down, an octave up, and Rest.
+Octaves are all it offers, and the omission is the point — **a semitone is a row**, so the row above
+and the row below already are the semitone buttons, and keeping a pair of them under the grid was
+admitting the grid did not work. The strip acts on the selected step, which is named beside it, so
+"up an octave" is never an instruction without an object.
+
+**The grid is drawn as a sequencer rather than as a form.** An empty step is a small dot with no
+border and no fill; a note is a solid block; nothing sits between the two, so a phrase reads as a
+shape rather than as a wall of controls. Down the left, naturals are pale keys running to the front
+edge and sharps are dark keys held back from it — a keyboard seen side-on, which is what makes a row
+identifiable without reading its label.
 
 **Every change is heard**, whether the transport is running or not. A drum step you switch on is
 heard a fraction of a bar later anyway; a note moved from G to A♭ might not sound again for fifteen

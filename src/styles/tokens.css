@@ -99,6 +99,20 @@
   --cell-beat: #262b36;
   --cell-hover: #333944;
 
+  /*
+   * The Tone matrix's keyboard, down the left of the grid.
+   *
+   * A keyboard is white and black whatever room it is in, so unlike every other surface here
+   * these barely move between the themes. That is the point: the strip has to read as a physical
+   * object sitting on the interface rather than as one more panel painted in the interface's own
+   * colours, and a keyboard that went dark with the page would read as neither.
+   */
+  --key-natural: #e9e7e2;
+  --key-natural-ink: #14161a;
+  --key-sharp: #22252c;
+  --key-sharp-ink: #b8bfcb;
+  --key-edge: rgb(0 0 0 / 45%);
+
   /* Text */
   --text: #eceef2; /* 15.4:1 on --surface */
   --text-muted: #a2a9b8; /* 7.8:1 on --surface */
@@ -156,6 +170,20 @@
     --cell-beat: #d0d5df;
     --cell-hover: #bcc3d0;
 
+    /*
+     * The Tone matrix's keyboard, down the left of the grid.
+     *
+     * A keyboard is white and black whatever room it is in, so unlike every other surface here
+     * these barely move between the themes. That is the point: the strip has to read as a physical
+     * object sitting on the interface rather than as one more panel painted in the interface's own
+     * colours, and a keyboard that went dark with the page would read as neither.
+     */
+    --key-natural: #fbfaf8;
+    --key-natural-ink: #14161a;
+    --key-sharp: #1c1f26;
+    --key-sharp-ink: #cfd4dd;
+    --key-edge: rgb(0 0 0 / 22%);
+
     --text: #14161a; /* 16.6:1 on --surface */
     --text-muted: #4d5462; /* 8.1:1 on --surface */
     --text-dim: #656c7a; /* 5.7:1 on --surface */
@@ -203,6 +231,20 @@
   --cell: #e4e7ed;
   --cell-beat: #d0d5df;
   --cell-hover: #bcc3d0;
+
+  /*
+   * The Tone matrix's keyboard, down the left of the grid.
+   *
+   * A keyboard is white and black whatever room it is in, so unlike every other surface here
+   * these barely move between the themes. That is the point: the strip has to read as a physical
+   * object sitting on the interface rather than as one more panel painted in the interface's own
+   * colours, and a keyboard that went dark with the page would read as neither.
+   */
+  --key-natural: #fbfaf8;
+  --key-natural-ink: #14161a;
+  --key-sharp: #1c1f26;
+  --key-sharp-ink: #cfd4dd;
+  --key-edge: rgb(0 0 0 / 22%);
 
   --text: #14161a;
   --text-muted: #4d5462;

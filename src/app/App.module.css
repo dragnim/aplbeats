@@ -131,6 +131,24 @@
 }
 
 /*
+ * Tones, without the card.
+ *
+ * Beats fills this column with several things — the grid, the track controls, the mixer — and the
+ * panel is what holds them together. Tones has one object in it, and a card drawn around a single
+ * object is furniture: it framed a sequencer as a widget parked in a dashboard, which is exactly
+ * the wrong first impression for the only part of this application you play.
+ *
+ * The surface stays, though, because the sticky keyboard is painted on it and has to match
+ * whatever is behind the grid. Losing the border and most of the padding is enough — the matrix
+ * then reads as sitting on the page rather than inside something.
+ */
+.mainOpen {
+  padding: var(--space-2) 0 0;
+  background: none;
+  box-shadow: none;
+}
+
+/*
  * The APL column.
  *
  * Its own scroll container, so a long Peek or a tall editor scrolls inside the panel instead of

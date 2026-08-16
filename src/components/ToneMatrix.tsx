@@ -4,10 +4,10 @@ import {
   cellToggle,
   DEFAULT_WORKING_PITCH,
   MATRIX_ROWS,
-  pitchForRow,
   octaveOf,
   phraseToMatrix,
   pitchClassOf,
+  pitchForRow,
   ROW_IS_BLACK,
   ROW_NAMES,
 } from '@/tones/matrix';
@@ -25,11 +25,9 @@ import styles from './ToneMatrix.module.css';
 /*
  * The Tone phrase, as twelve rows by sixteen columns.
  *
- * This replaces a strip of sixteen pads that printed note names and drew pitch as the height of a
- * fill. That worked and had two faults nothing would have designed away: thirty-seven semitones
- * across forty pixels means a semitone is one pixel, so nobody ever read the shape of a phrase
- * from it; and putting a G on step 6 meant selecting step 6 and pressing Up until the label said
- * G. Every other sequencer lets you point at where the note goes.
+ * Replaced a strip of sixteen pads that drew pitch as the height of a fill: thirty-seven semitones
+ * across forty pixels is one pixel a semitone, so nobody read the shape of a phrase from it, and
+ * putting a G on step 6 meant pressing Up until the label said G.
  *
  * **The rows are pitch classes.** C at the bottom, B at the top, and C3, C4, C5 and C6 all light
  * the same row with a different octave badge. That is what lets twelve rows hold a three-octave
@@ -46,10 +44,20 @@ import styles from './ToneMatrix.module.css';
  * there, in one gesture and one Undo entry, rather than refusing or stacking. Somebody who tries
  * to place two notes in one column learns what monophonic means without reading a word.
  *
- * **Arrow keys move; Space edits.** That reverses the strip, where Up and Down changed the pitch.
- * In a grid the arrows are how you get about — one hundred and ninety-two cells and one tab stop,
- * exactly as the drum grid does it — and the editor row below still offers the semitone arithmetic
- * to anybody who preferred it.
+ * **Arrow keys move; Space edits.** In a grid the arrows are how you get about — a hundred and
+ * ninety-two cells and one tab stop, exactly as the drum grid does it. Page Up and Page Down move
+ * the note an octave, which is the one thing a click cannot say.
+ *
+ * ---
+ *
+ * On the look, because the first build got it wrong in an instructive way. It drew a hundred and
+ * ninety-two bordered, filled, rounded buttons and called it a sequencer; what it actually looked
+ * like was a dashboard widget. A hardware step sequencer does the opposite — **the empty steps are
+ * nearly nothing**, small marks on open ground, and the notes are the only things with weight. So
+ * an empty cell here is a 5px square with no border and no background, a note is a solid block,
+ * and the ratio between them is doing all the work. The cells themselves are transparent and flush
+ * against each other, which is also what lets the playhead be a clean vertical band rather than
+ * sixteen outlined boxes.
  */
 
 const STEPS = Array.from({ length: PHRASE_LENGTH }, (_, step) => step);
@@ -77,10 +85,10 @@ export function ToneMatrix({
   onPreview,
 }: ToneMatrixProps): React.JSX.Element {
   /*
-   * Which cell the keyboard is on, and which column the editor row acts on.
+   * Which cell the keyboard is on, and which column the strip below acts on.
    *
-   * The column is the part that persists in the interface below; the row only decides where the
-   * next Space lands. Both start where the eye does: the first step, middle of the grid.
+   * The column is the part that shows in the interface; the row only decides where the next Space
+   * lands. Both start where the eye does: the first step, middle of the grid.
    */
   const [focus, setFocus] = useState({ row: pitchClassOf(DEFAULT_WORKING_PITCH), step: 0 });
 
@@ -95,8 +103,6 @@ export function ToneMatrix({
   const [workingPitch, setWorkingPitch] = useState(DEFAULT_WORKING_PITCH);
 
   const cells = useRef<(HTMLButtonElement | null)[]>([]);
-  const at = (row: number, step: number): number => row * PHRASE_LENGTH + step;
-
   const matrix = phraseToMatrix(phrase);
 
   const focusCell = useCallback((row: number, step: number) => {
@@ -128,12 +134,13 @@ export function ToneMatrix({
   );
 
   /**
-   * Move the note in a column by an interval, as the editor row does.
+   * Move the note in a column by an octave.
    *
-   * A rest nudged upward becomes a note rather than doing nothing, which is how somebody who has
-   * read none of this discovers that a rest can become a note.
+   * The one thing a click cannot say, so it is the one interval with its own control. A rest
+   * nudged upward becomes a note rather than doing nothing, which is how somebody who has read
+   * none of this discovers that a rest can become a note.
    */
-  const nudge = useCallback(
+  const shiftOctave = useCallback(
     (step: number, semitones: number) => {
       const current = phrase[step] ?? REST;
       const from = current === REST ? workingPitch - semitones : current;
@@ -147,9 +154,9 @@ export function ToneMatrix({
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, row: number, step: number): void => {
     /*
-     * One gesture per key *sequence*, not per key event, exactly as the strip had it: holding
-     * Page Up to climb three octaves banks one history entry, and pressing it three times banks
-     * three. That is what somebody means by "one change".
+     * One gesture per key *sequence*, not per key event: holding Page Up to climb three octaves
+     * banks one history entry, and pressing it three times banks three. That is what somebody
+     * means by "one change".
      */
     const beginsGesture = !event.repeat;
 
@@ -173,12 +180,12 @@ export function ToneMatrix({
       case 'PageUp':
         event.preventDefault();
         if (beginsGesture) onEditGesture();
-        nudge(step, 12);
+        shiftOctave(step, 12);
         return;
       case 'PageDown':
         event.preventDefault();
         if (beginsGesture) onEditGesture();
-        nudge(step, -12);
+        shiftOctave(step, -12);
         return;
       case 'Backspace':
       case 'Delete':
@@ -208,159 +215,184 @@ export function ToneMatrix({
         The grid scrolls sideways rather than shrinking, exactly as the drum grid does.
 
         Sixteen columns sharing whatever width a phone has is 21px each, under the 24px WCAG 2.2
-        target floor and small enough that a thumb hits the wrong step. A cell that keeps its size
-        and a grid that scrolls is the trade the sequencer already made, and making the same one
-        here means the two layers behave the same way under a finger.
+        target floor and small enough that a thumb hits the wrong step. A column that keeps its
+        size and a grid that scrolls is the trade the sequencer already made, and making the same
+        one here means the two layers behave the same way under a finger.
       */}
       <div className={styles.scroller}>
-        <div className={cx(styles.grid, 'noSelect')} role="group" aria-label="Tone steps">
-          {ROWS.map((row) => (
-            <div key={row} className={styles.row} role="group" aria-label={`${ROW_NAMES[row] ?? ''} steps`}>
-              <span
-                aria-hidden="true"
-                className={cx(styles.rowLabel, ROW_IS_BLACK[row] === true && styles.black)}
-              >
-                {ROW_NAMES[row]}
-              </span>
-              {STEPS.map((step) => {
-                const lit = matrix[row]?.[step] === true;
-                const value = phrase[step] ?? REST;
+        <div className={cx(styles.grid, 'noSelect')}>
+          {/*
+            The ruler, above the grid rather than below it.
 
-                return (
-                  <button
-                    key={step}
-                    ref={(node) => {
-                      cells.current[at(row, step)] = node;
-                    }}
-                    type="button"
-                    className={cx(
-                      styles.cell,
-                      ROW_IS_BLACK[row] === true && styles.blackRow,
-                      lit && styles.lit,
-                      step % STEPS_PER_BEAT === 0 && styles.beatStart,
-                      step === playheadStep && styles.underPlayhead,
-                      step === playheadStep && isPlaying && styles.playing,
-                    )}
-                    /*
-                     * "Step 6, G" until something sounds there, then "Step 6, G4".
-                     *
-                     * The octave is not a property of the row — it belongs to the note — so an
-                     * empty cell has no octave to announce and inventing one would be a lie about
-                     * where a press would land. Arrowing up a column reads as the twelve names,
-                     * and the one that sounds says which G it is.
-                     */
-                    aria-label={
-                      lit
-                        ? `Step ${String(step + 1)}, ${stepLabel(value)}`
-                        : `Step ${String(step + 1)}, ${ROW_NAMES[row] ?? ''}`
-                    }
-                    aria-pressed={lit}
-                    tabIndex={row === focus.row && step === focus.step ? 0 : -1}
-                    data-row={row}
-                    data-step={step}
-                    onKeyDown={(event) => {
-                      onKeyDown(event, row, step);
-                    }}
-                    onClick={() => {
-                      setFocus({ row, step });
-                      toggle(row, step);
-                    }}
-                  >
-                    {lit && (
-                      <span aria-hidden="true" className={styles.octave}>
-                        {octaveOf(value)}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-
-          <div className={styles.stepNumbers} aria-hidden="true">
-            <span className={styles.rowLabel} />
+            Where a sequencer puts it, and it frees the space under the grid for the one control
+            strip. The beats are the numbers that are lit; the rest are there to be counted from.
+          */}
+          <div className={styles.ruler} aria-hidden="true">
+            <span className={styles.keySpacer} />
             {STEPS.map((step) => (
               <span
                 key={step}
-                className={cx(styles.stepNumber, step % STEPS_PER_BEAT === 0 && styles.beatNumber)}
+                className={cx(
+                  styles.tick,
+                  step % STEPS_PER_BEAT === 0 && styles.tickBeat,
+                  step === selected && styles.tickSelected,
+                  step === playheadStep && isPlaying && styles.tickPlaying,
+                )}
               >
-                {step + 1}
+                {step % STEPS_PER_BEAT === 0 ? String(step / STEPS_PER_BEAT + 1) : '·'}
               </span>
             ))}
+          </div>
+
+          <div className={styles.rows} role="group" aria-label="Tone steps">
+            {ROWS.map((row) => {
+              const isSharp = ROW_IS_BLACK[row] === true;
+
+              return (
+                <div
+                  key={row}
+                  className={styles.row}
+                  role="group"
+                  aria-label={`${ROW_NAMES[row] ?? ''} steps`}
+                >
+                  {/*
+                    A key, not a caption.
+
+                    The single change that does most to make this read as an instrument: naturals
+                    are pale keys running the full width, sharps are dark keys held back from the
+                    front edge, and with no gaps between the rows they meet to form a keyboard seen
+                    side-on. Sticky, because the grid scrolls and a row nobody can name is a row
+                    nobody can use.
+                  */}
+                  <span
+                    aria-hidden="true"
+                    className={cx(styles.key, isSharp ? styles.keySharp : styles.keyNatural)}
+                  >
+                    {ROW_NAMES[row]}
+                  </span>
+
+                  {STEPS.map((step) => {
+                    const lit = matrix[row]?.[step] === true;
+                    const value = phrase[step] ?? REST;
+
+                    return (
+                      <button
+                        key={step}
+                        ref={(node) => {
+                          cells.current[row * PHRASE_LENGTH + step] = node;
+                        }}
+                        type="button"
+                        className={cx(
+                          styles.cell,
+                          isSharp && styles.cellSharp,
+                          lit && styles.lit,
+                          step % STEPS_PER_BEAT === 0 && styles.beatStart,
+                          step === playheadStep && styles.underPlayhead,
+                          step === playheadStep && isPlaying && styles.playing,
+                        )}
+                        /*
+                         * "Step 6, G" until something sounds there, then "Step 6, G4".
+                         *
+                         * The octave is not a property of the row — it belongs to the note — so an
+                         * empty cell has no octave to announce, and inventing one would be a lie
+                         * about where a press would land.
+                         */
+                        aria-label={
+                          lit
+                            ? `Step ${String(step + 1)}, ${stepLabel(value)}`
+                            : `Step ${String(step + 1)}, ${ROW_NAMES[row] ?? ''}`
+                        }
+                        aria-pressed={lit}
+                        tabIndex={row === focus.row && step === focus.step ? 0 : -1}
+                        data-row={row}
+                        data-step={step}
+                        onKeyDown={(event) => {
+                          onKeyDown(event, row, step);
+                        }}
+                        onClick={() => {
+                          setFocus({ row, step });
+                          toggle(row, step);
+                        }}
+                      >
+                        {/*
+                          Two marks, and the whole visual argument is the difference between them.
+                          An empty step is a dot with no border and no fill — barely there, and
+                          only there so the eye can count. A note is a solid block carrying its
+                          octave. Nothing in between, so a phrase reads at a glance.
+                        */}
+                        {lit ? (
+                          <span aria-hidden="true" className={styles.note}>
+                            {octaveOf(value)}
+                          </span>
+                        ) : (
+                          <span aria-hidden="true" className={styles.dot} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
 
       {/*
-        The same intervals as the keyboard, as buttons.
+        One strip, for the one thing the grid cannot say.
 
-        Not a fallback but the primary way on a touch screen, where there are no arrow keys at all
-        — and the one thing the grid alone cannot offer, since a cell says which class you meant
-        and never which octave. It acts on the selected step, named in the heading above it so
-        that "up an octave" is never an instruction without an object.
+        A click chooses a pitch class; it can never choose an octave, so that is what is left here
+        — and nothing else is. The old row carried −12, −1, +1, +12 and Rest, which made the grid
+        look like a picture of an editor that lived underneath it. Semitones are what the grid is
+        *for*: the row above or the row below is one semitone, and offering a button for it was
+        admitting the grid did not work.
       */}
-      <div className={styles.editor}>
+      <div className={styles.strip}>
         <p className={styles.selection}>
-          <span className={styles.selectionLabel}>Step {selected + 1}</span>
-          <span className={styles.selectionValue}>{stepLabel(selectedValue)}</span>
+          <span className={styles.selectionStep}>Step {String(selected + 1).padStart(2, '0')}</span>
+          <span className={cx(styles.selectionNote, selectedValue === REST && styles.selectionRest)}>
+            {stepLabel(selectedValue)}
+          </span>
         </p>
 
-        <div className={styles.buttons}>
+        <div className={styles.actions}>
           <button
             type="button"
-            className={styles.button}
+            className={styles.action}
             onClick={() => {
               onEditGesture();
-              nudge(selected, -12);
+              shiftOctave(selected, -12);
             }}
             aria-label={`Step ${String(selected + 1)} down an octave`}
             disabled={selectedValue !== REST && selectedValue - 12 < TONE_MIN_MIDI}
           >
-            −12
+            <span aria-hidden="true" className={styles.actionGlyph}>
+              ▾
+            </span>
+            <span aria-hidden="true">8ve</span>
           </button>
+
           <button
             type="button"
-            className={styles.button}
+            className={styles.action}
             onClick={() => {
               onEditGesture();
-              nudge(selected, -1);
-            }}
-            aria-label={`Step ${String(selected + 1)} down a semitone`}
-            disabled={selectedValue !== REST && selectedValue - 1 < TONE_MIN_MIDI}
-          >
-            −1
-          </button>
-          <button
-            type="button"
-            className={styles.button}
-            onClick={() => {
-              onEditGesture();
-              nudge(selected, 1);
-            }}
-            aria-label={`Step ${String(selected + 1)} up a semitone`}
-            disabled={selectedValue !== REST && selectedValue + 1 > TONE_MAX_MIDI}
-          >
-            +1
-          </button>
-          <button
-            type="button"
-            className={styles.button}
-            onClick={() => {
-              onEditGesture();
-              nudge(selected, 12);
+              shiftOctave(selected, 12);
             }}
             aria-label={`Step ${String(selected + 1)} up an octave`}
             disabled={selectedValue !== REST && selectedValue + 12 > TONE_MAX_MIDI}
           >
-            +12
+            <span aria-hidden="true" className={styles.actionGlyph}>
+              ▴
+            </span>
+            <span aria-hidden="true">8ve</span>
           </button>
+
           <button
             type="button"
-            className={cx(styles.button, styles.rest)}
+            className={cx(styles.action, styles.actionRest)}
             onClick={() => {
               onEditGesture();
-              const next = selectedValue === REST ? pitchForRow(focus.row, workingPitch) : REST;
-              change(selected, next);
+              change(selected, selectedValue === REST ? pitchForRow(focus.row, workingPitch) : REST);
             }}
             aria-label={
               selectedValue === REST
