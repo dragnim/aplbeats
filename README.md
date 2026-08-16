@@ -321,6 +321,18 @@ is why MIDI 84 needed no thirteenth row.
 | **Page Up** / **Page Down**       | the note up or down an octave                     |
 | **Backspace**, **Delete**, **0**  | makes the column a rest                           |
 
+**Notes can be drawn.** Hold the pointer down and the phrase follows the path: sweep across the bar,
+move up and down inside a column, reverse, scribble back over what you have already drawn — every
+column keeps answering for as long as the button is held, and the whole stroke is a single Undo.
+Beginning on a note erases instead, clearing the steps the stroke crosses.
+
+The path is _rasterised_ rather than sampled. For each column a movement spans, the note is the
+height of the **line** where it passes that column, and the column under the pointer follows the
+hand until it leaves. Both halves of that are scar tissue. Painting whichever cell each raw pointer
+event happened to land on made smooth diagonals come back a semitone or two sharp; the first attempt
+to fix it claimed each column the moment the stroke entered it, which cured the diagonals and made
+the gesture go dead under a hand sweeping back across its own line.
+
 A click says which pitch _class_ you meant and nothing about which octave, so the note lands in the
 octave you were last in — and clicking a row above the note you were on always sounds above it,
 which nearest-pitch would not. Crossing an octave is what **Page Up** and the **±12** buttons are

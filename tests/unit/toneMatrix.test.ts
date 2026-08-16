@@ -3,8 +3,12 @@ import {
   cellToggle,
   DEFAULT_WORKING_PITCH,
   MATRIX_ROWS,
+  columnAt,
   paintValue,
   pitchForRow,
+  rasteriseSegment,
+  rowAt,
+  strokeStep,
   octaveOf,
   phraseToMatrix,
   pitchClassOf,
@@ -370,5 +374,162 @@ describe('painting a stroke', () => {
     const once = paintValue(phrase, 5, 9, 60);
     phrase = setStep(phrase, 9, once);
     expect(paintValue(phrase, 5, 9, 60)).toBe(once);
+  });
+});
+
+describe('rasterising a pointer stroke', () => {
+  /*
+   * A pencil over a quantised piano roll.
+   *
+   * The geometry is deliberately out here rather than inside the component, because this is where
+   * the two failures both lived. Painting the cell under each raw pointer sample made smooth
+   * diagonals land a semitone or two sharp; claiming each column on first entry fixed that and made
+   * the gesture go dead under a hand that swept back over its own line. Neither is a matter of
+   * opinion once the question is asked geometrically: where was the line when it was over this
+   * column?
+   */
+
+  /** A grid whose numbers are easy to reason about: 40px columns, 20px rows, C along the bottom. */
+  const grid = { leftEdge: 100, columnWidth: 40, bottomEdge: 500, rowHeight: 20 };
+
+  /** The centre of a cell, in pointer coordinates. */
+  const at = (row: number, step: number) => ({
+    x: grid.leftEdge + (step + 0.5) * grid.columnWidth,
+    y: grid.bottomEdge - (row + 0.5) * grid.rowHeight,
+  });
+
+  it('finds the column and row a point falls in', () => {
+    expect(columnAt(at(0, 0).x, grid)).toBe(0);
+    expect(columnAt(at(0, 15).x, grid)).toBe(15);
+    expect(rowAt(at(0, 0).y, grid)).toBe(0);
+    expect(rowAt(at(11, 0).y, grid)).toBe(11);
+  });
+
+  it('clamps rather than running off the end of the bar or the instrument', () => {
+    // A hand that leaves the grid keeps drawing at the edge, which is what a piano roll does.
+    expect(columnAt(-1000, grid)).toBe(0);
+    expect(columnAt(100_000, grid)).toBe(15);
+    expect(rowAt(100_000, grid)).toBe(0);
+    expect(rowAt(-100_000, grid)).toBe(11);
+  });
+
+  it('resolves a horizontal sweep to one mark per column, all on the same row', () => {
+    const marks = rasteriseSegment(at(4, 1), at(4, 5), grid);
+    expect(marks.map((m) => m.step)).toEqual([1, 2, 3, 4, 5]);
+    expect(marks.every((m) => m.row === 4)).toBe(true);
+  });
+
+  it('resolves a diagonal to the row the line is at over each column centre', () => {
+    /*
+     * The original production failure, as arithmetic. From the centre of C at step 1 to the centre
+     * of G at step 4 the line rises seven rows over three columns, so at the centres of steps 2 and
+     * 3 it stands 7/3 and 14/3 rows above where it began — and it began half a row up, at the
+     * centre of row 0. So 0.5 + 2.33 lands in row 2 and 0.5 + 4.67 lands in row 5.
+     *
+     * That half-row is worth spelling out because the first version of this test forgot it and
+     * asserted row 4. What matters is not the exact staircase but that every mark is the height of
+     * the *line* over that column, never the height the pointer happened to be at when it left.
+     */
+    const marks = rasteriseSegment(at(0, 1), at(7, 4), grid);
+    expect(marks).toEqual([
+      { step: 1, row: 0 },
+      { step: 2, row: 2 },
+      { step: 3, row: 5 },
+      { step: 4, row: 7 },
+    ]);
+  });
+
+  it('keeps the column under the pointer live while the hand moves vertically', () => {
+    /*
+     * The failure the column-claiming version had. A purely vertical movement spans one column, and
+     * that column has to answer with where the hand is *now* — otherwise a stroke stops responding
+     * the moment it has visited somewhere.
+     */
+    const up = rasteriseSegment(at(2, 6), at(9, 6), grid);
+    expect(up).toEqual([{ step: 6, row: 9 }]);
+
+    const down = rasteriseSegment(at(9, 6), at(1, 6), grid);
+    expect(down).toEqual([{ step: 6, row: 1 }]);
+  });
+
+  it('answers again for a column the stroke has already crossed', () => {
+    // Out and back. Nothing is remembered, so the return journey resolves exactly as the first did.
+    const out = rasteriseSegment(at(3, 2), at(3, 5), grid);
+    const back = rasteriseSegment(at(8, 5), at(8, 2), grid);
+    expect(out.map((m) => m.step)).toEqual([2, 3, 4, 5]);
+    expect(back.map((m) => m.step)).toEqual([5, 4, 3, 2]);
+    expect(back.every((m) => m.row === 8)).toBe(true);
+  });
+
+  it('runs in the direction of travel, so previews sound in the order they were drawn', () => {
+    expect(rasteriseSegment(at(0, 1), at(0, 4), grid).map((m) => m.step)).toEqual([1, 2, 3, 4]);
+    expect(rasteriseSegment(at(0, 4), at(0, 1), grid).map((m) => m.step)).toEqual([4, 3, 2, 1]);
+  });
+
+  it('keeps the shape of the line however finely the movement was sampled', () => {
+    /*
+     * Not "identical to one long segment", and the difference is the point.
+     *
+     * A finely sampled path reports the hand *inside* a column as well as crossing it, and the
+     * column under the hand is supposed to follow — that is the whole of staying live. So a dense
+     * path can leave a column a row further along than a single segment would, because the hand
+     * really did move there before leaving.
+     *
+     * What must hold either way is the shape: a line that only rises produces marks that only
+     * rise, every column is written once, and nothing overshoots the ends of the stroke.
+     */
+    const from = at(0, 1);
+    const to = at(11, 9);
+
+    const dense = new Map<number, number>();
+    let previous = from;
+    for (let sample = 1; sample <= 40; sample += 1) {
+      const point = {
+        x: from.x + ((to.x - from.x) * sample) / 40,
+        y: from.y + ((to.y - from.y) * sample) / 40,
+      };
+      for (const mark of rasteriseSegment(previous, point, grid)) dense.set(mark.step, mark.row);
+      previous = point;
+    }
+
+    const drawn = [...dense.entries()].sort((a, b) => a[0] - b[0]);
+    expect(drawn.map(([step]) => step)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    for (const [step, row] of drawn) {
+      expect(row, `step ${String(step)} is inside the stroke`).toBeGreaterThanOrEqual(0);
+      expect(row, `step ${String(step)} does not overshoot`).toBeLessThanOrEqual(11);
+    }
+    for (let index = 1; index < drawn.length; index += 1) {
+      expect(drawn[index]?.[1] ?? -1, 'the line only rises').toBeGreaterThanOrEqual(
+        drawn[index - 1]?.[1] ?? -1,
+      );
+    }
+    // The hand finishes on B at step 9, and that is where the last mark has to be.
+    expect(dense.get(9)).toBe(11);
+  });
+});
+
+describe('what a stroke does to one column', () => {
+  it('says nothing to do when the answer is the note already there', () => {
+    // The whole of the no-duplicate-preview rule: a hand held still resolves to null.
+    expect(strokeStep(67, 7, 60, 'draw')).toBeNull();
+    expect(strokeStep(REST, 0, 60, 'erase')).toBeNull();
+  });
+
+  it('places from the anchor in an empty column, and from the note in a full one', () => {
+    expect(strokeStep(REST, 7, 60, 'draw')).toBe(67);
+    // C6 moved to the B row keeps its own octave rather than taking the anchor's.
+    expect(strokeStep(84, 11, 60, 'draw')).toBe(83);
+  });
+
+  it('erases a column that sounds, whatever row the stroke crossed it at', () => {
+    expect(strokeStep(63, 0, 60, 'erase')).toBe(REST);
+    expect(strokeStep(63, 9, 60, 'erase')).toBe(REST);
+  });
+
+  it('can be applied over and over without drifting', () => {
+    // A stroke revisits columns freely, so the same question asked twice must answer the same way.
+    const once = strokeStep(REST, 5, 60, 'draw');
+    expect(once).toBe(65);
+    expect(strokeStep(once ?? REST, 5, 60, 'draw')).toBeNull();
   });
 });

@@ -4,11 +4,14 @@ import {
   cellToggle,
   DEFAULT_WORKING_PITCH,
   MATRIX_ROWS,
+  type GridGeometry,
   octaveOf,
   phraseToMatrix,
   pitchClassOf,
-  paintValue,
   pitchForRow,
+  rasteriseSegment,
+  strokeStep,
+  type StrokeMode,
   ROW_IS_BLACK,
   ROW_NAMES,
 } from '@/tones/matrix';
@@ -224,62 +227,66 @@ export function ToneMatrix({
    * The open stroke, or nothing.
    *
    * A ref rather than state: nothing on screen looks different because a stroke is open, and a
-   * re-render per pointer sample would be a re-render for nothing. It carries three things —
+   * re-render per pointer sample would be a re-render for nothing. It carries four things —
    *
    *   `mode`    decided once, at pointer-down, from what was under it. Starting on a note erases;
    *             starting on empty ground draws. Deciding it per cell instead would make a stroke
    *             flicker between drawing and rubbing out as it crossed its own line.
    *   `anchor`  the octave every empty column in this stroke lands in, frozen at pointer-down so a
    *             line drawn across the grid cannot wander octaves.
-   *   `written` the columns this stroke has already decided. One write each, first row reached
-   *             wins, and every later crossing of that column is ignored.
+   *   `from`    where the pointer was last seen, so each movement can be rasterised as a segment.
+   *   `pending` what this stroke has written so far. React state has not caught up within a burst
+   *             of pointer samples, and a column has to be resolved against what the stroke last
+   *             put there rather than against what was there when the hand went down.
    *
-   * That last rule is the whole of the diagonal fix, and it was a real bug on the published site.
-   * Letting the newest crossing win sounds obvious and is wrong, because a pointer leaving a
-   * column on the way up-and-right clips the cells *above* the one it was aimed at on the way out.
-   * A smooth diagonal drawn from C to G came back C♯ D♯ F♯ G — every column a semitone or two
-   * sharp, and even the cell that was pressed did not keep the note it was pressed on.
-   *
-   * Committing on entry also makes the gesture honest: a note appears the instant you cross into
-   * its column and never moves again while you draw. Nothing you have already placed changes under
-   * your hand.
+   * **Nothing here is ever claimed or finished.** A previous version marked each column decided on
+   * first entry. That did fix a diagonal fault, and it made the gesture progressively dead: sweep
+   * back across your own line and the matrix stopped answering, because every column had been used
+   * up. A drawing gesture has to stay live for as long as the button is held. The diagonals are
+   * solved by `rasteriseSegment` instead — geometry rather than bookkeeping.
    */
-  const stroke = useRef<{ mode: 'draw' | 'erase'; anchor: number; written: Set<number> } | null>(null);
+  const stroke = useRef<{
+    mode: StrokeMode;
+    anchor: number;
+    from: { x: number; y: number };
+    pending: Map<number, number>;
+  } | null>(null);
 
-  /** Which cell is under a point, by hit test — the only thing that survives a fast drag. */
-  const cellUnder = (clientX: number, clientY: number): { row: number; step: number } | null => {
-    const under = document.elementFromPoint(clientX, clientY);
-    const button = under?.closest<HTMLElement>('[data-row][data-step]');
-    if (button === null || button === undefined) return null;
-    const row = Number(button.dataset['row']);
-    const step = Number(button.dataset['step']);
-    return Number.isInteger(row) && Number.isInteger(step) ? { row, step } : null;
+  /**
+   * Where the grid is, right now.
+   *
+   * Measured per movement rather than cached at pointer-down, because the bar scrolls sideways and
+   * a stroke measured against where the grid used to be would paint the wrong columns. One rect is
+   * enough: the grid is uniform, with no gaps and one size for every cell.
+   */
+  const readGeometry = (): GridGeometry | null => {
+    const bottomLeft = cells.current[0]?.getBoundingClientRect();
+    if (bottomLeft === undefined || bottomLeft.width === 0) return null;
+    return {
+      leftEdge: bottomLeft.left,
+      columnWidth: bottomLeft.width,
+      bottomEdge: bottomLeft.bottom,
+      rowHeight: bottomLeft.height,
+    };
   };
 
   /**
-   * Decide one column, once.
+   * Resolve one column against the stroke, and write it only if it changed.
    *
-   * The column is claimed before anything is written, so a pointer sitting still inside a cell
-   * cannot rewrite it, a hand wobbling back across a boundary cannot re-trigger its preview, and —
-   * the reason this exists — the cells clipped on the way *out* of a column cannot overwrite the
-   * note the stroke entered it with.
+   * The entire guard is "did the answer change". There is no record of where the stroke has been,
+   * which is what lets a column be revisited as often as the hand likes while a note that is
+   * already right is never rewritten and never previewed twice.
    */
-  const paintCell = useCallback(
+  const paintColumn = useCallback(
     (row: number, step: number) => {
       const open = stroke.current;
-      if (open === null || open.written.has(step)) return;
-      open.written.add(step);
+      if (open === null) return;
 
-      const current = phrase[step] ?? REST;
+      const current = open.pending.get(step) ?? phrase[step] ?? REST;
+      const next = strokeStep(current, row, open.anchor, open.mode);
+      if (next === null) return;
 
-      if (open.mode === 'erase') {
-        if (current === REST) return;
-        change(step, REST);
-        return;
-      }
-
-      const next = paintValue(phrase, row, step, open.anchor);
-      if (next === current) return;
+      open.pending.set(step, next);
       change(step, next);
     },
     [phrase, change],
@@ -295,9 +302,10 @@ export function ToneMatrix({
     /*
      * Captured on the cell the stroke began in.
      *
-     * Everything after this is hit-tested from the coordinates, so capture is not about *where*
-     * the events go — it is about still receiving them when the pointer outruns the layout, leaves
-     * the grid, or is a finger, which the browser would otherwise implicitly capture anyway.
+     * Everything after this is resolved from the coordinates against the grid's own geometry, so
+     * capture is not about *where* the events go — it is about still receiving them when the
+     * pointer outruns the layout, leaves the grid, or is a finger, which the browser would
+     * otherwise implicitly capture anyway.
      */
     /*
      * Capture if the browser will give it, and carry on if it will not.
@@ -311,7 +319,7 @@ export function ToneMatrix({
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
     } catch {
-      // No capture available. The hit test does not need it; a fast stroke is merely coarser.
+      // No capture available. The geometry does not need it; a fast stroke is merely coarser.
     }
     /*
      * Refused: the text selection and the native drag that a press would otherwise start.
@@ -332,30 +340,41 @@ export function ToneMatrix({
     stroke.current = {
       mode: current !== REST && pitchClassOf(current) === row ? 'erase' : 'draw',
       anchor: workingPitch,
-      written: new Set<number>(),
+      from: { x: event.clientX, y: event.clientY },
+      pending: new Map<number, number>(),
     };
-    paintCell(row, step);
+    paintColumn(row, step);
   };
 
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>): void => {
     if (stroke.current === null) return;
     event.preventDefault();
 
+    const open = stroke.current;
+    if (open === null) return;
+
+    const grid = readGeometry();
+    if (grid === null) return;
+
     /*
      * Every point the browser coalesced, not just the last one.
      *
-     * A quick stroke can cross three columns between two delivered events, and hit-testing only
-     * where the pointer ended up would leave holes in the line. `getCoalescedEvents` hands back
-     * the samples the browser took on the way.
+     * A quick stroke can cross three columns between two delivered events, and each of those is a
+     * segment of the line the hand drew. `getCoalescedEvents` hands back the samples the browser
+     * took on the way, so the rasterised path is the path, not a summary of it.
      */
-    const samples =
+    const coalesced =
       typeof event.nativeEvent.getCoalescedEvents === 'function'
         ? event.nativeEvent.getCoalescedEvents()
-        : [event.nativeEvent];
+        : [];
+    const samples = coalesced.length > 0 ? coalesced : [event.nativeEvent];
 
-    for (const sample of samples.length > 0 ? samples : [event.nativeEvent]) {
-      const at = cellUnder(sample.clientX, sample.clientY);
-      if (at !== null) paintCell(at.row, at.step);
+    for (const sample of samples) {
+      const to = { x: sample.clientX, y: sample.clientY };
+      for (const mark of rasteriseSegment(open.from, to, grid)) {
+        paintColumn(mark.row, mark.step);
+      }
+      open.from = to;
     }
   };
 

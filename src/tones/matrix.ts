@@ -130,22 +130,105 @@ export function cellToggle(phrase: Phrase, row: number, step: number, workingPit
   return pitchForRow(row, current === REST ? workingPitch : current);
 }
 
+/** What a stroke is doing: laying notes down, or taking them away. */
+export type StrokeMode = 'draw' | 'erase';
+
+/**
+ * What one column should become, or `null` if it should be left alone.
+ *
+ * The `null` is the whole of the no-duplicate-preview rule: a stroke asks this of every column it
+ * crosses, on every pointer sample, and only a genuine change is written or heard. A hand held
+ * still inside one cell resolves to the note already there and so does nothing at all.
+ *
+ * `anchor` is frozen for the length of the stroke rather than following the last note placed.
+ * Without that, painting C then D then E would carry each note's octave into the next empty column
+ * and a single stroke could wander an octave; with it, every empty column in one stroke lands in
+ * the octave the stroke began in. A column that already sounds still keeps *its own* octave, so
+ * drawing across an existing phrase changes its shape without transposing it.
+ */
+export function strokeStep(current: number, row: number, anchor: number, mode: StrokeMode): number | null {
+  if (mode === 'erase') return current === REST ? null : REST;
+  const next = pitchForRow(row, current === REST ? anchor : current);
+  return next === current ? null : next;
+}
+
 /**
  * What painting a cell during a drag produces.
  *
  * The difference from `cellToggle` is the whole reason it exists: a drag *paints*, so crossing a
  * cell that is already the note it would place does nothing, where a click on the same cell erases
  * it. A stroke that toggled would rub out its own line the moment your hand wobbled back.
- *
- * `anchor` is frozen for the length of the stroke rather than following the last note placed.
- * Without that, painting C then D then E would carry each note's octave into the next empty column
- * and a single stroke could wander an octave; with it, every empty column in one stroke lands in
- * the octave the stroke began in. A column that already sounds still keeps *its own* octave, so
- * dragging across an existing phrase changes its shape without transposing it.
  */
 export function paintValue(phrase: Phrase, row: number, step: number, anchor: number): number {
   const current = phrase[step] ?? REST;
-  return pitchForRow(row, current === REST ? anchor : current);
+  return strokeStep(current, row, anchor, 'draw') ?? current;
+}
+
+/**
+ * Where the grid is on screen, in the coordinates pointer events speak.
+ *
+ * Four numbers, because the grid is uniform: no gaps between rows or columns, one height for every
+ * row and one width for every step. `bottomEdge` is the bottom of the C row, since row 0 is drawn
+ * at the bottom and the rows count upward from there.
+ */
+export interface GridGeometry {
+  readonly leftEdge: number;
+  readonly columnWidth: number;
+  readonly bottomEdge: number;
+  readonly rowHeight: number;
+}
+
+/** Which step a horizontal position falls in, clamped to the bar. */
+export function columnAt(x: number, grid: GridGeometry): number {
+  const raw = Math.floor((x - grid.leftEdge) / grid.columnWidth);
+  return Math.min(PHRASE_LENGTH - 1, Math.max(0, raw));
+}
+
+/** Which row a vertical position falls in, clamped to the instrument. */
+export function rowAt(y: number, grid: GridGeometry): number {
+  const raw = Math.floor((grid.bottomEdge - y) / grid.rowHeight);
+  return Math.min(MATRIX_ROWS - 1, Math.max(0, raw));
+}
+
+/**
+ * One movement of the pointer, resolved into the columns it crossed.
+ *
+ * A pencil drawn over a quantised piano roll, which is the only description of this that behaves
+ * the way a hand expects. For every column the movement spans, the answer is the height of the
+ * *line* where it passes that column's centre — not the height of whichever pointer event happened
+ * to land last before a boundary.
+ *
+ * That distinction is the whole reason this function exists. Painting the cell under each raw
+ * pointer sample means a stroke leaving a column up-and-right also paints the cells it clips on the
+ * way out, so a smooth diagonal comes back a semitone or two sharp in every column. Rasterising
+ * asks a different question — where was the line when it was over this column? — and the clipped
+ * cells never arise, because the line was never over that column at that height.
+ *
+ * The centre is clamped into the movement's own span, which is what keeps the column under the
+ * pointer live: a purely vertical wiggle spans one column, clamps to the pointer's own x, and
+ * resolves to the height it is at now. So a column follows the hand for as long as the hand is in
+ * it, and comes back to life if the hand returns. Nothing is ever claimed or finished.
+ *
+ * Ordered along the direction of travel, so previews sound in the order they were drawn.
+ */
+export function rasteriseSegment(
+  from: { readonly x: number; readonly y: number },
+  to: { readonly x: number; readonly y: number },
+  grid: GridGeometry,
+): readonly { readonly step: number; readonly row: number }[] {
+  const minX = Math.min(from.x, to.x);
+  const maxX = Math.max(from.x, to.x);
+  const span = to.x - from.x;
+
+  const marks: { step: number; row: number }[] = [];
+  for (let step = columnAt(minX, grid); step <= columnAt(maxX, grid); step += 1) {
+    const centre = grid.leftEdge + (step + 0.5) * grid.columnWidth;
+    const x = Math.min(maxX, Math.max(minX, centre));
+    const y = span === 0 ? to.y : from.y + ((x - from.x) / span) * (to.y - from.y);
+    marks.push({ step, row: rowAt(y, grid) });
+  }
+
+  return span < 0 ? marks.reverse() : marks;
 }
 
 /**
