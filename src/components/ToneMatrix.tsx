@@ -7,6 +7,7 @@ import {
   octaveOf,
   phraseToMatrix,
   pitchClassOf,
+  paintValue,
   pitchForRow,
   ROW_IS_BLACK,
   ROW_NAMES,
@@ -202,8 +203,156 @@ export function ToneMatrix({
         event.preventDefault();
         focusCell(row, PHRASE_LENGTH - 1);
         return;
+      case 'Enter':
+      case ' ':
+        /*
+         * Activation, handled here rather than left to the browser.
+         *
+         * A `<button>` turns Enter and Space into a click, and a click is now the tail of a
+         * pointer stroke — so leaving the default in place would edit twice for a tap and not at
+         * all for a key. Preventing it and calling `toggle` directly keeps the two paths separate
+         * and keeps the keyboard exactly as capable as it was.
+         */
+        event.preventDefault();
+        toggle(row, step);
+        return;
       default:
     }
+  };
+
+  /*
+   * The open stroke, or nothing.
+   *
+   * A ref rather than state: nothing on screen looks different because a stroke is open, and a
+   * re-render per pointer sample would be a re-render for nothing. It carries three things —
+   *
+   *   `mode`   decided once, at pointer-down, from what was under it. Starting on a note erases;
+   *            starting on empty ground draws. Deciding it per cell instead would make a stroke
+   *            flicker between drawing and rubbing out as it crossed its own line.
+   *   `anchor` the octave every empty column in this stroke lands in, frozen at pointer-down so a
+   *            line drawn across the grid cannot wander octaves.
+   *   `last`   the cell the pointer is in, so staying inside one cell writes once.
+   */
+  const stroke = useRef<{ mode: 'draw' | 'erase'; anchor: number; last: string } | null>(null);
+
+  /** Which cell is under a point, by hit test — the only thing that survives a fast drag. */
+  const cellUnder = (clientX: number, clientY: number): { row: number; step: number } | null => {
+    const under = document.elementFromPoint(clientX, clientY);
+    const button = under?.closest<HTMLElement>('[data-row][data-step]');
+    if (button === null || button === undefined) return null;
+    const row = Number(button.dataset['row']);
+    const step = Number(button.dataset['step']);
+    return Number.isInteger(row) && Number.isInteger(step) ? { row, step } : null;
+  };
+
+  /**
+   * Paint or erase one cell, if it is not the one already being painted.
+   *
+   * Two guards, and they answer different questions. `last` stops a pointer sitting still inside a
+   * cell from rewriting it sixty times a second. The value comparison stops a redundant write
+   * whenever the answer is the answer already there — which is also what keeps one note from being
+   * previewed twice as a hand wobbles across a boundary and back.
+   */
+  const paintCell = useCallback(
+    (row: number, step: number) => {
+      const open = stroke.current;
+      if (open === null) return;
+
+      const key = `${String(row)}:${String(step)}`;
+      if (open.last === key) return;
+      open.last = key;
+
+      const current = phrase[step] ?? REST;
+
+      if (open.mode === 'erase') {
+        if (current === REST) return;
+        change(step, REST);
+        return;
+      }
+
+      const next = paintValue(phrase, row, step, open.anchor);
+      if (next === current) return;
+      change(step, next);
+    },
+    [phrase, change],
+  );
+
+  const onPointerDown = (event: React.PointerEvent<HTMLButtonElement>, row: number, step: number): void => {
+    /*
+     * Only the primary button draws. A right-click or a middle-click on a grid is not an edit, and
+     * treating it as one is how somebody loses a bar reaching for a context menu.
+     */
+    if (!event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return;
+
+    /*
+     * Captured on the cell the stroke began in.
+     *
+     * Everything after this is hit-tested from the coordinates, so capture is not about *where*
+     * the events go — it is about still receiving them when the pointer outruns the layout, leaves
+     * the grid, or is a finger, which the browser would otherwise implicitly capture anyway.
+     */
+    /*
+     * Capture if the browser will give it, and carry on if it will not.
+     *
+     * Every cell is hit-tested from the pointer's coordinates, so capture is an improvement rather
+     * than a requirement: it keeps the events coming when the pointer outruns the layout or leaves
+     * the grid. WebKit throws here for a pointer it does not consider active, and letting that
+     * escape would abort the handler before the first cell was ever painted — losing the whole
+     * gesture to a refinement of it.
+     */
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // No capture available. The hit test does not need it; a fast stroke is merely coarser.
+    }
+    /*
+     * Refused: the text selection and the native drag that a press would otherwise start.
+     *
+     * Preventing the default also cancels the `mousedown` the browser would have synthesised, and
+     * with it the focus that press would have given the button — so focus has to be taken by hand
+     * or the keyboard is left behind wherever it was. That is not a detail: clicking a step and
+     * then pressing Backspace is an ordinary thing to do, and it silently stopped working the
+     * first time this handler was written.
+     */
+    event.preventDefault();
+    event.currentTarget.focus();
+
+    setFocus({ row, step });
+    onEditGesture();
+
+    const current = phrase[step] ?? REST;
+    stroke.current = {
+      mode: current !== REST && pitchClassOf(current) === row ? 'erase' : 'draw',
+      anchor: workingPitch,
+      last: '',
+    };
+    paintCell(row, step);
+  };
+
+  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>): void => {
+    if (stroke.current === null) return;
+    event.preventDefault();
+
+    /*
+     * Every point the browser coalesced, not just the last one.
+     *
+     * A quick stroke can cross three columns between two delivered events, and hit-testing only
+     * where the pointer ended up would leave holes in the line. `getCoalescedEvents` hands back
+     * the samples the browser took on the way.
+     */
+    const samples =
+      typeof event.nativeEvent.getCoalescedEvents === 'function'
+        ? event.nativeEvent.getCoalescedEvents()
+        : [event.nativeEvent];
+
+    for (const sample of samples.length > 0 ? samples : [event.nativeEvent]) {
+      const at = cellUnder(sample.clientX, sample.clientY);
+      if (at !== null) paintCell(at.row, at.step);
+    }
+  };
+
+  const endStroke = (): void => {
+    stroke.current = null;
   };
 
   const selected = focus.step;
@@ -244,7 +393,23 @@ export function ToneMatrix({
             ))}
           </div>
 
-          <div className={styles.rows} role="group" aria-label="Tone steps">
+          {/*
+            The stroke lives on the grid, not on the cells.
+
+            Cells are hit-tested from the pointer's coordinates rather than reached by
+            `pointerenter`, because a captured pointer — which a finger always is — stops firing
+            enter and leave on anything but the element it was captured to. One move handler up
+            here, hit-testing each sample, behaves the same for a mouse, a finger and a pen.
+          */}
+          <div
+            className={styles.rows}
+            role="group"
+            aria-label="Tone steps"
+            onPointerMove={onPointerMove}
+            onPointerUp={endStroke}
+            onPointerCancel={endStroke}
+            onLostPointerCapture={endStroke}
+          >
             {ROWS.map((row) => {
               const isSharp = ROW_IS_BLACK[row] === true;
 
@@ -309,9 +474,17 @@ export function ToneMatrix({
                         onKeyDown={(event) => {
                           onKeyDown(event, row, step);
                         }}
-                        onClick={() => {
-                          setFocus({ row, step });
-                          toggle(row, step);
+                        /*
+                         * Pointer, not click.
+                         *
+                         * A click is now the degenerate case of a stroke — press, cross nothing,
+                         * release — so handling both would edit twice for every tap. Enter and
+                         * Space are handled in `onKeyDown` instead, which is what keeps the
+                         * keyboard whole: drawing is something the mouse and a finger gained, not
+                         * something anybody else lost.
+                         */
+                        onPointerDown={(event) => {
+                          onPointerDown(event, row, step);
                         }}
                       >
                         {/*
@@ -321,7 +494,18 @@ export function ToneMatrix({
                           octave. Nothing in between, so a phrase reads at a glance.
                         */}
                         {lit ? (
-                          <span aria-hidden="true" className={styles.note}>
+                          <span
+                            aria-hidden="true"
+                            /*
+                             * Struck, on the note and nowhere else.
+                             *
+                             * Driven by `playheadStep` — the same number the scheduler hands the
+                             * sampler — so the flash is on the step that actually sounded rather
+                             * than on a timer of its own that would drift away from the music
+                             * within a few bars. A rest has no block, so a rest cannot flash.
+                             */
+                            className={cx(styles.note, step === playheadStep && isPlaying && styles.struck)}
+                          >
                             {octaveOf(value)}
                           </span>
                         ) : (

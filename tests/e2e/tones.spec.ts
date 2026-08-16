@@ -345,11 +345,406 @@ test('arrow keys walk the grid without leaving it', async ({ page }) => {
 test('the grid is one tab stop, not a hundred and ninety-two', async ({ page }) => {
   // The same bargain the drum grid makes. Sixteen tab presses to get past a bar would be bad;
   // a hundred and ninety-two would be an interface nobody could use with a keyboard at all.
+  requireRoomToDraw();
   await freshVisit(page);
   await layer(page, 'Tones').click();
 
   const reachable = page.locator('[data-row][data-step][tabindex="0"]');
   await expect(reachable).toHaveCount(1);
+});
+
+/**
+ * Skip where a synthetic stroke cannot physically reach the cells it needs.
+ *
+ * Not a capability check — pointer events work in every project. It is geometry, and the axis that
+ * matters is *width*, because width is what decides whether the transport lays out in one row or
+ * stacks. Narrow, it stacks into roughly 325px of sticky header; the free space left below it is
+ * shorter than the twelve-row grid, so a stroke spanning several rows would have to begin under
+ * the header, where `elementFromPoint` correctly finds the header rather than the step. A finger
+ * scrolls and then draws what it can see; `page.mouse` fires at coordinates and cannot.
+ *
+ * Written against width rather than a project name, and it caught its own first draft: that one
+ * asked for height ≥ 800 and skipped the desktop project — 1280 × 720 — while happily running on a
+ * Pixel 7, which is 412 × 839. Exactly the two it was meant to separate, the wrong way round.
+ *
+ * So the plumbing is proved on the desktop viewport, and what a stroke *decides* — what it paints,
+ * which octave it holds, what it replaces — is `paintValue`, covered in every project by
+ * `tests/unit/toneMatrix.test.ts`.
+ */
+function requireRoomToDraw(): void {
+  const viewport = test.info().project.use.viewport;
+  const wide = viewport === undefined || viewport === null || viewport.width >= 1024;
+  test.skip(!wide, 'The grid does not fit clear of the stacked transport at this width.');
+}
+
+/* ---- drawing with a pointer ---------------------------------------------- */
+
+/**
+ * Drag from one cell to another, through every cell between them.
+ *
+ * The real thing rather than a synthetic sequence: a press, a run of moves along the line, and a
+ * release. The moves are what the component hit-tests, so a drag written as "down here, up there"
+ * would prove nothing at all — it is the crossing that has to paint.
+ */
+async function drawThrough(page: Page, path: readonly (readonly [number, number])[]): Promise<void> {
+  /*
+   * Scrolled into view first, and that is not a nicety.
+   *
+   * `click()` scrolls to its target; `page.mouse` does not — it fires at whatever coordinates it
+   * is given. On a phone-sized viewport the grid sits below the fold, so boxes computed without
+   * this describe a cell at y=738 in a 664px window, the press lands on nothing, and the failure
+   * reads as "the note never appeared" rather than "the test aimed off the screen".
+   */
+  const [firstRow, firstStep] = path[0] ?? [0, 0];
+  await cell(page, firstRow, firstStep).scrollIntoViewIfNeeded();
+
+  const boxes = [];
+  for (const [row, step] of path) {
+    const box = await cell(page, row, step).boundingBox();
+    if (box === null) throw new Error(`no box for row ${String(row)} step ${String(step)}`);
+    /*
+     * The grid scrolls sideways on a phone, so a step past the fold has a box the pointer can
+     * never reach. Left unchecked that surfaces as a baffling assertion failure about a note that
+     * did not appear; caught here it says which step the path asked for and could not have.
+     */
+    const view = page.viewportSize();
+    const offScreen =
+      view !== null &&
+      (box.x < 0 || box.y < 0 || box.x + box.width > view.width || box.y + box.height > view.height);
+    if (offScreen) {
+      throw new Error(
+        `row ${String(row)} step ${String(step + 1)} is outside the viewport — a stroke cannot reach it`,
+      );
+    }
+    boxes.push({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
+  }
+
+  const first = boxes[0];
+  if (first === undefined) return;
+
+  await page.mouse.move(first.x, first.y);
+  await page.mouse.down();
+  for (const point of boxes.slice(1)) {
+    // Two samples per cell, so the test also exercises "already inside, do not rewrite".
+    await page.mouse.move(point.x, point.y, { steps: 2 });
+    await page.mouse.move(point.x, point.y);
+  }
+  await page.mouse.up();
+}
+
+/** The phrase as the panel prints it — the data, not the picture. */
+const vectorOf = async (page: Page): Promise<string> =>
+  ((await page.getByRole('region', { name: 'Tones' }).locator('pre').innerText()) ?? '').trim();
+
+test('dragging across the grid draws a phrase', async ({ page }) => {
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  /*
+   * C, D, E, G across steps 2 to 5 — a rising line, drawn in one stroke.
+   *
+   * Begun on step 2, which is a rest, because a stroke that began on a note would be an erase.
+   * Step 4 already sounds D♯4 and is drawn straight through: it keeps its own octave and becomes
+   * E4, which is the rule that lets a line be drawn across an existing phrase without transposing
+   * it. Every step is inside the narrowest viewport, so the same stroke is possible on a phone.
+   */
+  await drawThrough(page, [
+    [0, 2],
+    [2, 3],
+    [4, 4],
+    [7, 5],
+  ]);
+
+  await expect(sounding(page, 2)).toHaveAccessibleName('Step 2, C4');
+  await expect(sounding(page, 3)).toHaveAccessibleName('Step 3, D4');
+  await expect(sounding(page, 4)).toHaveAccessibleName('Step 4, E4');
+  await expect(sounding(page, 5)).toHaveAccessibleName('Step 5, G4');
+});
+
+test('a diagonal drag changes pitch class with every step', async ({ page }) => {
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  const apl = watchApl(page);
+
+  await drawThrough(page, [
+    [0, 6],
+    [1, 7],
+    [2, 8],
+    [3, 9],
+  ]);
+
+  await expect(sounding(page, 6)).toHaveAccessibleName('Step 6, C4');
+  await expect(sounding(page, 7)).toHaveAccessibleName('Step 7, C♯4');
+  await expect(sounding(page, 8)).toHaveAccessibleName('Step 8, D4');
+  await expect(sounding(page, 9)).toHaveAccessibleName('Step 9, D♯4');
+
+  // Drawing is local arithmetic and must cost nothing.
+  expect(apl, `TryAPL requests: ${apl.join(', ')}`).toHaveLength(0);
+});
+
+test('a stroke stays in the octave it began in', async ({ page }) => {
+  /*
+   * The anchor is frozen at pointer-down. Were it to follow the last note placed, this line —
+   * which crosses the top of the grid and comes back to the bottom — would step down an octave
+   * each time it wrapped, and a long diagonal could wander out of the range entirely.
+   */
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  await drawThrough(page, [
+    [11, 1],
+    [0, 2],
+    [11, 3],
+    [0, 4],
+  ]);
+
+  await expect(sounding(page, 1)).toHaveAccessibleName('Step 1, B4');
+  await expect(sounding(page, 2)).toHaveAccessibleName('Step 2, C4');
+  await expect(sounding(page, 3)).toHaveAccessibleName('Step 3, B4');
+  await expect(sounding(page, 4)).toHaveAccessibleName('Step 4, C4');
+});
+
+test('drawing over an existing note replaces it rather than stacking', async ({ page }) => {
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  // Step 4 opens on D♯4. Draw straight through it on the G row.
+  await expect(sounding(page, 4)).toHaveAccessibleName('Step 4, D♯4');
+
+  await drawThrough(page, [
+    [7, 3],
+    [7, 4],
+    [7, 5],
+  ]);
+
+  await expect(sounding(page, 4)).toHaveAccessibleName('Step 4, G4');
+  // Still one note in the column, because a column holds one note.
+  await expect(page.locator('[data-step="3"][aria-pressed="true"]')).toHaveCount(1);
+});
+
+test('one drag is one Undo, however many steps it crossed', async ({ page }) => {
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  const undo = page.getByRole('button', { name: 'Undo' });
+  await expect(undo).toBeDisabled();
+
+  const before = await vectorOf(page);
+
+  await drawThrough(page, [
+    [9, 1],
+    [9, 2],
+    [9, 3],
+    [9, 4],
+    [9, 5],
+  ]);
+
+  const after = await vectorOf(page);
+  expect(after).not.toBe(before);
+
+  // One press, and the whole line is gone — not five presses for five steps.
+  await undo.click();
+  expect(await vectorOf(page)).toBe(before);
+  await expect(undo).toBeDisabled();
+});
+
+test('crossing a cell twice in one stroke does not edit it twice', async ({ page }) => {
+  /*
+   * Asserted through Undo, because that is where a duplicate would show: two writes to the same
+   * step inside one gesture still coalesce into one entry, but a wobble that rewrote a cell would
+   * also re-preview it, and the guard that stops one stops the other.
+   */
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  const undo = page.getByRole('button', { name: 'Undo' });
+  const before = await vectorOf(page);
+
+  // Out along the A row and straight back over the same cells.
+  await drawThrough(page, [
+    [9, 6],
+    [9, 7],
+    [9, 8],
+    [9, 7],
+    [9, 6],
+  ]);
+
+  await expect(sounding(page, 6)).toHaveAccessibleName('Step 6, A4');
+  await expect(sounding(page, 7)).toHaveAccessibleName('Step 7, A4');
+  await expect(sounding(page, 8)).toHaveAccessibleName('Step 8, A4');
+
+  await undo.click();
+  expect(await vectorOf(page)).toBe(before);
+});
+
+test('the stroke ends with the pointer, and moving after it paints nothing', async ({ page }) => {
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  await drawThrough(page, [
+    [5, 2],
+    [5, 3],
+  ]);
+  const after = await vectorOf(page);
+
+  // The pointer is up. Moving across the grid now must change nothing.
+  const far = await cell(page, 8, 10).boundingBox();
+  if (far !== null) await page.mouse.move(far.x + far.width / 2, far.y + far.height / 2);
+  const alsoFar = await cell(page, 8, 12).boundingBox();
+  if (alsoFar !== null) await page.mouse.move(alsoFar.x + alsoFar.width / 2, alsoFar.y + alsoFar.height / 2);
+
+  expect(await vectorOf(page)).toBe(after);
+});
+
+test('beginning a stroke on a note erases across the steps it crosses', async ({ page }) => {
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  // The opening phrase sounds on steps 1, 4, 6, 9, 12 and 14.
+  await expect(page.locator('[aria-pressed="true"]')).toHaveCount(6);
+
+  /*
+   * Begin on the note at step 1 and drag along the C row to step 6.
+   *
+   * Erasing follows the *column*, not the row: the notes at steps 4 and 6 are on the D♯ and G rows
+   * and the stroke never touches those rows, but it crosses their columns and they go. Anything
+   * else would mean tracing each note exactly, which is not a gesture anybody can perform.
+   */
+  await drawThrough(page, [
+    [0, 1],
+    [0, 2],
+    [0, 3],
+    [0, 4],
+    [0, 5],
+    [0, 6],
+  ]);
+
+  for (const step of [1, 4, 6]) {
+    await expect(sounding(page, step), `step ${String(step)}`).toHaveCount(0);
+  }
+  // The three past the stroke are untouched: an erase clears what it crosses and nothing else.
+  await expect(page.locator('[aria-pressed="true"]')).toHaveCount(3);
+});
+
+test('a single click still edits one step, as it always did', async ({ page }) => {
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  await cell(page, 4, 3).click();
+  await expect(sounding(page, 3)).toHaveAccessibleName('Step 3, E4');
+
+  await cell(page, 4, 3).click();
+  await expect(sounding(page, 3)).toHaveCount(0);
+});
+
+test('the keyboard still edits, so drawing is something gained and nothing lost', async ({ page }) => {
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  // Tab order, arrow keys, then Space — none of which involves a pointer at all.
+  await cell(page, 0, 2).focus();
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Space');
+  await expect(sounding(page, 2)).toHaveAccessibleName('Step 2, D4');
+
+  await page.keyboard.press('PageUp');
+  await expect(sounding(page, 2)).toHaveAccessibleName('Step 2, D5');
+
+  await page.keyboard.press('Backspace');
+  await expect(sounding(page, 2)).toHaveCount(0);
+
+  // And Enter activates as well as Space.
+  await page.keyboard.press('Enter');
+  await expect(sounding(page, 2)).toHaveCount(1);
+});
+
+/* ---- the note reacting to being played ---------------------------------- */
+
+test('only the note under the playhead is struck, and only while playing', async ({ page }) => {
+  await freshVisit(page);
+  await requireAudio(page);
+  await layer(page, 'Tones').click();
+
+  const struck = page.locator('[aria-pressed="true"] > span[class*="struck"]');
+
+  // Stopped: the playhead is parked on step 1, and nothing is being struck.
+  await expect(struck).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Play' }).click();
+
+  /*
+   * At most one at a time, and always on a step that sounds.
+   *
+   * Sampled rather than caught at one instant, because the playhead moves every 134ms and a single
+   * assertion would be a race. What must hold on every sample is the invariant: never two, and
+   * never on a rest — a rest has no block to strike.
+   */
+  const restSteps = [2, 3, 5, 7, 8, 10, 11, 13, 15, 16];
+  for (let sample = 0; sample < 12; sample += 1) {
+    const count = await struck.count();
+    expect(count, 'a struck note at a time').toBeLessThanOrEqual(1);
+
+    for (const step of restSteps) {
+      await expect(page.locator(`[data-step="${String(step - 1)}"] span[class*="struck"]`)).toHaveCount(0);
+    }
+    await page.waitForTimeout(70);
+  }
+
+  await page.getByRole('button', { name: 'Pause' }).click();
+  await expect(struck).toHaveCount(0);
+});
+
+test('the pulse is paint only, so the bar cannot twitch sideways', async ({ page }) => {
+  /*
+   * A CSS transform would have been the obvious way to make a note pop, and it would have
+   * pushed the scroll width of the grid out once a step. The animation is background and
+   * box-shadow, neither of which takes part in layout.
+   */
+  await freshVisit(page);
+  await requireAudio(page);
+  await layer(page, 'Tones').click();
+
+  const widthOf = async () =>
+    page.evaluate(() => document.querySelector('[aria-label="Tone steps"]')?.parentElement?.scrollWidth ?? 0);
+
+  const before = await widthOf();
+  await page.getByRole('button', { name: 'Play' }).click();
+
+  for (let sample = 0; sample < 8; sample += 1) {
+    expect(await widthOf(), 'the grid must not grow while notes are struck').toBe(before);
+    await page.waitForTimeout(60);
+  }
+
+  await page.getByRole('button', { name: 'Pause' }).click();
+});
+
+test('reduced motion keeps the state and drops the animation', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await freshVisit(page);
+  await requireAudio(page);
+  await layer(page, 'Tones').click();
+
+  const animation = await page.evaluate(() => {
+    const note = document.querySelector('[aria-pressed="true"] > span');
+    if (note === null) return null;
+    note.classList.add(
+      [...note.classList].find((name) => name.includes('note'))?.replace('note', 'struck') ?? 'struck',
+    );
+    return getComputedStyle(note).animationName;
+  });
+
+  // Whatever else is true, nothing is animating.
+  expect(animation === null || animation === 'none').toBe(true);
 });
 
 /* ---- Undo, across both layers ------------------------------------------- */

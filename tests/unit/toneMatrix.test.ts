@@ -3,6 +3,7 @@ import {
   cellToggle,
   DEFAULT_WORKING_PITCH,
   MATRIX_ROWS,
+  paintValue,
   pitchForRow,
   octaveOf,
   phraseToMatrix,
@@ -279,5 +280,95 @@ describe('the APL shown in Peek', () => {
       [11, 15],
     ]);
     expect(projectionSource(VERIFIED)[1]).toBe(`n←${VERIFIED.join(' ')}`);
+  });
+});
+
+describe('painting a stroke', () => {
+  /*
+   * Drawing is not clicking repeatedly, and the difference is what these guard.
+   *
+   * A click toggles: press the note you are on and it goes away. A stroke paints: crossing a cell
+   * that already holds the note it would place must do nothing, or a line would rub itself out the
+   * moment a hand wobbled back along it.
+   */
+  it('paints where a click would toggle', () => {
+    const phrase = setStep(emptyPhrase(), 4, 67);
+
+    // The click on the lit cell clears it; the stroke crossing the same cell leaves it alone.
+    expect(cellToggle(phrase, 7, 4, DEFAULT_WORKING_PITCH)).toBe(REST);
+    expect(paintValue(phrase, 7, 4, DEFAULT_WORKING_PITCH)).toBe(67);
+  });
+
+  it('draws a rising line across four steps, in one octave', () => {
+    // C, D, E, G at steps 1 to 4 — the example a stroke is supposed to make easy.
+    let phrase = emptyPhrase();
+    const anchor = DEFAULT_WORKING_PITCH;
+
+    for (const [row, step] of [
+      [0, 0],
+      [2, 1],
+      [4, 2],
+      [7, 3],
+    ] as const) {
+      phrase = setStep(phrase, step, paintValue(phrase, row, step, anchor));
+    }
+
+    expect(phrase.slice(0, 4)).toEqual([60, 62, 64, 67]);
+    // And nothing else was touched.
+    expect(phrase.slice(4)).toEqual(emptyPhrase().slice(4));
+  });
+
+  it('keeps every empty column of a stroke in the octave the stroke began in', () => {
+    /*
+     * The anchor is frozen for the length of the stroke. Were it to follow the last note placed,
+     * a line drawn from B down to C would put the C an octave below the B rather than the step
+     * above it, and a long diagonal could wander an octave from where it started.
+     */
+    let phrase = emptyPhrase();
+    const anchor = 60;
+
+    for (const [row, step] of [
+      [11, 0],
+      [0, 1],
+      [11, 2],
+      [0, 3],
+    ] as const) {
+      phrase = setStep(phrase, step, paintValue(phrase, row, step, anchor));
+    }
+
+    expect(phrase.slice(0, 4)).toEqual([71, 60, 71, 60]);
+  });
+
+  it('keeps a column its own octave when the stroke crosses a note already there', () => {
+    // A note up at C6 dragged to the B row becomes B5, not the B nearest the stroke's anchor.
+    const phrase = setStep(emptyPhrase(), 2, 84);
+    expect(paintValue(phrase, 11, 2, 60)).toBe(83);
+  });
+
+  it('replaces rather than stacks, because a column holds one note', () => {
+    let phrase = setStep(emptyPhrase(), 6, 60);
+    phrase = setStep(phrase, 6, paintValue(phrase, 7, 6, DEFAULT_WORKING_PITCH));
+
+    expect(phrase[6]).toBe(67);
+    // Still exactly one lit cell in that column.
+    expect(phraseToMatrix(phrase).filter((row) => row[6] === true)).toHaveLength(1);
+  });
+
+  it('never leaves the instrument, wherever a stroke wanders', () => {
+    for (const anchor of [TONE_MIN_MIDI, 60, TONE_MAX_MIDI]) {
+      for (let row = 0; row < MATRIX_ROWS; row += 1) {
+        const value = paintValue(emptyPhrase(), row, 0, anchor);
+        expect(isPitch(value), `${String(row)} from ${String(anchor)}`).toBe(true);
+        expect(pitchClassOf(value)).toBe(row);
+      }
+    }
+  });
+
+  it('is idempotent, so crossing a cell twice is the same as crossing it once', () => {
+    // What lets the component skip a repeat rather than write and preview the same note again.
+    let phrase = emptyPhrase();
+    const once = paintValue(phrase, 5, 9, 60);
+    phrase = setStep(phrase, 9, once);
+    expect(paintValue(phrase, 5, 9, 60)).toBe(once);
   });
 });

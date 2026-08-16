@@ -131,6 +131,24 @@ export function cellToggle(phrase: Phrase, row: number, step: number, workingPit
 }
 
 /**
+ * What painting a cell during a drag produces.
+ *
+ * The difference from `cellToggle` is the whole reason it exists: a drag *paints*, so crossing a
+ * cell that is already the note it would place does nothing, where a click on the same cell erases
+ * it. A stroke that toggled would rub out its own line the moment your hand wobbled back.
+ *
+ * `anchor` is frozen for the length of the stroke rather than following the last note placed.
+ * Without that, painting C then D then E would carry each note's octave into the next empty column
+ * and a single stroke could wander an octave; with it, every empty column in one stroke lands in
+ * the octave the stroke began in. A column that already sounds still keeps *its own* octave, so
+ * dragging across an existing phrase changes its shape without transposing it.
+ */
+export function paintValue(phrase: Phrase, row: number, step: number, anchor: number): number {
+  const current = phrase[step] ?? REST;
+  return pitchForRow(row, current === REST ? anchor : current);
+}
+
+/**
  * The APL that turns `n` into the grid, as text.
  *
  * Shown in the Tones Peek, never executed — it is arithmetic over sixteen numbers and sending a
