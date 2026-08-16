@@ -354,8 +354,8 @@
    * that is *between* two panels has to be narrow enough not to be a third one.
    */
   --rail-width: 4.5rem;
-  --apl-column: 28rem;
-  --apl-column-wide: 32rem;
+  --apl-column: 25rem;
+  --apl-column-wide: 28rem;
 
   /*
    * The application fills the window.
@@ -366,6 +366,14 @@
    * crush the grid.
    */
   --workspace-min: 30rem;
+
+  /*
+   * The Tone keyboard's width, in one place.
+   *
+   * The grid template and the scroller's `scroll-padding` both have to know it — they were two
+   * literals that happened to agree, which is a bug waiting for one of them to be edited.
+   */
+  --tone-keyboard: 4rem;
 }
 
 /*
@@ -388,7 +396,7 @@
      * monitor. "Sixteen steps never come off the screen" is the one rule the whole grid is built
      * around. The height floor is its own token, applied to the pad and to nothing else.
      */
-    --step-min-height: 3rem;
+    --step-min-height: 3.5rem;
 
     --text-xs: 0.75rem;
     --text-sm: 0.875rem;
@@ -454,14 +462,14 @@
      * of panel the name wins.
      */
     --track-label: 9.5rem;
-    --apl-column: 21rem;
+    --apl-column: 20rem;
   }
 }
 
 @media (min-width: 87.5rem) and (max-width: 99.9375rem) {
   :root {
     --track-label: 9.5rem;
-    --apl-column: 27rem;
+    --apl-column: 24rem;
   }
 }
 

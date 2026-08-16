@@ -32,7 +32,7 @@
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-2);
   min-width: 0;
   min-height: 0;
 }
@@ -45,7 +45,7 @@
  * instead of squeezing sixteen columns down to something a thumb cannot hit.
  */
 .scroller {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -59,13 +59,13 @@
    * underneath it.
    */
   scroll-snap-type: x proximity;
-  scroll-padding-inline-start: 3.5rem;
+  scroll-padding-inline-start: var(--tone-keyboard);
   overscroll-behavior-x: contain;
   padding-bottom: var(--space-1);
 }
 
 .grid {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-width: min-content;
@@ -76,12 +76,7 @@
 .ruler,
 .row {
   display: grid;
-  /*
-   * A ceiling on the column as well as the row, so the two stay in proportion. Without it a 1600px
-   * window draws 58px-wide cells against a 40px row, and the square note starts to look adrift in
-   * a letterbox.
-   */
-  grid-template-columns: 3.5rem repeat(16, minmax(var(--cell-min), 2.75rem));
+  grid-template-columns: var(--tone-keyboard) repeat(16, minmax(var(--cell-min), 1fr));
   align-items: stretch;
 }
 
@@ -147,22 +142,29 @@
  * see between steps is the dot being small, not a gutter.
  */
 .rows {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
 /*
- * A row is exactly as tall as its cells are wide.
+ * Twelve rows share the workspace's height, and the cell fills the row.
  *
- * This briefly stretched instead — twelve rows sharing the window's leftover height — which made
- * the matrix tall without making anything in it bigger: a small marker adrift in a fifty-pixel
- * band, and dead space above and below every cell that the pointer could land in without hitting
- * a step at all. The geometry comes from the sixteen columns now, and the height follows.
+ * Both halves of that sentence matter, and getting one without the other is what produced two
+ * wrong versions of this file. Stretching the rows while the cell kept a ceiling gave a small mark
+ * adrift in a tall band, with dead space around it that the pointer could land in and hit nothing.
+ * Sizing the row from the cell instead made every part of the instrument small and left a third of
+ * the window empty beneath it.
+ *
+ * So the row takes a share of what is available — between a floor that keeps a phone drawable and
+ * a ceiling that stops a very tall window turning a sequencer into a ladder — and the cell below
+ * occupies all of it. No gaps to distribute, because there are none: the whole row is the target.
  */
 .row {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-height: 2.25rem;
+  max-height: 4rem;
 }
 
 /*
@@ -180,7 +182,7 @@
   place-items: center start;
   background: var(--stage);
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: 700;
   letter-spacing: 0.01em;
   line-height: 1;
@@ -217,12 +219,12 @@
  * coloured labels.
  */
 .keySharp {
-  padding-inline-start: calc(0.75rem + var(--space-2));
+  padding-inline-start: calc(1.125rem + var(--space-2));
   color: var(--key-sharp-ink);
 }
 
 .keySharp::before {
-  inset: 0 0 0 0.75rem;
+  inset: 0 0 0 1.125rem;
   background: var(--key-sharp);
   box-shadow: inset -1px 0 0 var(--key-edge);
 }
@@ -242,37 +244,18 @@
   place-items: center;
   width: 100%;
   /*
-   * Square, and the sixteen columns decide how big.
+   * **The whole cell is the target**, and the cell is the whole row.
    *
-   * **The whole cell is the target.** That is the load-bearing sentence: the dot inside is a
-   * picture of an empty step and nothing else, and a stroke must begin anywhere in the square —
-   * a corner, an edge, well away from the marker. Sizing the button rather than the mark is what
-   * makes drawing feel like graph paper instead of like hitting switches.
+   * The dot inside is a picture of an empty step and nothing else; a stroke must begin anywhere in
+   * the rectangle — a corner, an edge, well away from the marker. Filling the row exactly is what
+   * guarantees that, because any height the cell gives up becomes a strip of grid the pointer can
+   * land in without reaching a step at all.
    *
-   * A floor at 24px keeps every cell clear of the WCAG 2.2 target minimum; a ceiling stops a very
-   * wide window drawing cells the size of coasters.
+   * Deliberately *not* square. A square cell would tie twelve rows of height to sixteen columns of
+   * width and leave the instrument occupying half a screen; the note inside is the thing that has
+   * to be square, and it is.
    */
-  aspect-ratio: 1;
-  height: auto;
-  /*
-   * Its own floor, deliberately not the drum pad's.
-   *
-   * Sharing `--step-min-height` looked tidy and was wrong: `min-height` beats `max-height` in the
-   * cascade, so the 48px floor meant for eight drum rows silently overrode the ceiling meant for
-   * twelve Tone rows, and the matrix went back to running past the bottom of the window. Eight
-   * rows and twelve rows want different numbers.
-   */
-  min-height: 1.5rem;
-  /*
-   * The ceiling exists so the whole instrument fits, strip included.
-   *
-   * Twelve square rows at the width a 1280px window gives is 552px, and with the header, the layer
-   * tabs, its own controls and the octave strip that runs past the bottom of an 860px laptop — so
-   * the one control the grid cannot replace ends up below the fold. Forty pixels a row keeps every
-   * part of the instrument on screen, and a note is still a 35px block rather than the 24px badge
-   * this started as.
-   */
-  max-height: 2.5rem;
+  height: 100%;
   padding: 0;
   border: 0;
   background: none;
@@ -292,15 +275,37 @@
 }
 
 /*
- * An empty step: a 5px square, and nothing else.
+ * The drawing surface, made legible without being made heavy.
+ *
+ * With the whole cell interactive and only a 7px dot to show for it, the grid read as sparse —
+ * somewhere between a diagram and a scatter of marks, and it was not obvious where the 192 cells
+ * actually were. Three very quiet treatments fix that without going back to bordered buttons: the
+ * sharp rows carry a faint tint so the keyboard's lanes continue across the grid, every fourth
+ * column opens with a hairline so the bar is countable, and a cell lights softly under the
+ * pointer so the target announces itself.
+ */
+.cellSharp {
+  background: color-mix(in srgb, var(--text-dim) 6%, transparent);
+}
+
+.beatStart {
+  box-shadow: inset 1px 0 0 var(--line);
+}
+
+.cell:hover {
+  background: color-mix(in srgb, var(--text-dim) 14%, transparent);
+}
+
+/*
+ * An empty step: a small square, and nothing else.
  *
  * Square rather than round, because the notes are square and a bar of mixed shapes reads as noise.
  * Dimmer on the sharp rows than the natural ones, so the horizontal lanes of the keyboard carry on
  * across the whole grid and the eye can follow a row without going back to the label.
  */
 .dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 1px;
   background: var(--text-dim);
   opacity: 0.55;
@@ -344,9 +349,18 @@
    * an annotation on the grid rather than a thing placed in it. At three quarters of the square it
    * reads as a sequencer block from across the room, and the octave has room to be legible.
    */
-  width: 76%;
+  /*
+   * Square, and as large as the cell reasonably allows.
+   *
+   * Height drives it so the block grows with the row, and `max-width` stops it overflowing a cell
+   * that is narrower than it is tall. Around 80% of the tighter dimension: enough that a note says
+   * "I occupy this step at this pitch" from across the room, with the gap left over still reading
+   * as a grid rather than as a solid bar.
+   */
+  height: 86%;
   aspect-ratio: 1;
-  height: auto;
+  width: auto;
+  max-width: 88%;
   border-radius: 3px;
   background: var(--accent);
   color: var(--on-accent);
@@ -430,8 +444,9 @@
 /*
  * Parked: a faint column, marking where Play will resume from rather than claiming to move.
  */
-.underPlayhead {
-  background: color-mix(in srgb, var(--text-dim) 10%, transparent);
+.underPlayhead,
+.cellSharp.underPlayhead {
+  background: color-mix(in srgb, var(--text-dim) 14%, transparent);
 }
 
 /*
@@ -443,7 +458,8 @@
  * it was findable if you were looking for it; the brief is that the rhythm should be readable
  * without listening, so it is now a third of the playhead colour.
  */
-.playing {
+.playing,
+.cellSharp.playing {
   background: color-mix(in srgb, var(--playhead) 30%, transparent);
 }
 
@@ -463,12 +479,19 @@
  * side of a rule. Kept together under the left of the matrix they read as what they are: the step
  * you have selected, and the two things you can do to it that the grid cannot.
  */
+/*
+ * The selected-step controls, attached to the matrix rather than floating under it.
+ *
+ * A hairline the width of the grid and a tight gap above: this is the piano roll's own strip, and
+ * with four spaces between it and the last row it read as a toolbar that happened to be nearby.
+ */
 .strip {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3) var(--space-5);
-  padding-top: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
 }
 
 .selection {
@@ -568,11 +591,11 @@
 @media (max-width: 47.9375rem) {
   .ruler,
   .row {
-    grid-template-columns: 2.875rem repeat(16, minmax(var(--cell-min), 1fr));
+    grid-template-columns: var(--tone-keyboard) repeat(16, minmax(var(--cell-min), 1fr));
   }
 
   .scroller {
-    scroll-padding-inline-start: 2.875rem;
+    scroll-padding-inline-start: var(--tone-keyboard);
   }
 
   .keySharp {
