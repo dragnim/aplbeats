@@ -23,7 +23,7 @@
  * with a field of nothing beneath them.
  */
 .scroller {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -37,16 +37,19 @@
 }
 
 .grid {
-  flex: 1 1 auto;
-  display: grid;
   /*
-   * The header takes what it needs and the eight tracks share the rest.
+   * The eight tracks are one object, and the gaps between them are three pixels.
    *
-   * `1fr` per track rather than a fixed height, with the floor keeping a phone's steps hittable
-   * and the ceiling on the cell keeping a tall monitor from drawing pads the size of coasters.
+   * This briefly did the opposite: `1fr` per track shared the window's leftover height out between
+   * the rows, so a tall monitor produced eight bands of pads separated by enormous voids while the
+   * pads themselves stayed the size they had always been. Distributing rows through space is not
+   * the same as making an instrument bigger, and it looked exactly as sparse as it was.
+   *
+   * The pads carry the size instead — see `.cell` — and the grid takes whatever height they need.
+   * Room left under the sequencer is fine; a hole punched through the middle of it is not.
    */
-  grid-template-rows: auto repeat(8, minmax(var(--cell-min), 1fr));
-  align-content: stretch;
+  flex: 0 0 auto;
+  display: grid;
   gap: var(--cell-gap);
   /*
    * `min-content` is what makes the scroller necessary rather than incidental: the
@@ -66,11 +69,6 @@
   min-height: 0;
 }
 
-/* The steps stretch to the row; the controls beside them stay centred on it. */
-.track > .steps {
-  align-self: stretch;
-}
-
 .headerSteps,
 .steps {
   display: grid;
@@ -79,7 +77,6 @@
 }
 
 .steps {
-  align-items: stretch;
   min-height: 0;
 }
 
@@ -91,6 +88,7 @@
  */
 .corner,
 .controlsCell {
+  padding-block: var(--space-1);
   position: sticky;
   left: 0;
   z-index: 2;
@@ -174,17 +172,30 @@
   position: relative;
   display: block;
   width: 100%;
-  height: 100%;
   /*
-   * A floor and a ceiling, and no fixed aspect any more.
+   * Width from the sixteen columns, height from that or the floor — whichever is larger.
    *
-   * The step used to be square, which meant its height followed its width and the grid could not
-   * use vertical space however much of it there was. Letting a row take a share of the leftover
-   * height is what turns a spare half-screen into a bigger instrument; the ceiling stops a tall
-   * monitor from drawing pads the size of coasters, and the floor keeps a phone's steps hittable.
+   * So the pad is square only where the columns are already wide enough: 62 × 62 at 1920px, and
+   * 36 × 48 at 1280 where sixteen columns leave 36. Taller than wide is the deliberate half of
+   * that. A 36px square is a poor target and reads as a postage stamp under a grid with room to
+   * spare, and the alternative — letting the *row* stretch instead — is what made the first pass
+   * look sparse: bands of small pads separated by voids.
+   *
+   * What matters is that the height comes from the pad and never from the leftover window, so the
+   * eight tracks stay proportioned to the bar rather than to the browser.
    */
-  min-height: var(--cell-min);
-  max-height: 4.25rem;
+  aspect-ratio: 1;
+  height: auto;
+  /*
+   * Square where the width allows it, and never shorter than `--cell-min`.
+   *
+   * On a desktop that floor is raised (see `tokens.css`) so a pad stays chunky at widths where
+   * sixteen columns only work out to 38px. A pad slightly taller than it is wide is a better
+   * target and a better read than a small square with a field of nothing under the grid; a pad
+   * distributed through that field, which is what this did first, is neither.
+   */
+  min-height: var(--step-min-height, var(--cell-min));
+  max-height: 4.5rem;
   padding: 0;
   border-radius: var(--radius-md);
   background: none;

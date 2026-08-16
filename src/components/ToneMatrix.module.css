@@ -45,7 +45,7 @@
  * instead of squeezing sixteen columns down to something a thumb cannot hit.
  */
 .scroller {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -65,7 +65,7 @@
 }
 
 .grid {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   min-width: min-content;
@@ -76,7 +76,12 @@
 .ruler,
 .row {
   display: grid;
-  grid-template-columns: 3.5rem repeat(16, minmax(var(--cell-min), 1fr));
+  /*
+   * A ceiling on the column as well as the row, so the two stay in proportion. Without it a 1600px
+   * window draws 58px-wide cells against a 40px row, and the square note starts to look adrift in
+   * a letterbox.
+   */
+  grid-template-columns: 3.5rem repeat(16, minmax(var(--cell-min), 2.75rem));
   align-items: stretch;
 }
 
@@ -142,21 +147,22 @@
  * see between steps is the dot being small, not a gutter.
  */
 .rows {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
 /*
- * Twelve rows sharing what is left.
+ * A row is exactly as tall as its cells are wide.
  *
- * A floor so a phone's cells stay drawable, and the ceiling lives on the cell so a very tall
- * window does not turn a sequencer into a ladder.
+ * This briefly stretched instead — twelve rows sharing the window's leftover height — which made
+ * the matrix tall without making anything in it bigger: a small marker adrift in a fifty-pixel
+ * band, and dead space above and below every cell that the pointer could land in without hitting
+ * a step at all. The geometry comes from the sixteen columns now, and the height follows.
  */
 .row {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
 }
 
 /*
@@ -174,7 +180,7 @@
   place-items: center start;
   background: var(--stage);
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   font-weight: 700;
   letter-spacing: 0.01em;
   line-height: 1;
@@ -236,16 +242,37 @@
   place-items: center;
   width: 100%;
   /*
-   * The row decides the height now, within a floor and a ceiling.
+   * Square, and the sixteen columns decide how big.
    *
-   * It used to be a fixed 2rem, which meant twelve rows had a fixed total and the matrix could not
-   * use vertical space however much of it there was. The floor keeps every cell clear of the 24px
-   * WCAG 2.2 target minimum; the ceiling stops a very tall window turning a sequencer into a
-   * ladder.
+   * **The whole cell is the target.** That is the load-bearing sentence: the dot inside is a
+   * picture of an empty step and nothing else, and a stroke must begin anywhere in the square —
+   * a corner, an edge, well away from the marker. Sizing the button rather than the mark is what
+   * makes drawing feel like graph paper instead of like hitting switches.
+   *
+   * A floor at 24px keeps every cell clear of the WCAG 2.2 target minimum; a ceiling stops a very
+   * wide window drawing cells the size of coasters.
    */
-  height: 100%;
+  aspect-ratio: 1;
+  height: auto;
+  /*
+   * Its own floor, deliberately not the drum pad's.
+   *
+   * Sharing `--step-min-height` looked tidy and was wrong: `min-height` beats `max-height` in the
+   * cascade, so the 48px floor meant for eight drum rows silently overrode the ceiling meant for
+   * twelve Tone rows, and the matrix went back to running past the bottom of the window. Eight
+   * rows and twelve rows want different numbers.
+   */
   min-height: 1.5rem;
-  max-height: 2.75rem;
+  /*
+   * The ceiling exists so the whole instrument fits, strip included.
+   *
+   * Twelve square rows at the width a 1280px window gives is 552px, and with the header, the layer
+   * tabs, its own controls and the octave strip that runs past the bottom of an 860px laptop — so
+   * the one control the grid cannot replace ends up below the fold. Forty pixels a row keeps every
+   * part of the instrument on screen, and a note is still a 35px block rather than the 24px badge
+   * this started as.
+   */
+  max-height: 2.5rem;
   padding: 0;
   border: 0;
   background: none;
@@ -272,8 +299,8 @@
  * across the whole grid and the eye can follow a row without going back to the label.
  */
 .dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 1px;
   background: var(--text-dim);
   opacity: 0.55;
@@ -310,14 +337,21 @@
 .note {
   display: grid;
   place-items: center;
-  width: calc(100% - 8px);
-  max-width: 2rem;
-  height: 1.5rem;
-  border-radius: 2px;
+  /*
+   * A square block filling most of its cell, not a marker floating in one.
+   *
+   * It was 24px tall in a cell that had grown to 50, which read as a badge — the note looked like
+   * an annotation on the grid rather than a thing placed in it. At three quarters of the square it
+   * reads as a sequencer block from across the room, and the octave has room to be legible.
+   */
+  width: 76%;
+  aspect-ratio: 1;
+  height: auto;
+  border-radius: 3px;
   background: var(--accent);
   color: var(--on-accent);
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: var(--text-sm);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -551,7 +585,7 @@
 
   .cell {
     min-height: 1.5rem;
-    max-height: 2.25rem;
+    max-height: 2.5rem;
   }
 
   .note {

@@ -272,6 +272,13 @@
    */
   --font-apl: 'APL387', 'APL385 Unicode', 'BQN386 Unicode', var(--font-mono);
 
+  /*
+   * The type scale, and it is the phone's.
+   *
+   * A desktop bump follows below. These sizes were chosen when the layout was a narrow column and
+   * they stayed put through two stages of the page getting wider, which is how a 1600px window
+   * ended up carrying 11px labels: not a decision, an omission.
+   */
   --text-xs: 0.6875rem;
   --text-sm: 0.8125rem;
   --text-base: 0.9375rem;
@@ -346,7 +353,7 @@
    * the two, so the relationship is the layout rather than something to be learnt, and a rail
    * that is *between* two panels has to be narrow enough not to be a third one.
    */
-  --rail-width: 3.75rem;
+  --rail-width: 4.5rem;
   --apl-column: 28rem;
   --apl-column-wide: 32rem;
 
@@ -359,6 +366,36 @@
    * crush the grid.
    */
   --workspace-min: 30rem;
+}
+
+/*
+ * Confident type on a desktop.
+ *
+ * Flat is not the same as tiny, and the two got confused. Everything here is one step up — about
+ * 9% — which is enough to stop the interface reading as miniaturised without turning it into a
+ * poster. Done once at the root so every label, tab and heading moves together and nothing has to
+ * remember to opt in.
+ *
+ * A phone keeps the smaller scale, where space genuinely is scarce.
+ */
+@media (min-width: 62rem) {
+  :root {
+    /*
+     * A taller floor for a *step*, and deliberately not `--cell-min`.
+     *
+     * That token is the column's minimum **width**, and raising it to 2.75rem took sixteen columns
+     * to 704px in a 624px grid — so the bar scrolled and step 1 went off the left of a desktop
+     * monitor. "Sixteen steps never come off the screen" is the one rule the whole grid is built
+     * around. The height floor is its own token, applied to the pad and to nothing else.
+     */
+    --step-min-height: 3rem;
+
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.25rem;
+    --text-xl: 1.75rem;
+  }
 }
 
 /*
@@ -408,16 +445,23 @@
  */
 @media (min-width: 78rem) and (max-width: 87.4375rem) {
   :root {
-    /* 1248–1398px: the tightest three-column band. Both the label and the APL give way. */
-    --track-label: 8.25rem;
-    --apl-column: 22rem;
+    /*
+     * 1248–1398px: the tightest three-column band, and the one that has to be argued about.
+     *
+     * The label went to 9.5rem when the type scale went up — at 8.25rem "Closed Hat" and "High
+     * Perc" were both truncating, and a sequencer whose track names end in an ellipsis is not
+     * finished. The APL column pays for it, because between a readable track name and 24 pixels
+     * of panel the name wins.
+     */
+    --track-label: 9.5rem;
+    --apl-column: 21rem;
   }
 }
 
 @media (min-width: 87.5rem) and (max-width: 99.9375rem) {
   :root {
-    --track-label: 8.25rem;
-    --apl-column: 28rem;
+    --track-label: 9.5rem;
+    --apl-column: 27rem;
   }
 }
 

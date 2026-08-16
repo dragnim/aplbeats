@@ -380,6 +380,26 @@ function requireRoomToDraw(): void {
 /* ---- drawing with a pointer ---------------------------------------------- */
 
 /**
+ * Bring the whole matrix clear of the sticky header before measuring anything in it.
+ *
+ * `scrollIntoViewIfNeeded` on a single cell is not enough once the grid is taller than the space
+ * under the header: it stops as soon as *that* cell is technically in the viewport, which can
+ * leave it beneath the transport, and it says nothing about the eleven rows a stroke also needs.
+ * Stage 9 made the matrix tall enough for that to matter.
+ */
+async function bringMatrixIntoView(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const grid = document.querySelector('[aria-label="Tone steps"]');
+    const header = document.querySelector('header');
+    if (grid === null) return;
+    const top = grid.getBoundingClientRect().top;
+    const clearance = (header?.getBoundingClientRect().height ?? 0) + 12;
+    window.scrollBy({ top: top - clearance, behavior: 'instant' });
+  });
+  await page.waitForTimeout(60);
+}
+
+/**
  * Draw a stroke that genuinely enters each target column at its target row.
  *
  * The first version of this moved centre to centre with two interpolation steps, and that is how a
@@ -397,8 +417,7 @@ function requireRoomToDraw(): void {
  * keeps the row it was drawn at.
  */
 async function drawThrough(page: Page, path: readonly (readonly [number, number])[]): Promise<void> {
-  const [firstRow, firstStep] = path[0] ?? [0, 0];
-  await cell(page, firstRow, firstStep).scrollIntoViewIfNeeded();
+  await bringMatrixIntoView(page);
 
   const points = [];
   for (const [row, step] of path) {
@@ -504,7 +523,7 @@ async function withPointerHeld(
     return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   };
 
-  await cell(page, start[0], start[1]).scrollIntoViewIfNeeded();
+  await bringMatrixIntoView(page);
   const first = await centre(start[0], start[1]);
   await page.mouse.move(first.x, first.y);
   await page.mouse.down();
@@ -968,6 +987,127 @@ test('reduced motion keeps the state and drops the animation', async ({ page }) 
 
   // Whatever else is true, nothing is animating.
   expect(animation === null || animation === 'none').toBe(true);
+});
+
+/* ---- the whole cell is the target ---------------------------------------- */
+
+/** Press at an offset from a cell's top-left corner, release, and report what sounds. */
+async function pressAt(
+  page: Page,
+  row: number,
+  step: number,
+  at: { readonly dx: number; readonly dy: number },
+): Promise<string | null> {
+  await bringMatrixIntoView(page);
+  const box = await cell(page, row, step).boundingBox();
+  if (box === null) throw new Error('no box');
+
+  const x = at.dx < 0 ? box.x + box.width + at.dx : box.x + at.dx;
+  const y = at.dy < 0 ? box.y + box.height + at.dy : box.y + at.dy;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.up();
+
+  const lit = sounding(page, step);
+  return (await lit.count()) === 0 ? null : lit.getAttribute('aria-label');
+}
+
+test('an empty cell is drawable anywhere in it, not just on its marker', async ({ page }) => {
+  /*
+   * The marker is a picture, not a button.
+   *
+   * An empty step draws a 7px dot in a 46px cell, and for a while the cell was capped shorter than
+   * the row it sat in — so there were dead bands between the rows where a press landed on nothing
+   * and no stroke began. Drawing became a matter of hitting the dot. Every corner of every cell
+   * has to start a stroke, or this is a grid of tiny switches rather than graph paper.
+   */
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  // Far corners first: 3px inside, which on a 46px cell is nowhere near the marker.
+  expect(await pressAt(page, 5, 3, { dx: 3, dy: 3 }), 'top-left corner').toBe('Step 3, F4');
+  await page.getByRole('button', { name: 'Undo' }).click();
+
+  expect(await pressAt(page, 5, 3, { dx: -3, dy: -3 }), 'bottom-right corner').toBe('Step 3, F4');
+  await page.getByRole('button', { name: 'Undo' }).click();
+
+  expect(await pressAt(page, 5, 3, { dx: -3, dy: 3 }), 'top-right corner').toBe('Step 3, F4');
+  await page.getByRole('button', { name: 'Undo' }).click();
+
+  expect(await pressAt(page, 5, 3, { dx: 3, dy: -3 }), 'bottom-left corner').toBe('Step 3, F4');
+});
+
+test('the hit area is the whole cell, with no dead space between rows', async ({ page }) => {
+  /*
+   * Measured rather than pressed, because this is the property that made the corners work: the
+   * button has to fill its row exactly. A cell shorter than its row leaves a band the pointer can
+   * land in without reaching any step at all.
+   */
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  await bringMatrixIntoView(page);
+  const geometry = await page.evaluate(() => {
+    const first = document.querySelector('[data-row="11"][data-step="4"]');
+    const below = document.querySelector('[data-row="10"][data-step="4"]');
+    const marker = first?.querySelector('span');
+    if (first === null || below === null || marker === null || marker === undefined) return null;
+    const a = first.getBoundingClientRect();
+    const b = below.getBoundingClientRect();
+    const m = marker.getBoundingClientRect();
+    return {
+      gapBetweenRows: Math.round(b.top - a.bottom),
+      ratio: Math.max(a.width, a.height) / Math.min(a.width, a.height),
+      markerShareOfCell: Math.round((m.width / a.width) * 100),
+      cell: Math.round(a.width),
+    };
+  });
+
+  expect(geometry).not.toBeNull();
+  // Rows meet. Anything above zero is a strip of grid that cannot be drawn on.
+  expect(geometry?.gapBetweenRows, 'a dead band between rows').toBeLessThanOrEqual(0);
+  /*
+   * Square *enough*, rather than square to the pixel.
+   *
+   * The width comes from sixteen columns and the height from a ceiling that keeps the octave strip
+   * on screen at 860px, so the two rarely land on the same number — 44 × 40 at 1280. What must not
+   * happen is a letterbox: a cell far wider than it is tall makes the note look adrift in it, which
+   * is the thing this whole correction was about.
+   */
+  expect(geometry?.ratio ?? 99, 'cells should be roughly square').toBeLessThan(1.3);
+  // And the marker stays a mark: a small fraction of the target it sits in.
+  expect(geometry?.markerShareOfCell ?? 100).toBeLessThan(30);
+});
+
+test('an active note erases from its edge as well as its middle', async ({ page }) => {
+  requireRoomToDraw();
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  // Step 1 opens on C4. Press near the corner of that cell rather than on the block.
+  await expect(sounding(page, 1)).toHaveAccessibleName('Step 1, C4');
+  expect(await pressAt(page, 0, 1, { dx: 3, dy: 3 })).toBeNull();
+});
+
+test('a tap away from the marker draws, on a touch screen', async ({ page }, testInfo) => {
+  /*
+   * The same claim for a finger, which is where a small target hurts most. A tap is the degenerate
+   * stroke — press, cross nothing, release — so if it lands it proves the hit area without needing
+   * the drag plumbing that a phone viewport cannot give this harness.
+   */
+  test.skip(testInfo.project.use.hasTouch !== true, 'A touch test.');
+  await freshVisit(page);
+  await layer(page, 'Tones').click();
+
+  await bringMatrixIntoView(page);
+  const box = await cell(page, 5, 3).boundingBox();
+  expect(box).not.toBeNull();
+
+  // Four pixels inside the corner, well clear of the marker in the middle.
+  await page.touchscreen.tap((box?.x ?? 0) + 4, (box?.y ?? 0) + 4);
+  await expect(sounding(page, 3)).toHaveAccessibleName('Step 3, F4');
 });
 
 /* ---- Undo, across both layers ------------------------------------------- */

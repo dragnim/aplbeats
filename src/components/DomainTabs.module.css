@@ -23,18 +23,26 @@
   align-items: baseline;
   gap: var(--space-2);
   min-height: var(--tap-target);
-  padding: var(--space-3) var(--space-1);
+  /*
+   * Room, because this is the top of the hierarchy.
+   *
+   * Flat did not have to mean small, and the first pass let the two get confused: two words at
+   * 15px with three pixels of padding read as text links in a header rather than as the biggest
+   * choice the interface offers. The treatment is unchanged — still a flat tab with a rule the
+   * active one breaks through — it simply has the size the job deserves.
+   */
+  padding: var(--space-4) var(--space-2);
   border-radius: 0;
   /*
    * The underline lives on the tab, not on a pseudo-element, so it can be two pixels of accent
    * without the tab moving: a transparent border of the same width is always there.
    */
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
   margin-bottom: -1px;
   color: var(--text-dim);
-  font-size: var(--text-base);
+  font-size: var(--text-xl);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   transition:
     color var(--motion-fast) var(--ease),
@@ -73,7 +81,7 @@
  */
 .variable {
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: 400;
   text-transform: none;
   letter-spacing: 0;
@@ -87,6 +95,11 @@
 @media (max-width: 61.9375rem) {
   .tabs {
     gap: var(--space-4);
+  }
+
+  .tab {
+    font-size: var(--text-lg);
+    padding: var(--space-3) var(--space-1);
   }
 
   /*
