@@ -3,6 +3,7 @@ import { cx } from '@/app/cx';
 import { useApl, type ExploreOrigin } from '@/apl/useApl';
 import type { ToneExploreOrigin } from '@/apl/useToneApl';
 import { useDrumMachine } from '@/audio/useDrumMachine';
+import { CreditsDialog } from '@/components/CreditsDialog';
 import { DrumMachineSelect } from '@/components/DrumMachineSelect';
 import { GeneratorPanel } from '@/components/GeneratorPanel';
 import { CreatePanel } from '@/components/CreatePanel';
@@ -15,6 +16,7 @@ import { UndoButton } from '@/components/UndoButton';
 import { TransportBar } from '@/components/TransportBar';
 import { WorkspaceRail } from '@/components/WorkspaceRail';
 import { DomainTabs } from '@/components/DomainTabs';
+import { ToneControls } from '@/components/ToneControls';
 import { ToneMatrix } from '@/components/ToneMatrix';
 import { TonePanel } from '@/components/TonePanel';
 import { ToneCreatePanel } from '@/components/ToneCreatePanel';
@@ -23,7 +25,6 @@ import { ToneExploreEditor } from '@/components/ToneExploreEditor';
 import type { Domain, WorkspaceId } from '@/components/workspaces';
 import { INITIAL_BPM, INITIAL_SWING } from '@/pattern/initialGroove';
 import { createMixer, effectiveLevel, setVolume, toggleMute, trackIdFor, type Mixer } from '@/pattern/mixer';
-import { TRACKS } from '@/pattern/tracks';
 import { clampBpm, clampSwing } from '@/transport/timing';
 import { useTransport } from '@/transport/useTransport';
 import { useTones } from '@/audio/tones/useTones';
@@ -137,6 +138,8 @@ export function App(): React.JSX.Element {
    * back at the kick.
    */
   const [tonesWanted, setTonesWanted] = useState(false);
+  /* Credits: a dialog rather than a permanent wall of text. See `CreditsDialog`. */
+  const [creditsOpen, setCreditsOpen] = useState(false);
   const selectDomain = useCallback((next: Domain) => {
     setDomain(next);
     if (next === 'tones') setTonesWanted(true);
@@ -436,34 +439,46 @@ export function App(): React.JSX.Element {
         transport layout back under pressure at exactly the widths it was fixed for, and the
         second row costs about forty pixels.
       */}
+      {/*
+        The global strip: who this is, how the whole composition plays, and how it looks.
+
+        One row rather than two, because there is less in it than there was. The drum kit used to
+        sit here between Play and the tempo; it belongs to Beats and now lives there. What is left
+        genuinely governs everything — the transport, the master level, Undo across both layers,
+        and the theme.
+      */}
       <header className={styles.topBar} ref={topBar}>
-        <div className={styles.brandRow}>
+        <div className={styles.brand}>
           <h1 className={styles.title}>
             <Logo />
           </h1>
           <p className={styles.tagline}>
-            Make music first. <span className={styles.taglineSecond}>Discover array programming second.</span>
+            Make music first <span className={styles.taglineSecond}>· Discover array programming second</span>
           </p>
+        </div>
+
+        <div className={styles.transportSlot}>
+          <h2 className="visuallyHidden">Transport</h2>
+          <TransportBar
+            state={transport.state}
+            bpm={bpm}
+            swing={swing}
+            onToggle={transport.toggle}
+            onBpmChange={(next) => {
+              setBpm(clampBpm(next));
+            }}
+            onSwingChange={(next) => {
+              setSwing(clampSwing(next));
+            }}
+            masterVolume={masterVolume}
+            onMasterVolumeChange={handleMasterVolumeChange}
+          />
+        </div>
+
+        <div className={styles.globalActions}>
           <UndoButton canUndo={studio.canUndo} onUndo={studio.undo} />
           <ThemeToggle resolved={theme.resolved} onToggle={theme.toggle} />
         </div>
-
-        <h2 className="visuallyHidden">Transport</h2>
-        <TransportBar
-          state={transport.state}
-          bpm={bpm}
-          swing={swing}
-          onToggle={transport.toggle}
-          onBpmChange={(next) => {
-            setBpm(clampBpm(next));
-          }}
-          onSwingChange={(next) => {
-            setSwing(clampSwing(next));
-          }}
-          masterVolume={masterVolume}
-          onMasterVolumeChange={handleMasterVolumeChange}
-          instrument={<DrumMachineSelect drumMachine={drumMachine} />}
-        />
       </header>
 
       {/*
@@ -481,53 +496,80 @@ export function App(): React.JSX.Element {
         id={`${workspaceIds}-domain-panel-${domain}`}
         aria-labelledby={`${workspaceIds}-domain-tab-${domain}`}
       >
-        <div className={styles.railColumn}>
-          <WorkspaceRail active={workspace} onSelect={setWorkspace} panelIds={workspaceIds} domain={domain} />
-        </div>
+        <div className={styles.workspace}>
+          {/*
+            The instrument, and the controls the layer owns.
 
-        {/*
-          Beats keeps its card; Tones does not.
+            No card. The page is the instrument's ground, the layer's own controls sit directly
+            above the grid they change, and the grid takes whatever height is left — which is what
+            turns a monitor's spare space into a bigger instrument rather than dead page.
+          */}
+          <main className={styles.instrument}>
+            {/*
+              The layer's own controls: the kit for Beats, the sound and volume for Tones.
 
-          The drum grid is one of several things in this column — the grid, the track controls, the
-          mixer — and a card is what holds them together. The Tone matrix is the only thing here,
-          and a card around a single object is furniture: it made a sequencer look like a widget
-          sitting in a dashboard. So the panel treatment is Beats-only, and the matrix sits on the
-          page.
-        */}
-        <main className={cx(styles.main, domain === 'tones' && styles.mainOpen)}>
-          {domain === 'beats' ? (
-            <>
-              <h2 className="visuallyHidden">Pattern</h2>
-              <Sequencer
-                pattern={pattern}
-                mixer={mixer}
-                locks={locks}
-                playheadStep={transport.playheadStep}
-                isPlaying={transport.isPlaying}
-                onSetCell={handleSetCell}
-                onToggleMute={handleToggleMute}
-                onToggleLock={studio.toggleLock}
-                onVolumeChange={handleVolumeChange}
-                onAuditionTrack={handleAuditionTrack}
-                onEditGesture={beginEdit}
-              />
-            </>
-          ) : (
-            <>
-              <h2 className="visuallyHidden">Tones</h2>
-              <ToneMatrix
-                phrase={phrase}
-                playheadStep={transport.playheadStep}
-                isPlaying={transport.isPlaying}
-                onEditGesture={studio.beginNoteEdit}
-                onSetNote={studio.setNote}
-                onPreview={handlePreviewTone}
-              />
-            </>
-          )}
-        </main>
+              Directly above the instrument they change, which is the whole of what "Beats owns
+              its kit" means structurally. One row, one hairline under it, no card.
+            */}
+            <div className={styles.layerControls}>
+              {domain === 'beats' ? (
+                <DrumMachineSelect drumMachine={drumMachine} />
+              ) : (
+                <ToneControls tones={tones} />
+              )}
+            </div>
 
-        {/*
+            <div className={styles.instrumentBody}>
+              {domain === 'beats' ? (
+                <>
+                  <h2 className="visuallyHidden">Pattern</h2>
+                  <Sequencer
+                    pattern={pattern}
+                    mixer={mixer}
+                    locks={locks}
+                    playheadStep={transport.playheadStep}
+                    isPlaying={transport.isPlaying}
+                    onSetCell={handleSetCell}
+                    onToggleMute={handleToggleMute}
+                    onToggleLock={studio.toggleLock}
+                    onVolumeChange={handleVolumeChange}
+                    onAuditionTrack={handleAuditionTrack}
+                    onEditGesture={beginEdit}
+                  />
+                </>
+              ) : (
+                <>
+                  <h2 className="visuallyHidden">Tones</h2>
+                  <ToneMatrix
+                    phrase={phrase}
+                    playheadStep={transport.playheadStep}
+                    isPlaying={transport.isPlaying}
+                    onEditGesture={studio.beginNoteEdit}
+                    onSetNote={studio.setNote}
+                    onPreview={handlePreviewTone}
+                  />
+                </>
+              )}
+            </div>
+          </main>
+
+          {/*
+            The mode rail, between the instrument and the workspace it switches.
+
+            Its position is the design. Stage 7 put it on the far left, where pressing Transform
+            changed something the width of the instrument away; here the relationship is spatial —
+            press a mode, and the thing beside it becomes that mode.
+          */}
+          <div className={styles.railColumn}>
+            <WorkspaceRail
+              active={workspace}
+              onSelect={setWorkspace}
+              panelIds={workspaceIds}
+              domain={domain}
+            />
+          </div>
+
+          {/*
           The APL column, and the reason for the whole layout.
 
           One workspace at a time, beside the grid rather than beneath it. Each is a real tab
@@ -538,74 +580,75 @@ export function App(): React.JSX.Element {
           draft survives being switched away from, because the draft lives in `useApl` and not in
           the editor component. Unmounting the textarea does not unmake what somebody wrote.
         */}
-        <div className={styles.aplColumn}>
-          <div
-            className={styles.aplPanel}
-            role="tabpanel"
-            id={`${workspaceIds}-panel-${workspace}`}
-            aria-labelledby={`${workspaceIds}-tab-${workspace}`}
-            tabIndex={-1}
-          >
-            {workspace === 'play' && domain === 'tones' && <TonePanel tones={tones} phrase={phrase} />}
+          <div className={styles.aplColumn}>
+            <div
+              className={styles.aplPanel}
+              role="tabpanel"
+              id={`${workspaceIds}-panel-${workspace}`}
+              aria-labelledby={`${workspaceIds}-tab-${workspace}`}
+              tabIndex={-1}
+            >
+              {workspace === 'play' && domain === 'tones' && <TonePanel phrase={phrase} />}
 
-            {workspace === 'play' && domain === 'beats' && (
-              <GeneratorPanel
-                preset={studio.state.preset}
-                seed={studio.state.seed}
-                macros={studio.state}
-                onRandomise={handleRandomise}
-                onNewSeed={studio.newSeed}
-                onPresetChange={studio.setPreset}
-                onMacroChange={studio.setMacro}
-                onMacroCommit={studio.commitMacro}
-              />
-            )}
+              {workspace === 'play' && domain === 'beats' && (
+                <GeneratorPanel
+                  preset={studio.state.preset}
+                  seed={studio.state.seed}
+                  macros={studio.state}
+                  onRandomise={handleRandomise}
+                  onNewSeed={studio.newSeed}
+                  onPresetChange={studio.setPreset}
+                  onMacroChange={studio.setMacro}
+                  onMacroCommit={studio.commitMacro}
+                />
+              )}
 
-            {workspace === 'create' && domain === 'beats' && (
-              <CreatePanel
-                transform={transform}
-                exploreOpen={exploreVisited}
-                onEditApl={() => {
-                  openExplore('create');
-                }}
-              />
-            )}
+              {workspace === 'create' && domain === 'beats' && (
+                <CreatePanel
+                  transform={transform}
+                  exploreOpen={exploreVisited}
+                  onEditApl={() => {
+                    openExplore('create');
+                  }}
+                />
+              )}
 
-            {workspace === 'transform' && domain === 'beats' && (
-              <TransformPanel
-                transform={transform}
-                pattern={pattern}
-                exploreOpen={exploreVisited}
-                onEditApl={() => {
-                  openExplore('transform');
-                }}
-              />
-            )}
+              {workspace === 'transform' && domain === 'beats' && (
+                <TransformPanel
+                  transform={transform}
+                  pattern={pattern}
+                  exploreOpen={exploreVisited}
+                  onEditApl={() => {
+                    openExplore('transform');
+                  }}
+                />
+              )}
 
-            {workspace === 'explore' && domain === 'beats' && <ExploreEditor transform={transform} />}
+              {workspace === 'explore' && domain === 'beats' && <ExploreEditor transform={transform} />}
 
-            {workspace === 'create' && domain === 'tones' && (
-              <ToneCreatePanel
-                transform={transform}
-                exploreOpen={toneExploreVisited}
-                onEditApl={() => {
-                  openToneExplore('create');
-                }}
-              />
-            )}
+              {workspace === 'create' && domain === 'tones' && (
+                <ToneCreatePanel
+                  transform={transform}
+                  exploreOpen={toneExploreVisited}
+                  onEditApl={() => {
+                    openToneExplore('create');
+                  }}
+                />
+              )}
 
-            {workspace === 'transform' && domain === 'tones' && (
-              <ToneTransformPanel
-                transform={transform}
-                phrase={phrase}
-                exploreOpen={toneExploreVisited}
-                onEditApl={() => {
-                  openToneExplore('transform');
-                }}
-              />
-            )}
+              {workspace === 'transform' && domain === 'tones' && (
+                <ToneTransformPanel
+                  transform={transform}
+                  phrase={phrase}
+                  exploreOpen={toneExploreVisited}
+                  onEditApl={() => {
+                    openToneExplore('transform');
+                  }}
+                />
+              )}
 
-            {workspace === 'explore' && domain === 'tones' && <ToneExploreEditor transform={transform} />}
+              {workspace === 'explore' && domain === 'tones' && <ToneExploreEditor transform={transform} />}
+            </div>
           </div>
         </div>
       </div>
@@ -624,80 +667,45 @@ export function App(): React.JSX.Element {
         {transport.isPlaying ? 'Playing' : 'Paused'}
       </p>
 
+      {/*
+        One line, and everything it used to say is one click away.
+
+        Two paragraphs of provenance lived here permanently — three upstream projects, their
+        licences, what runs locally and what runs on TryAPL. All of it still ships, in the credits
+        dialog, including the MIT permission notice that has to travel with the application rather
+        than only with the repository. Moving documentation out of an instrument is not the same as
+        removing it.
+      */}
       <footer className={styles.footer}>
-        <p className={styles.note}>
-          Eight drum tracks and one Tone phrase, sixteen steps each — an{' '}
-          <span className={styles.emphasis}>{TRACKS.length} × 16</span> Boolean matrix and a{' '}
-          <span className={styles.emphasis}>16</span> numeric vector underneath. The instant generator and the
-          timing are local; the APL tools create and transform both in Dyalog APL, through TryAPL, one whole
-          pattern or phrase at a time and only when you ask.
-        </p>
+        <span className={styles.footerName}>APL Beats</span>
 
-        {/*
-          The audio credits, in the interface rather than only in the repository.
-
-          Three sources, and the sentence keeps them apart, because they are owed different
-          things. "Selected" for the collection, because nine of its ten packs are included and
-          one is not, so "samples from" on its own would overstate what is here. André Michelle
-          is named rather than only his repository, because MIT asks for the copyright holder
-          and a person who wrote a drum machine deserves better than a URL.
-
-          "Rendered from" rather than "samples from" for the TR-909, because that is what
-          happened: the files here are the output of running his DSP, not a pack of finished
-          samples copied across. It says what was done rather than making a claim about what
-          upstream's own audio resources are, which upstream does not document.
-
-          The Tone sounds get "samples from" plainly, because that is what they are: recordings
-          of a synthesiser, copied from a public-domain release and trimmed. The dedication asks
-          for no credit at all; this is given because it is owed in the ordinary sense.
-
-          "Instruments" rather than "drum machines" in the last sentence, since Stage 8 there is
-          a synthesiser named here too, and the disclaimer has to cover it.
-
-          `rel="noreferrer noopener"` on external links as everywhere else, and no sentence
-          implies that any of the three had anything to do with APL Beats.
-        */}
-        <p className={styles.note}>
-          Selected drum machine samples from{' '}
+        <span className={styles.footerLinks}>
           <a
             className={styles.link}
-            href="https://github.com/smpldsnds/drum-machines"
+            href="https://github.com/dragnim/aplbeats"
             rel="noreferrer noopener"
             target="_blank"
           >
-            smpldsnds/drum-machines
+            GitHub
           </a>
-          , a public-domain collection. The TR-909 is rendered from{' '}
-          <a
-            className={styles.link}
-            href="https://github.com/andremichelle/tr-909"
-            rel="noreferrer noopener"
-            target="_blank"
+          <button
+            type="button"
+            className={cx(styles.link, styles.linkButton)}
+            onClick={() => {
+              setCreditsOpen(true);
+            }}
           >
-            andremichelle/tr-909
-          </a>
-          , © 2022 André Michelle, MIT licensed. The Tone sounds are Roland Jupiter-4 samples from{' '}
-          <a
-            className={styles.link}
-            href="https://github.com/publicsamples/Roland-Jupiter-4"
-            rel="noreferrer noopener"
-            target="_blank"
-          >
-            publicsamples/Roland-Jupiter-4
-          </a>
-          , released into the public domain. APL Beats is an independent project and is not affiliated with or
-          endorsed by the manufacturers of the instruments named in it.
-        </p>
-
-        <a
-          className={styles.link}
-          href="https://github.com/dragnim/aplbeats"
-          rel="noreferrer noopener"
-          target="_blank"
-        >
-          Source on GitHub
-        </a>
+            Credits &amp; licences
+          </button>
+        </span>
       </footer>
+
+      <CreditsDialog
+        open={creditsOpen}
+        onClose={() => {
+          setCreditsOpen(false);
+        }}
+      />
     </div>
   );
 }

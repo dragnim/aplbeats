@@ -8,7 +8,7 @@ import styles from './TransportBar.module.css';
  *
  * The transport is the second most important object on the page and is allowed to
  * look like it. Stage 4 adds a fourth control and it belongs here rather than in a
- * settings panel: choosing the instrument is what a drum machine's front panel is
+ * settings panel: shaping how the whole composition plays is what a front panel is
  * for, and it sits at the far end of the bar so the one obvious thing to press is
  * still Play.
  */
@@ -23,13 +23,6 @@ export interface TransportBarProps {
   /** The listening level, 0 to 1. */
   readonly masterVolume: number;
   readonly onMasterVolumeChange: (volume: number) => void;
-  /**
-   * The instrument control, immediately after Play.
-   *
-   * A slot rather than a prop for the kit itself, so this component's own props stay about the
-   * transport. What goes in it is the drum machine selector: which instrument, then play it.
-   */
-  readonly instrument?: React.ReactNode;
 }
 
 export function TransportBar({
@@ -41,7 +34,6 @@ export function TransportBar({
   onSwingChange,
   masterVolume,
   onMasterVolumeChange,
-  instrument,
 }: TransportBarProps): React.JSX.Element {
   const isPlaying = state === 'playing';
   const swingPercent = Math.round(swing * 100);
@@ -79,14 +71,14 @@ export function TransportBar({
       </button>
 
       {/*
-        The instrument, immediately after Play.
-        Which is the order somebody works in: press the thing that makes a sound, then decide
-        what it should sound like, then shape how it is played. It also puts the one control
-        that is not a slider next to the one control that is not a dial, so the three dials read
-        as a group rather than being interrupted.
-      */}
-      {instrument}
+        Three dials, and nothing else.
 
+        The drum kit used to sit here, immediately after Play, on the reasoning that you choose an
+        instrument and then play it. That was right while there was one layer and wrong the moment
+        there were two: a kit is a fact about Beats, and a global strip holding a Beats control
+        tells a visitor the application is a drum machine with a tab bolted on. It lives with
+        Beats now. What is left here genuinely governs the whole composition.
+      */}
       <div className={styles.dial}>
         <label className={styles.dialLabel} htmlFor="transport-bpm">
           Tempo

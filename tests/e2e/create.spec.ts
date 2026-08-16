@@ -196,7 +196,7 @@ test('Undo after generating restores the bar and changes nothing else', async ({
     tempo: await tempo.inputValue(),
     swing: await swing.inputValue(),
     master: await master.inputValue(),
-    kit: await page.getByRole('combobox', { name: 'Drum machine' }).inputValue(),
+    kit: await page.getByRole('combobox', { name: 'Kit' }).inputValue(),
   };
 
   await generate(page).click();
@@ -207,7 +207,7 @@ test('Undo after generating restores the bar and changes nothing else', async ({
   await expect(tempo).toHaveValue(before.tempo);
   await expect(swing).toHaveValue(before.swing);
   await expect(master).toHaveValue(before.master);
-  await expect(page.getByRole('combobox', { name: 'Drum machine' })).toHaveValue(before.kit);
+  await expect(page.getByRole('combobox', { name: 'Kit' })).toHaveValue(before.kit);
 });
 
 test('generating while playing does not restart anything', async ({ page }) => {

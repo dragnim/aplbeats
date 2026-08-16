@@ -178,16 +178,18 @@ test('every tab carries its word, not only a glyph', async ({ page }) => {
   }
 });
 
-test('every workspace wears the same card', async ({ page }) => {
+test('every workspace wears the same surface', async ({ page }) => {
   /*
-   * Explore did not, and it was visible: it had been styled as a section *inside* the Transform
-   * panel's Peek — a top rule and some padding, which is what a divided-off block wants — and
-   * Stage 7 lifted it out to be a workspace without giving it the card the others have.
+   * Explore once did not, and it was visible: it had been styled as a section *inside* the
+   * Transform panel's Peek — a top rule and some padding, which is what a divided-off block wants
+   * — and Stage 7 lifted it out to be a workspace without giving it the treatment the others had.
    *
-   * The card is one declaration now, in `AplPanel.module.css`, composed or used directly by all
-   * four. This compares them as *computed* values rather than asserting particular colours, so it
-   * keeps holding in both themes and after any future change to what the card looks like — what
-   * it is checking is that they agree, not what they agree on.
+   * That treatment is one declaration, in `AplPanel.module.css`, composed or used directly by all
+   * four. What it *is* changed in Stage 9 — the bordered, rounded, shadowed card became a plain
+   * region, because a floating panel is what made an instrument read as a dashboard — but the
+   * property being guarded is unchanged and is the one that matters: the four agree with each
+   * other. Compared as computed values, so it holds in both themes and survives the next change
+   * to what they agree on.
    */
   await freshVisit(page);
 
@@ -219,11 +221,18 @@ test('every workspace wears the same card', async ({ page }) => {
   };
 
   const reference = await surfaceOf('Transform');
-  // A card at all, rather than a transparent block on the page background.
-  expect(reference.background).not.toBe('rgba(0, 0, 0, 0)');
+
+  /*
+   * Flat, and asserted rather than assumed.
+   *
+   * The workspace sits on the application's own ground now: no surface of its own, no border, no
+   * shadow. Checking that here is what stops the card creeping back one panel at a time.
+   */
+  expect(reference.background, 'the workspace should not be a floating card').toBe('rgba(0, 0, 0, 0)');
+  expect(reference.shadow, 'the workspace should cast no shadow').toBe('none');
 
   for (const name of ['Play', 'Create', 'Explore']) {
-    expect(await surfaceOf(name), `${name} does not match the workspace card`).toEqual(reference);
+    expect(await surfaceOf(name), `${name} does not match the workspace surface`).toEqual(reference);
   }
 });
 

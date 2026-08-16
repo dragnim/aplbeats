@@ -160,29 +160,40 @@ They are now. On a desktop the page is three columns, under two rows of layer ta
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ brand · Undo · theme                                         │
-│ Play · drum machine · tempo · swing · master                 │  sticky
+│ APL BEATS · Play · tempo · swing · master · Undo · theme      │  sticky
 ├──────────────────────────────────────────────────────────────┤
-│ [ Beats m ] [ Tones n ]                                      │
-├──────┬─────────────────────────────┬─────────────────────────┤
-│ Play │                             │                         │
-│ Crea │  the sequencer, or          │  the active APL         │  sticky
-│ Tran │  the Tone matrix            │  workspace              │  column
-│ Expl │  (the instrument)           │                         │
-└──────┴─────────────────────────────┴─────────────────────────┘
+│ BEATS          TONES                                         │  the layer
+├───────────────────────────────────┬──────┬───────────────────┤
+│ Kit ▾   /   Sound ▾  Volume       │ Play │                   │
+│                                   │ Crea │  the active APL   │  sticky
+│  the sequencer, or the Tone       │ Tran │  workspace        │  column
+│  matrix — the instrument          │ Expl │                   │
+├───────────────────────────────────┴──────┴───────────────────┤
+│ APL Beats                       GitHub · Credits & licences  │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-The APL column is sticky and scrolls inside itself, so a long Peek or a tall editor never pushes
-the instrument off the screen.
+Three levels, and the layout is exactly them: what governs the **whole composition**, then which
+**layer** you are working on, then which **tool** acts on it.
 
-The two tabs at the top choose which **layer** you are working on; the rail below chooses which
-**tool** acts on it. Each layer remembers its own tab, so glancing at the drums and coming back
-returns you to the phrase transform you were in the middle of.
+Two structural rules carry most of it. **The mode rail sits between the instrument and the panel
+it switches**, so "press here, that changes" is a spatial fact rather than something to learn — it
+used to be on the far left, changing content on the far right. And **the workspace is the flexible
+row**: the header, the tabs and the footer take their intrinsic height and everything left over
+goes to the instrument, which is what stops a drum machine sitting in the top half of a monitor
+with a field of dead page beneath it.
+
+Layer-specific controls belong to their layer. The drum kit sits with Beats and the Tone sound and
+volume sit with Tones, directly above the grid each one changes; the global strip carries only the
+transport, the master level, Undo and the theme.
+
+The APL column is sticky and scrolls inside itself, so a long Peek or a tall editor never pushes
+the instrument off the screen. Each layer remembers its own tab, so glancing at the drums and
+coming back returns you to the phrase transform you were in the middle of.
 
 ### The four workspaces
 
-The rail on the left is real navigation, not decoration. One tool is open at a time, beside the
-grid:
+The rail is real navigation, not decoration. One tool is open at a time, immediately beside it:
 
 | Tab           | What is in it                                                                       |
 | ------------- | ----------------------------------------------------------------------------------- |
@@ -192,8 +203,9 @@ grid:
 | **Explore**   | The APL editor, the glyph strip and Run this APL.                                   |
 
 Every tab carries its word as well as its icon, they are a proper `tablist` with arrow-key
-navigation, and the selected one is marked by `aria-selected`, a filled surface and a bar — so it
-is never colour alone that tells you where you are.
+navigation, and the selected one is marked by `aria-selected`, a wash and a bar — so it is never
+colour alone that tells you where you are. Inactive modes are given nothing at all: the rail's job
+is to connect two regions, and a decorated rail would read as a third.
 
 **Only the active workspace is rendered.** Switching costs nothing and makes no request, and an
 Explore draft survives being switched away from because the draft lives in the hook rather than in
@@ -226,9 +238,10 @@ theme it is in.
 
 ### Narrower screens
 
-The three columns fold twice. Below about 1250px the APL moves under the sequencer and the rail
-stays, so a laptop still gets tabs and a full-width grid. Below about 990px the rail lies down
-into a scrolling tab strip and everything is one column.
+The three columns fold twice. Below about 1250px the APL workspace moves under the instrument and
+the rail goes with it — the rail belongs to the panel, so separating them to save a column would
+undo the one relationship the layout exists to establish. Below about 990px the rail lies down into
+a scrolling tab strip above the panel and everything is one column.
 
 On a phone the sequencer keeps the layout it always had — labels above the steps, sixteen pads
 across, no card around it. That last part is an accessibility decision rather than a stylistic

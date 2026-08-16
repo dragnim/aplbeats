@@ -1,23 +1,21 @@
 /*
  * The APL panel.
  *
- * Beside the sequencer rather than under it since Stage 7, and it is the differentiator rather
- * than an advanced setting — so it is a card in its own right, with everything that would make it
- * look like an IDE kept inside Peek.
+ * **This is the canonical workspace surface.** Transform and Create use it directly; the
+ * generator and Explore compose it. Nothing else may restate its padding or its edge — the reason
+ * Explore once looked wrong is that the treatment lived in two stylesheets and was missing from a
+ * third, which is exactly what a fourth copy would do again.
  *
- * **This is the canonical workspace card.** Transform and Create use it directly; the generator
- * and Explore compose it. Nothing else may restate its surface, border, radius, padding or
- * shadow — the reason Explore looked wrong is that the treatment lived in two stylesheets and
- * was missing from a third, which is exactly what a fourth copy would do again.
+ * Stage 9 took the card off it. It was a bordered, rounded, shadowed panel floating on the page —
+ * the SaaS-dashboard look, and the thing that made an instrument read as a screen full of
+ * widgets. What is left is the workspace itself: no border, no radius, no shadow, and the mode
+ * rail's hairline to its left doing the separating. The heading and the spacing say where it
+ * starts.
  */
 .panel {
   display: grid;
   gap: var(--space-3);
-  padding: var(--space-4);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-panel);
+  padding: 0 0 var(--space-4);
 }
 
 .header {

@@ -1,15 +1,18 @@
 import { useId } from 'react';
 import { cx } from '@/app/cx';
 import type { DrumMachineApi } from '@/audio/useDrumMachine';
-import styles from './DrumMachineSelect.module.css';
+import styles from './LayerControls.module.css';
 
 /*
  * Which drum machine plays the pattern.
  *
- * It sits in the transport bar because that is what it is: an instrument control, next to Play
- * and the tempo, rather than a preference hidden behind a gear icon. Somebody who has just
- * arrived should be able to find "make it sound like an 808" without being taught where
- * settings live.
+ * It sits with Beats, above the grid it changes. Until Stage 9 it was in the global transport,
+ * which was defensible while there was one layer and became a lie the moment there were two: a
+ * kit is a fact about Beats, and a global control that only affects one layer teaches somebody
+ * that the application is a drum machine with a tab bolted on.
+ *
+ * Labelled "Kit" rather than "Drum machine" now that it lives under a heading that says BEATS.
+ * The longer name was carrying the context the layout now carries.
  *
  * One select and one line of status, and the status line is empty almost all of the time. A kit
  * takes a few tens of kilobytes and a moment to decode; saying so is worth one line, and
@@ -27,7 +30,7 @@ export function DrumMachineSelect({ drumMachine }: DrumMachineSelectProps): Reac
   return (
     <div className={styles.field}>
       <label className={styles.label} htmlFor={`${id}-kit`}>
-        Drum machine
+        Kit
       </label>
 
       <select
@@ -56,7 +59,7 @@ export function DrumMachineSelect({ drumMachine }: DrumMachineSelectProps): Reac
       <p
         className={cx(styles.status, status === 'failed' && styles.statusFailed)}
         role="status"
-        aria-label="Drum machine"
+        aria-label="Kit"
       >
         {status === 'loading' && 'Loading kit…'}
         {status === 'failed' && error}

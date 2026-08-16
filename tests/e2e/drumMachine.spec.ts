@@ -56,8 +56,8 @@ async function creativeState(page: Page): Promise<Record<string, unknown>> {
   }));
 }
 
-const selector = (page: Page) => page.getByRole('combobox', { name: 'Drum machine' });
-const kitStatus = (page: Page) => page.getByRole('status', { name: 'Drum machine' });
+const selector = (page: Page) => page.getByRole('combobox', { name: 'Kit' });
+const kitStatus = (page: Page) => page.getByRole('status', { name: 'Kit' });
 
 /** Skip unless this browser can make a sound. */
 async function requireAudio(page: Page): Promise<void> {
@@ -412,9 +412,24 @@ test('a browser with no Web Audio says so, and downloads nothing', async ({ page
   expect(problems.filter((problem) => problem.startsWith('page:'))).toEqual([]);
 });
 
-test('the footer credits both audio sources, and links them', async ({ page }) => {
+test('the credits dialog names both audio sources, and links them', async ({ page }) => {
+  /*
+   * Moved, not removed, and this test moved with it.
+   *
+   * All of this used to sit permanently in the footer — two paragraphs of provenance under an
+   * instrument. Stage 9 put it behind "Credits & licences", which is a change of *where* and not
+   * of *whether*: MIT requires the copyright notice to travel with the software, so it still ships
+   * in the application rather than only in the repository, and this asserts that it does.
+   */
   const problems = watchForProblems(page);
   await freshVisit(page);
+
+  // Nothing of it is in the footer any more; the footer is one line.
+  await expect(page.locator('footer')).not.toContainText('André Michelle');
+
+  await page.getByRole('button', { name: 'Credits & licences' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
 
   const credits = [
     { name: 'smpldsnds/drum-machines', href: 'https://github.com/smpldsnds/drum-machines' },
@@ -429,13 +444,19 @@ test('the footer credits both audio sources, and links them', async ({ page }) =
     await expect(credit).toHaveAttribute('target', '_blank');
   }
 
-  const footer = page.locator('footer');
   // MIT asks that the copyright holder travel with the work, including into the interface.
-  await expect(footer).toContainText('André Michelle');
-  // The TR-909 is rendered, not recorded, and the footer must not blur that.
-  await expect(footer).toContainText('rendered from');
+  await expect(dialog).toContainText('André Michelle');
+  // And the permission notice itself, which is the part the licence actually compels.
+  await expect(dialog).toContainText('Permission is hereby granted');
+  await expect(dialog).toContainText('WITHOUT WARRANTY OF ANY KIND');
+  // The TR-909 is rendered, not recorded, and the credits must not blur that.
+  await expect(dialog).toContainText('rendered from');
   // And the non-affiliation statement, which is the other half of naming a manufacturer.
-  await expect(footer).toContainText('not affiliated with or endorsed by');
+  await expect(dialog).toContainText('not affiliated with or endorsed by');
+
+  // Escape closes it, because it is a real dialog rather than a panel pretending to be one.
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
 
   expect(problems).toEqual([]);
 });

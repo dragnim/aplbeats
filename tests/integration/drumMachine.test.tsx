@@ -137,9 +137,8 @@ function mockDecoding(): void {
  * reader — a combobox and a status region are announced quite differently, and both want that
  * name — but it makes `getByLabelText` ambiguous. The role is what tells them apart.
  */
-const selector = (): HTMLSelectElement =>
-  screen.getByRole('combobox', { name: 'Drum machine' }) as HTMLSelectElement;
-const kitStatus = (): HTMLElement => screen.getByRole('status', { name: 'Drum machine' });
+const selector = (): HTMLSelectElement => screen.getByRole('combobox', { name: 'Kit' }) as HTMLSelectElement;
+const kitStatus = (): HTMLElement => screen.getByRole('status', { name: 'Kit' });
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -168,12 +167,25 @@ describe('the selector', () => {
     }
   });
 
-  it('sits with the transport rather than behind a disclosure', () => {
+  it('belongs to Beats rather than to the global transport', () => {
+    /*
+     * Where it lives is the claim, and it moved in Stage 9.
+     *
+     * It sat in the transport while there was one layer, which was defensible: choose an
+     * instrument, then play it. The moment Tones existed that became a lie — a global strip
+     * holding a control that only affects one layer teaches a visitor that the application is a
+     * drum machine with a tab bolted on. So the transport must *not* contain it, and the Beats
+     * layer must.
+     */
     render(<App />);
-    // Inside the transport region, which is where an instrument control belongs.
-    const transportHeading = screen.getByRole('heading', { name: 'Transport' });
-    expect(transportHeading).toBeInTheDocument();
+
+    const transport = screen.getByRole('heading', { name: 'Transport' }).parentElement;
+    expect(transport).not.toBeNull();
+    expect(transport?.contains(selector())).toBe(false);
+
+    // And it is on screen, labelled for the layer it now belongs to.
     expect(selector()).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Beats/u })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('downloads nothing at all on the default kit', () => {

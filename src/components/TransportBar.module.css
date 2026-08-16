@@ -1,13 +1,16 @@
+/*
+ * A control strip inside the header, not a panel resting on it.
+ *
+ * The border, radius, surface and shadow are gone: the header's own hairline already separates
+ * the global controls from the layer below, and a card drawn inside another region is the exact
+ * habit Stage 9 exists to break. What is left is spacing and alignment.
+ */
 .bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3) var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-panel);
+  gap: var(--space-3) var(--space-4);
+  min-width: 0;
 }
 
 /*
@@ -84,7 +87,7 @@
    * rems is comfortably more than the dial's minimum and small enough that all five fit; on a
    * wider screen they simply grow into the space.
    */
-  flex: 1 1 10.5rem;
+  flex: 1 1 9rem;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;

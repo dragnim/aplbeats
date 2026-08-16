@@ -1,0 +1,134 @@
+/*
+ * The credits dialog.
+ *
+ * One of the few places in Stage 9 that still gets a surface and a radius, and it earns them: a
+ * modal genuinely is a sheet laid over the application, so drawing it as one is describing what
+ * is happening rather than decorating it.
+ */
+.dialog {
+  width: min(42rem, calc(100vw - var(--space-5) * 2));
+  max-height: min(80dvh, 48rem);
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-height: inherit;
+  padding: var(--space-5);
+  overflow-y: auto;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+.close {
+  min-width: var(--tap-target);
+  min-height: var(--tap-target);
+  margin: calc(var(--space-2) * -1) calc(var(--space-2) * -1) 0 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.close:hover {
+  color: var(--text);
+  background: var(--surface-raised);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.section p {
+  margin: 0;
+  max-width: var(--measure);
+}
+
+/*
+ * The MIT notice, set as what it is: a quotation, not prose.
+ *
+ * Smaller and monospaced so it reads as a legal instrument being reproduced verbatim rather than
+ * as something written for this page — which is exactly what it is, and the reason it may not be
+ * paraphrased or trimmed.
+ */
+.licence {
+  margin: 0;
+  padding: var(--space-3);
+  border-left: 2px solid var(--line-strong);
+  background: var(--code-surface);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.disclaimer,
+.more {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: var(--text-xs);
+  color: var(--text-dim);
+}
+
+.disclaimer {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.link {
+  color: var(--accent-ink);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, currentcolor 40%, transparent);
+}
+
+.link:hover {
+  border-bottom-color: currentcolor;
+}
+
+@media (max-width: 61.9375rem) {
+  .dialog {
+    width: calc(100vw - var(--space-3) * 2);
+  }
+
+  .body {
+    padding: var(--space-4);
+  }
+}

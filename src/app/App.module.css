@@ -1,66 +1,77 @@
 /*
- * The workspace.
+ * The application shell.
  *
- * Stage 6 left this a long page: a header, a transport, the grid, then four APL panels stacked
- * beneath it, so changing an expression and seeing the beat change meant scrolling between the
- * cause and the effect. That was the product problem Stage 7 exists to fix, and the whole layout
- * follows from it — **the code and the grid must be in one visual field.**
+ * Stage 7 made the code and the grid share one screen; Stage 9 makes them share one *object*.
+ * What was there before was a stack of rounded cards floating on a page — a transport card, a
+ * tab card, a sequencer card, a panel card — with the mode rail pinned to the far left where it
+ * changed content on the far right, and a third of the window left empty underneath.
  *
- * Three regions on desktop:
+ * Three conceptual levels, and the layout is now exactly them:
  *
- *     ┌──────────────────────────────────────────────────────┐
- *     │ top bar — brand, transport, kit, master, theme        │  sticky
- *     ├──────┬───────────────────────────┬────────────────────┤
- *     │ rail │ sequencer                 │ the active APL     │  sticky
- *     │ tabs │ (the instrument)          │ workspace          │  column
- *     └──────┴───────────────────────────┴────────────────────┘
+ *     ┌────────────────────────────────────────────────────────────┐
+ *     │ brand · transport · undo · theme                           │  global
+ *     ├────────────────────────────────────────────────────────────┤
+ *     │ BEATS          TONES                                       │  the layer
+ *     ├──────────────────────────────────┬──────┬──────────────────┤
+ *     │ kit / sound · volume             │ Play │                  │
+ *     │                                  │ Crea │   APL workspace  │  the tool
+ *     │ the instrument                   │ Tran │                  │
+ *     │                                  │ Expl │                  │
+ *     ├──────────────────────────────────┴──────┴──────────────────┤
+ *     │ APL Beats                        GitHub · Credits          │
+ *     └────────────────────────────────────────────────────────────┘
  *
- * The APL column is sticky and scrolls within itself, so the expression stays put while the
- * sequencer and everything under it move. That is the "magic moment" made structural rather than
- * hoped for: press Run, and the grid is already on screen.
+ * Two structural rules carry most of it. **The rail sits between the instrument and the panel it
+ * governs**, so "press here, that changes" is a spatial fact rather than something to remember.
+ * And **the workspace is the flexible row**: the header, the tabs and the footer take their
+ * intrinsic height and everything left over goes to the instrument, which is what stops a drum
+ * machine sitting in the top half of a monitor with a field of nothing beneath it.
  *
- * It folds twice. Below 100rem the APL column drops under the sequencer but the rail stays, so a
- * laptop still gets tabs and a wide grid. Below 62rem the rail lies down into a tab strip and
- * everything is one column, which is what a phone had before and still wants.
+ * There are almost no cards. Regions are told apart by space, alignment and the occasional
+ * hairline; a radius here means "this is a control", not "these things are related".
  */
 
 .app {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
   min-height: 100dvh;
   max-width: var(--layout-max);
   margin: 0 auto;
-  padding: var(--space-4) var(--space-5) var(--space-5);
+  padding: 0 var(--space-5) var(--space-3);
 }
 
-/* ---- the top bar --------------------------------------------------------- */
+/* ---- the global strip ---------------------------------------------------- */
 
 /*
- * Sticky, and the only thing that is besides the APL column.
+ * A control strip, not a card.
  *
- * Play, the tempo and the master volume are wanted at every scroll position, and a transport you
- * have to scroll back up to reach is a transport that gets in the way. It carries the stage
- * colour rather than a translucent blur: a backdrop filter over a moving sixteen-step grid is
- * the most expensive thing this interface could ask a compositor for, and it would buy nothing.
+ * Sticky because Play and the tempo are wanted at every scroll position, and painted in the stage
+ * colour so it reads as the top of the page rather than as something resting on it. One hairline
+ * underneath does the whole job the border, radius, surface and shadow used to.
+ *
+ * It carries only what genuinely governs the *whole* composition. The drum kit used to live here
+ * and does not any more: a kit is a fact about Beats, and the moment Tones existed a global slot
+ * holding a Beats control was telling the wrong story about what the application is.
  */
 .topBar {
   position: sticky;
   top: 0;
   z-index: 20;
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin: calc(var(--space-4) * -1) calc(var(--space-5) * -1) 0;
-  padding: var(--space-4) var(--space-5) var(--space-3);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+  margin-inline: calc(var(--space-5) * -1);
+  padding: var(--space-3) var(--space-5);
   background: var(--stage);
   border-bottom: 1px solid var(--line);
 }
 
-.brandRow {
+.brand {
   display: flex;
-  align-items: center;
-  gap: var(--space-3) var(--space-5);
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
 }
 
 .title {
@@ -69,98 +80,160 @@
   line-height: 1;
 }
 
+/*
+ * The promise, as an eyebrow rather than a sentence.
+ *
+ * It was a faint line of grey prose taking a third of the header and reading as a caption nobody
+ * had deleted. Set small, spaced and upper-case it becomes part of the mark — the same words,
+ * doing a job. It is the product's whole argument, so it earns its place; it does not earn a
+ * paragraph.
+ */
 .tagline {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--text-dim);
+  white-space: nowrap;
 }
 
 /*
- * The second half of the promise fades back.
+ * The second half of the promise, and the first thing the header gives up.
  *
- * "Make music first" is what a visitor is here for; "discover array programming second" is a
- * promise about later, and it should read like one.
+ * "Make music first" is what somebody is here for; "discover array programming second" is a
+ * promise about later, and it should read like one — and yield like one. Below a genuinely wide
+ * window it goes, because the alternative is the transport wrapping onto a second row to make
+ * room for a slogan.
  */
 .taglineSecond {
-  color: color-mix(in srgb, var(--text-dim) 68%, var(--stage));
+  color: color-mix(in srgb, var(--text-dim) 62%, var(--stage));
 }
 
-/* ---- the body ------------------------------------------------------------ */
-
-.body {
-  flex: 1 1 auto;
-  display: grid;
-  grid-template-columns: var(--rail-width) minmax(0, 1fr);
-  align-items: start;
-  gap: var(--space-4);
-  min-width: 0;
+@media (max-width: 99.9375rem) {
+  .taglineSecond {
+    display: none;
+  }
 }
 
-.railColumn {
-  position: sticky;
-  top: var(--sticky-top, 8.5rem);
-  /*
-   * Zero, and it matters.
-   *
-   * A flex or grid child refuses to shrink below its content by default, so on a phone the tab
-   * strip — four tabs whose own min-width is their text — made the column wider than the screen
-   * and took the page with it. Thirty-five pixels of sideways scroll, from a container that was
-   * never asked how wide it wanted to be.
-   */
-  min-width: 0;
+@media (max-width: 84.9375rem) {
+  .tagline {
+    display: none;
+  }
 }
 
 /*
- * The sequencer, in a card.
+ * The transport, which takes the row it needs.
  *
- * Stage 6 had it floating on the stage with no edge of its own, which read as "page" rather than
- * "instrument" — and beside a panelled APL column it would have looked like the one thing
- * nobody had finished. Giving it the same surface, radius and hairline as every panel is what
- * makes the workspace read as a set of related objects instead of a stack of content.
+ * On a genuinely wide window it sits between the brand and the two quiet controls. Below that it
+ * takes a line of its own, and that is the fix rather than a compromise: Play and three dials need
+ * about 630px and the header cannot give them that at 1024 while also carrying a wordmark and two
+ * buttons. Squeezing them onto one line is what produced the Stage 5.1 regression — Master
+ * dropping to a second row *inside* the transport, which reads as a fault rather than a layout.
+ * A full-width strip is orderly; a wrapped one is not.
  */
-.main {
+.transportSlot {
+  flex: 1 1 22rem;
+  min-width: 0;
+}
+
+@media (max-width: 84.9375rem) {
+  .transportSlot {
+    flex-basis: 100%;
+    order: 3;
+  }
+}
+
+.globalActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ---- the layer, and the workspace ---------------------------------------- */
+
+/*
+ * Everything below the strip is one flex column that fills the window.
+ *
+ * `min-height: 0` on the workspace is what lets its children scroll instead of growing the page,
+ * and `flex: 1` is what gives the instrument the leftover height.
+ */
+.body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.workspace {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  min-height: var(--workspace-min);
+  padding-top: var(--space-4);
+}
+
+/*
+ * The instrument. No card, no border, no surface — the page *is* the instrument's ground.
+ *
+ * A column so the layer's own controls sit above the grid and the grid takes the rest, which is
+ * how the extra height reaches the thing that can use it.
+ */
+.instrument {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   min-width: 0;
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--line);
+  min-height: 0;
 }
 
 /*
- * Tones, without the card.
+ * The layer's own controls: the kit for Beats, the sound and volume for Tones.
  *
- * Beats fills this column with several things — the grid, the track controls, the mixer — and the
- * panel is what holds them together. Tones has one object in it, and a card drawn around a single
- * object is furniture: it framed a sequencer as a widget parked in a dashboard, which is exactly
- * the wrong first impression for the only part of this application you play.
- *
- * The surface stays, though, because the sticky keyboard is painted on it and has to match
- * whatever is behind the grid. Losing the border and most of the padding is enough — the matrix
- * then reads as sitting on the page rather than inside something.
+ * Directly above the instrument they belong to, so ownership is obvious without a label saying
+ * so. A hairline under them separates the controls from the music without drawing a box round
+ * either.
  */
-.mainOpen {
-  padding: var(--space-2) 0 0;
-  background: none;
-  box-shadow: none;
+.layerControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+  min-width: 0;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.instrumentBody {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /*
- * The APL column.
+ * The rail column, between the instrument and the workspace it switches.
  *
- * Its own scroll container, so a long Peek or a tall editor scrolls inside the panel instead of
- * pushing the sequencer off the top of the window. `min-height: 0` matters more than it looks:
- * without it a grid item refuses to shrink below its content and the whole column grows the page
- * instead of scrolling.
+ * Sticky within the workspace so the four modes stay reachable while a long panel scrolls, and
+ * deliberately narrow: a rail wide enough to read as a panel would be a third region competing
+ * with the two it exists to connect.
+ */
+.railColumn {
+  min-width: 0;
+  align-self: start;
+  position: sticky;
+  top: var(--sticky-top, 8.5rem);
+}
+
+/*
+ * The APL column: its own scroll container, so a long Peek or a tall editor scrolls inside itself
+ * rather than pushing the instrument off the top of the window.
  */
 .aplColumn {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
   min-width: 0;
+  min-height: 0;
 }
 
 .aplPanel {
@@ -168,30 +241,26 @@
   /*
    * A query container, and the reason the panels inside it lay out correctly.
    *
-   * Stage 7 put these panels in a column about 380px wide on a 1280px monitor, which broke the
-   * assumption every media query in them was built on: the window being wide no longer means the
-   * panel is. The macro grid stayed two-across in 380px and its sliders shrank to thirty pixels.
-   *
-   * A container query asks the right question — how wide is the *panel* — so the same stylesheet
-   * works whether it is beside the grid, beneath it, or on a phone. Where support is missing the
-   * rules simply do not apply and the layout is the tight two-column one, which is the
-   * pre-Stage-7 behaviour rather than a broken one.
+   * The panels sit in a column about 28rem wide on a 1280px monitor, which breaks the assumption
+   * a media query would make: the window being wide no longer means the panel is. A container
+   * query asks the right question — how wide is the *panel* — so the same stylesheet works
+   * whether it is beside the instrument, beneath it, or on a phone.
    */
   container: apl / inline-size;
 }
 
-/* ---- the wide workspace -------------------------------------------------- */
+/* ---- three columns, where all three fit ---------------------------------- */
 
 /*
- * Three columns, from the width where all three genuinely fit.
+ * Instrument, rail, workspace — in that order, which is the whole point.
  *
- * 100rem rather than something smaller because the grid is not negotiable: sixteen pads at full
- * size plus a track label is about 700px, and squeezing the APL in beside it any earlier would
- * mean shrinking the steps — which is shrinking the instrument to make room for the tools.
+ * 78rem rather than something smaller because the grid is not negotiable: sixteen steps at full
+ * size plus a track label is about 700px, and fitting the APL beside it any earlier would mean
+ * shrinking the instrument to make room for the tools.
  */
-@media (min-width: 100rem) {
-  .body {
-    grid-template-columns: var(--rail-width) minmax(0, 1fr) var(--apl-column-wide);
+@media (min-width: 78rem) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr) var(--rail-width) var(--apl-column);
   }
 
   .aplColumn {
@@ -200,128 +269,118 @@
     max-height: calc(100dvh - var(--sticky-top, 8.5rem) - var(--space-5));
     overflow-y: auto;
     overscroll-behavior: contain;
-    /* Room for the scrollbar so a focus ring on the panel edge is not clipped by it. */
+    /* Room for the scrollbar, so a focus ring on a panel edge is not clipped by it. */
     padding-right: var(--space-1);
   }
 }
 
-@media (min-width: 78rem) and (max-width: 99.9375rem) {
-  .body {
-    grid-template-columns: var(--rail-width) minmax(0, 1fr) var(--apl-column);
-  }
-
-  .aplColumn {
-    position: sticky;
-    top: var(--sticky-top, 8.5rem);
-    max-height: calc(100dvh - var(--sticky-top, 8.5rem) - var(--space-5));
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding-right: var(--space-1);
+@media (min-width: 100rem) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr) var(--rail-width) var(--apl-column-wide);
   }
 }
 
 /*
- * Between 62rem and 78rem: rail beside a single stacked column.
+ * Between 62rem and 78rem the workspace drops under the instrument, and the rail goes with it.
  *
- * The APL sits under the sequencer rather than beside it, because beside it at this width would
- * be two columns of about 30rem each and neither would be comfortable. The rail stays, so the
- * four workspaces are still one click apart and only one is open — which is most of the value.
+ * The rail follows the panel rather than staying beside the instrument, because the rail belongs
+ * to the panel: separating them to preserve a column would undo the one relationship this stage
+ * exists to establish.
  */
 @media (max-width: 77.9375rem) {
-  .aplColumn {
-    grid-column: 1 / -1;
+  .workspace {
+    grid-template-columns: var(--rail-width) minmax(0, 1fr);
+    grid-template-areas:
+      'instrument instrument'
+      'rail       apl';
   }
-}
 
-@media (min-width: 62rem) and (max-width: 77.9375rem) {
+  .instrument {
+    grid-area: instrument;
+  }
+
+  .railColumn {
+    grid-area: rail;
+    position: static;
+  }
+
   .aplColumn {
-    grid-column: 2;
+    grid-area: apl;
   }
 }
 
 /* ---- the fold ------------------------------------------------------------ */
 
 /*
- * Phone and small tablet: one column, and the rail becomes a tab strip above the APL.
+ * Phone: one column, and the rail lies down into a strip directly above the panel.
  *
- * Deliberately *above* the APL panel rather than at the top of the page. It labels the thing it
- * switches, and putting it under the sequencer keeps the grid — which is what somebody came for
- * — at the top of the first screen.
+ * Still attached to what it switches — above it rather than beside it — so the relationship
+ * survives the fold even though the geometry cannot.
  */
 @media (max-width: 61.9375rem) {
   .app {
-    gap: var(--space-3);
-    padding: var(--space-3) var(--space-3) var(--space-4);
+    padding: 0 var(--space-3) var(--space-3);
   }
 
   .topBar {
-    margin: calc(var(--space-3) * -1) calc(var(--space-3) * -1) 0;
-    padding: var(--space-3) var(--space-3);
+    margin-inline: calc(var(--space-3) * -1);
+    padding: var(--space-3);
+    gap: var(--space-2) var(--space-3);
   }
 
-  .body {
+  .tagline {
+    display: none;
+  }
+
+  .transportSlot {
+    flex-basis: 100%;
+    order: 3;
+  }
+
+  .workspace {
     display: flex;
     flex-direction: column;
-    /*
-     * Back to stretch.
-     *
-     * The desktop grid sets `align-items: start` so the rail and the APL column sit at the top
-     * of their row rather than stretching to the height of the sequencer. Inherited into a
-     * *column* flex container that same declaration means the cross axis is horizontal, so every
-     * child sized to its content instead of to the page — and the tab strip, whose content is
-     * four tabs wide, took the page sideways with it.
-     */
     align-items: stretch;
     gap: var(--space-3);
+    min-height: 0;
+    padding-top: var(--space-3);
   }
 
   .railColumn {
     position: static;
     order: 2;
+    /*
+     * Back to stretch, and this is not housekeeping.
+     *
+     * The desktop grid sets `align-self: start` so the rail sits at the top of its column rather
+     * than stretching to the height of the instrument. Inherited into a *column* flex container
+     * that same declaration means the cross axis is horizontal, so the rail sized to its content —
+     * four tabs wide — and took the page sideways with it. Nineteen pixels of horizontal scroll on
+     * a 390px iPhone, from one declaration meant for a different axis.
+     */
+    align-self: stretch;
   }
 
-  /*
-   * No card on a phone.
-   *
-   * Not a stylistic choice — an accessibility one, and it was measured. The sixteen pads reach
-   * WCAG 2.2's target-spacing exception by their *pitch*: adjacent centres more than 24px apart
-   * means a 24px circle on each never overlaps its neighbour, which is what lets the pads
-   * themselves be smaller than 24px on a screen where sixteen of them have to fit.
-   *
-   * On a 412px phone the grid gets 388px, and 388 ÷ 16 is 24.25px of pitch. The card's 32px of
-   * horizontal padding took that to 23.4 and broke conformance. Sixteen pixels of decoration is
-   * not worth a target-spacing failure, so the card is a desktop affordance and the phone gets
-   * the layout it had before Stage 7, unchanged.
-   */
-  .main {
+  .instrument {
     order: 1;
-    padding: 0;
-    background: none;
-    box-shadow: none;
+    gap: var(--space-3);
   }
 
   .aplColumn {
     order: 3;
   }
-
-  .brandRow {
-    gap: var(--space-2) var(--space-3);
-  }
-
-  /*
-   * The tagline goes.
-   *
-   * Not hidden from a screen reader — removed from the layout entirely, because on a 375px
-   * screen it is the difference between the brand and the theme toggle fitting on one line and
-   * not. The same words are the first thing in the README and the first thing on the desktop.
-   */
-  .tagline {
-    display: none;
-  }
 }
 
 /* ---- the footer ---------------------------------------------------------- */
 
+/*
+ * One line.
+ *
+ * It used to carry two paragraphs of provenance — sample origins, repositories, licences, what
+ * the generator does locally and what TryAPL does remotely — permanently occupying the bottom of
+ * an instrument. All of it still ships, in `Credits & licences`, which is where somebody looking
+ * for it will look and where nobody else has to read it.
+ */
 .footer {
   display: flex;
   flex-wrap: wrap;
@@ -329,39 +388,45 @@
   justify-content: space-between;
   gap: var(--space-2) var(--space-4);
   margin-top: auto;
-  padding-top: var(--space-4);
+  padding-top: var(--space-3);
   border-top: 1px solid var(--line);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   color: var(--text-dim);
 }
 
-/*
- * Prose stays narrow even though the page no longer is.
- *
- * The workspace uses its width for interaction; a paragraph that ran to 1600px would be the one
- * place the new layout made things worse to read.
- */
-.note {
-  max-width: var(--measure);
+.footerName {
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.emphasis {
-  font-family: var(--font-mono);
-  color: var(--text-muted);
+.footerLinks {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
 }
 
 .link {
-  color: var(--accent-ink);
+  color: var(--text-muted);
   text-decoration: none;
   border-bottom: 1px solid transparent;
   white-space: nowrap;
-  transition: border-color var(--motion-fast) var(--ease);
+  transition:
+    color var(--motion-fast) var(--ease),
+    border-color var(--motion-fast) var(--ease);
 }
 
 .link:hover {
+  color: var(--accent-bright);
   border-bottom-color: currentcolor;
 }
 
 .link:focus-visible {
   border-radius: var(--radius-sm);
+}
+
+/* The credits opener is a button that has to read as the link beside it. */
+.linkButton {
+  font: inherit;
+  letter-spacing: inherit;
 }

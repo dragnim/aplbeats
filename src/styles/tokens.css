@@ -287,10 +287,17 @@
   --space-6: 2rem;
   --space-7: 3rem;
 
-  /* Shape */
-  --radius-sm: 3px;
-  --radius-md: 7px;
-  --radius-lg: 12px;
+  /*
+   * Shape, and there is deliberately less of it than there was.
+   *
+   * Stage 9 stopped using rounded cards as the way things are grouped. A radius now says "this is
+   * a control you can press", not "these things belong together" — grouping is spacing, alignment
+   * and the occasional hairline. So the large radius is half what it was and is used on almost
+   * nothing, and the two smaller ones are for controls.
+   */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
 
   /*
    * Motion — short, restrained, and switched off entirely below.
@@ -330,9 +337,28 @@
    */
   --layout-max: 120rem;
   --measure: 46rem;
-  --rail-width: 4.5rem;
-  --apl-column: 30rem;
-  --apl-column-wide: 34rem;
+
+  /*
+   * The rail moved, and shrank.
+   *
+   * Stage 7 put the four APL modes down the far left, where they changed content on the far right
+   * — the width of the instrument away from the thing they governed. Stage 9 sets them between
+   * the two, so the relationship is the layout rather than something to be learnt, and a rail
+   * that is *between* two panels has to be narrow enough not to be a third one.
+   */
+  --rail-width: 3.75rem;
+  --apl-column: 28rem;
+  --apl-column-wide: 32rem;
+
+  /*
+   * The application fills the window.
+   *
+   * The header and the layer tabs take what they need, the footer is a single line, and the
+   * workspace gets the rest — so the instrument grows into the screen instead of leaving a field
+   * of dead page beneath it. A floor as well, because a short window must scroll rather than
+   * crush the grid.
+   */
+  --workspace-min: 30rem;
 }
 
 /*

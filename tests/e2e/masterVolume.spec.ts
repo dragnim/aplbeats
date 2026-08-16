@@ -222,8 +222,8 @@ test('survives a change of drum machine', async ({ page }) => {
 
   await master(page).fill('37');
 
-  const selector = page.getByRole('combobox', { name: 'Drum machine' });
-  const kitStatus = page.getByRole('status', { name: 'Drum machine' });
+  const selector = page.getByRole('combobox', { name: 'Kit' });
+  const kitStatus = page.getByRole('status', { name: 'Kit' });
 
   for (const kit of ['tr-808', 'lm-2', 'synth']) {
     await selector.selectOption(kit);
@@ -343,8 +343,14 @@ test('the desktop transport is one row', async ({ page }, testInfo) => {
   });
 
   expect(layout).not.toBeNull();
-  // Play, the kit selector, and the three dials — all of them, on one line.
-  expect(layout?.controls).toBe(5);
+  /*
+   * Play and the three dials, on one line.
+   *
+   * Four rather than the five this asserted before Stage 9: the kit selector used to sit here and
+   * now belongs to Beats. The count is kept exact deliberately — it is what would catch a
+   * layer-specific control being dropped back into the global strip.
+   */
+  expect(layout?.controls).toBe(4);
   expect(layout?.rows, 'the transport wrapped onto more than one row').toBe(1);
   // One row of controls plus padding. Two rows measured 90px, so this fails loudly if it returns.
   expect(layout?.height ?? 0).toBeLessThan(72);
@@ -378,7 +384,7 @@ test('the controls stay a usable size once they share a row', async ({ page }, t
     expect(box?.height ?? 0, `${name} is too short to hit`).toBeGreaterThanOrEqual(16);
   }
 
-  const select = await page.getByRole('combobox', { name: 'Drum machine' }).boundingBox();
+  const select = await page.getByRole('combobox', { name: 'Kit' }).boundingBox();
   expect(select?.width ?? 0).toBeGreaterThanOrEqual(110);
   expect(select?.height ?? 0).toBeGreaterThanOrEqual(28);
 

@@ -1,0 +1,121 @@
+/*
+ * The controls a layer owns, directly above the instrument they belong to.
+ *
+ * Stage 9 moved them here from two wrong places. The drum kit was in the global transport, which
+ * said the application was a drum machine with a second tab bolted on; the Tone sound and volume
+ * were inside the Play *workspace*, which made them look like something the APL mode governed
+ * rather than something the layer is.
+ *
+ * No card. A field is a label and a control on one line, and the group is held together by
+ * sitting in a row above the grid with a hairline under it — which is the App shell's job, not
+ * this stylesheet's.
+ */
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/*
+ * The label, quiet and small.
+ *
+ * Upper-case and letter-spaced so it reads as a caption for the control beside it rather than as
+ * a word competing with the value. The same treatment the workspace headings use, so the two
+ * kinds of label look related.
+ */
+.label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.select {
+  min-width: 0;
+  max-width: 14rem;
+  min-height: var(--control-height);
+  padding: 0 var(--space-5) 0 var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--input-surface);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.select:hover {
+  border-color: var(--accent);
+}
+
+.slider {
+  width: 8rem;
+  min-width: 5rem;
+}
+
+.readout {
+  min-width: 2.25ch;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/*
+ * What the sound is, and where it came from.
+ *
+ * One line, pushed to the end of the row and allowed to disappear first: it is provenance, which
+ * is worth showing on a monitor and not worth a second row on a laptop.
+ */
+.provenance {
+  flex: 1 1 12rem;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--text-dim);
+  text-align: right;
+}
+
+.origin {
+  font-family: var(--font-mono);
+  color: color-mix(in srgb, var(--text-dim) 75%, var(--stage));
+  white-space: nowrap;
+}
+
+/*
+ * One line of status, and empty almost always.
+ *
+ * A sound that will not load is not an emergency — the drums are still playing the bar and every
+ * other sound is one selection away — so it is a status rather than an alert.
+ */
+.status {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-dim);
+  min-height: 1lh;
+}
+
+.statusFailed {
+  color: var(--danger, var(--accent-bright));
+}
+
+.retry {
+  margin-inline-start: var(--space-2);
+  border-bottom: 1px solid currentcolor;
+  color: var(--accent-bright);
+  font: inherit;
+}
+
+@media (max-width: 61.9375rem) {
+  .provenance {
+    display: none;
+  }
+
+  .slider {
+    width: 6rem;
+  }
+}

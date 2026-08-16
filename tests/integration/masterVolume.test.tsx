@@ -175,7 +175,7 @@ describe('moving it', () => {
 
   it('does not disturb the drum machine', () => {
     render(<App />);
-    const selector = screen.getByRole('combobox', { name: 'Drum machine' });
+    const selector = screen.getByRole('combobox', { name: 'Kit' });
 
     fireEvent.change(master(), { target: { value: '37' } });
     expect(selector).toHaveValue('synth');

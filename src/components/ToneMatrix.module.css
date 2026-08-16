@@ -21,11 +21,20 @@
  * above the snare on step 5 at every width.
  */
 
+/*
+ * The matrix fills the instrument column, so twelve rows can grow into the window.
+ *
+ * Stage 9 hands the workspace the leftover height of the page; this is where Tones collects its
+ * share. Taller rows are not decoration here — they are a bigger target for a finger drawing a
+ * line, and more room for the keyboard down the left to read as an object.
+ */
 .matrix {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   min-width: 0;
+  min-height: 0;
 }
 
 /*
@@ -36,6 +45,10 @@
  * instead of squeezing sixteen columns down to something a thumb cannot hit.
  */
 .scroller {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   overflow-x: auto;
   overflow-y: hidden;
   /* Vertical panning still belongs to the page; only sideways is ours. */
@@ -52,7 +65,11 @@
 }
 
 .grid {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
   min-width: min-content;
+  min-height: 0;
 }
 
 /* One shared column track, so the ruler above lines up with every row below it. */
@@ -125,8 +142,21 @@
  * see between steps is the dot being small, not a gutter.
  */
 .rows {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+}
+
+/*
+ * Twelve rows sharing what is left.
+ *
+ * A floor so a phone's cells stay drawable, and the ceiling lives on the cell so a very tall
+ * window does not turn a sequencer into a ladder.
+ */
+.row {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /*
@@ -205,7 +235,17 @@
   display: grid;
   place-items: center;
   width: 100%;
-  height: 2rem;
+  /*
+   * The row decides the height now, within a floor and a ceiling.
+   *
+   * It used to be a fixed 2rem, which meant twelve rows had a fixed total and the matrix could not
+   * use vertical space however much of it there was. The floor keeps every cell clear of the 24px
+   * WCAG 2.2 target minimum; the ceiling stops a very tall window turning a sequencer into a
+   * ladder.
+   */
+  height: 100%;
+  min-height: 1.5rem;
+  max-height: 2.75rem;
   padding: 0;
   border: 0;
   background: none;
@@ -307,10 +347,17 @@
  */
 @keyframes toneStruck {
   from {
-    background-color: var(--accent-bright);
+    /*
+     * Brighter than the accent, not merely the accent.
+     *
+     * The first version went from `--accent-bright` to `--accent`, which is a step of about one
+     * shade — easy to miss beside a grid that has just lit a whole column. Starting above the
+     * palette and falling back into it makes the note visibly *flash* rather than merely settle.
+     */
+    background-color: #fff2e8;
     box-shadow:
       inset 0 1px 0 var(--accent-bright),
-      0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent);
+      0 0 0 5px color-mix(in srgb, var(--accent) 60%, transparent);
   }
 
   to {
@@ -346,12 +393,24 @@
  * top of the grid to the bottom — which is what a playhead looks like on hardware, and what the
  * previous build could not do while every cell had its own border.
  */
+/*
+ * Parked: a faint column, marking where Play will resume from rather than claiming to move.
+ */
 .underPlayhead {
   background: color-mix(in srgb, var(--text-dim) 10%, transparent);
 }
 
+/*
+ * Playing: a band you can follow with the sound off.
+ *
+ * The cells are transparent and flush, so tinting a column produces one continuous stripe from
+ * the top of the grid to the bottom — which is what a playhead looks like on hardware, and the
+ * reason the previous build could not draw one while every cell had a border of its own. At 16%
+ * it was findable if you were looking for it; the brief is that the rhythm should be readable
+ * without listening, so it is now a third of the playhead colour.
+ */
 .playing {
-  background: color-mix(in srgb, var(--playhead) 16%, transparent);
+  background: color-mix(in srgb, var(--playhead) 30%, transparent);
 }
 
 /* --- the strip below ------------------------------------------------------ */
@@ -491,7 +550,8 @@
   }
 
   .cell {
-    height: 1.75rem;
+    min-height: 1.5rem;
+    max-height: 2.25rem;
   }
 
   .note {

@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { cx } from '@/app/cx';
 import { DOMAINS, type Domain } from './workspaces';
 import styles from './DomainTabs.module.css';
@@ -33,6 +34,16 @@ export interface DomainTabsProps {
 }
 
 export function DomainTabs({ active, onSelect, panelIds }: DomainTabsProps): React.JSX.Element {
+  /*
+   * The tabs themselves, so focus can follow the arrow keys.
+   *
+   * Selecting without moving focus is half a tablist: the roving `tabindex` moves to the new tab
+   * while the keyboard is still on the old one, so the next Tab leaves from the wrong place and a
+   * screen reader goes on describing a tab that is no longer chosen. The pattern is that arrowing
+   * *is* moving, and this is what makes that true.
+   */
+  const tabs = useRef<(HTMLButtonElement | null)[]>([]);
+
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
     const keys: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1 };
     const step = keys[event.key];
@@ -47,7 +58,9 @@ export function DomainTabs({ active, onSelect, panelIds }: DomainTabsProps): Rea
 
     event.preventDefault();
     const next = DOMAINS[index];
-    if (next !== undefined) onSelect(next.id);
+    if (next === undefined) return;
+    onSelect(next.id);
+    tabs.current[index]?.focus();
   };
 
   return (
@@ -58,11 +71,14 @@ export function DomainTabs({ active, onSelect, panelIds }: DomainTabsProps): Rea
       aria-orientation="horizontal"
       onKeyDown={onKeyDown}
     >
-      {DOMAINS.map((domain) => {
+      {DOMAINS.map((domain, index) => {
         const selected = domain.id === active;
         return (
           <button
             key={domain.id}
+            ref={(node) => {
+              tabs.current[index] = node;
+            }}
             type="button"
             role="tab"
             id={`${panelIds}-domain-tab-${domain.id}`}
